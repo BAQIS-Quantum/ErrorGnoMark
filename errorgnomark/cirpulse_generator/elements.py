@@ -4,7 +4,7 @@ import random  # For generating random numbers
 # Third-party imports
 import numpy as np  # For numerical operations
 from qiskit import QuantumCircuit, transpile  # For creating and transpiling quantum circuits
-from qiskit.circuit.library import CZGate, RXGate, RYGate, RZGate  # For specific quantum gates
+from qiskit.circuit.library import CZGate, RXGate, RYGate, RZGate,CXGate  # For specific quantum gates
 from qiskit.circuit import Gate  # For general gate operations
 from qiskit.quantum_info import Operator, random_unitary  # For quantum information utilities
 
@@ -180,7 +180,7 @@ def get_random_rotation_gate():
 
 
 class csbq1_circuit_generator:
-    def __init__(self, rot_axis='x', rot_angle=np.pi / 2, rep=1):
+    def __init__(self, rot_axis='x', rot_angle=np.pi, rep=1):
         """
         Initialize the CSB Q1 circuit generator.
 
@@ -434,6 +434,126 @@ class Csbq2_cz_circuit_generator:
             circ_list.append(qc)
 
         return circ_list
+
+
+
+
+class Csbq2_cnot_circuit_generator:
+    def __init__(self, theta=np.pi):
+        self.theta = theta  # Phase parameter for the controlled-NOT gate
+        self.eigval_list = [1, -1, -1, 1]  # Eigenvalue list for CNOT gate
+        self.eigvec_list = [
+            np.array([1, 0, 0, 0]),  # |00> eigenstate
+            np.array([0, 0, 0, 1]),  # |11> eigenstate
+            1 / np.sqrt(2) * np.array([0, 1, -1, 0]),  # (|01> - |10>) eigenstate
+            1 / np.sqrt(2) * np.array([0, 1, 1, 0])   # (|01> + |10>) eigenstate
+        ]
+
+    def prepare_initial_state(self, qc, mode, qubit_indices=[0, 1]):
+        """
+        Prepare the initial state based on the specified mode.
+        """
+        q0, q1 = qubit_indices
+        if mode == '01':
+            qc.h(q0)
+            qc.cx(q0, q1)
+        elif mode == '02':
+            qc.h(q0)
+            qc.cx(q0, q1)
+            qc.h(q0)
+        elif mode == '03':
+            qc.h(q0)
+            qc.cx(q0, q1)
+            qc.h(q0)
+            qc.sdg(q1)
+        elif mode == '12':
+            qc.h(q0)
+            qc.cx(q0, q1)
+            qc.h(q1)
+        elif mode == '13':
+            qc.h(q0)
+            qc.cx(q0, q1)
+            qc.h(q1)
+            qc.sdg(q1)
+        elif mode == '23':
+            qc.x(q1)
+        else:
+            raise ValueError(f"Unknown mode: {mode}")
+
+    def prepare_inverse_initial_state(self, qc, mode, qubit_indices=[0, 1]):
+        """
+        Apply the inverse operation of the initial state preparation.
+        """
+        q0, q1 = qubit_indices
+        if mode == '01':
+            qc.cx(q0, q1)
+            qc.h(q0)
+        elif mode == '02':
+            qc.h(q0)
+            qc.cx(q0, q1)
+            qc.h(q0)
+        elif mode == '03':
+            qc.s(q1)
+            qc.h(q0)
+            qc.cx(q0, q1)
+            qc.h(q0)
+        elif mode == '12':
+            qc.h(q1)
+            qc.cx(q0, q1)
+            qc.h(q0)
+        elif mode == '13':
+            qc.s(q1)
+            qc.h(q1)
+            qc.cx(q0, q1)
+            qc.h(q0)
+        elif mode == '23':
+            qc.x(q1)
+        else:
+            raise ValueError(f"Unknown mode: {mode}")
+
+    def csbq2_cnot_circuit(self, len_list, mode='01', nrep=1, qubit_indices=[0, 1]):
+        """
+        Generate and return a list of two-qubit CNOT circuits with customizable qubit indices.
+        """
+        circ_list = []
+
+        max_qubit = max(qubit_indices) + 1
+
+        # Prepare the initial state
+        qc_ini = QuantumCircuit(max_qubit, max_qubit)
+        self.prepare_initial_state(qc_ini, mode, qubit_indices)
+        qc_ini.barrier()
+
+        # Define CNOT gate
+        cnot_gate = CXGate()
+
+        # Define the inverse preparation operation
+        qc_ini_inverse = QuantumCircuit(max_qubit, max_qubit)
+        self.prepare_inverse_initial_state(qc_ini_inverse, mode, qubit_indices)
+
+        for lc in len_list:
+            qc_rep = QuantumCircuit(max_qubit, max_qubit)
+            for _ in range(lc * nrep):
+                qc_rep.append(cnot_gate, qubit_indices)
+
+            # Combine the initial preparation circuit and repeated circuit
+            qc = qc_ini.compose(qc_rep)
+
+            # Add the inverse operation to return to the initial state
+            qc = qc.compose(qc_ini_inverse)
+
+            # Add measurement
+            qc.measure(qubit_indices, qubit_indices)
+
+            circ_list.append(qc)
+
+        return circ_list
+
+
+
+
+
+
 
 
 

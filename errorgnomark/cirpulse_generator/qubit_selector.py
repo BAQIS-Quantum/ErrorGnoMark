@@ -12,7 +12,7 @@ class chip:
         columns (int): Number of columns in the chip grid.
     """
 
-    def __init__(self, rows=10, columns=10):
+    def __init__(self, rows=12, columns=13):
         self.rows = rows
         self.columns = columns
 
@@ -46,8 +46,8 @@ class qubit_selection:
         self.qubit_index_max = qubit_index_max
         self.qubit_number = int(qubit_number)  # Ensure this is an integer
         self.option = option if option is not None else {}
-        self.rows = getattr(chip, 'rows', 10)      # Default to 10 rows if not specified
-        self.columns = getattr(chip, 'columns', 10)  # Default to 10 columns if not specified
+        self.rows = getattr(chip, 'rows', 12)      # Default to 12 rows if not specified
+        self.columns = getattr(chip, 'columns', 13)  # Default to 13 columns if not specified
 
 
     def quselected(self):
@@ -87,12 +87,22 @@ class qubit_selection:
 
         best_selection["qubit_index_list"] = qubit_indices
 
-        # Create horizontal connectivity within each row
+        # Create connectivity for horizontal and vertical connections
         qubit_connectivity = []
+
+        # Horizontal connectivity (left-right)
         for r in range(self.rows):
-            for c in range(self.columns - 1):
+            for c in range(self.columns - 1):  # Only connect to the right
                 q1 = r * self.columns + c
                 q2 = r * self.columns + (c + 1)
+                if q1 in qubit_indices and q2 in qubit_indices:
+                    qubit_connectivity.append([q1, q2])
+
+        # Vertical connectivity (up-down)
+        for r in range(self.rows - 1):  # Only connect down
+            for c in range(self.columns):
+                q1 = r * self.columns + c
+                q2 = (r + 1) * self.columns + c
                 if q1 in qubit_indices and q2 in qubit_indices:
                     qubit_connectivity.append([q1, q2])
 
@@ -127,3 +137,9 @@ class qubit_selection:
             print(" ".join(row))
 
         return best_selection
+
+
+# Example usage:
+# chip_instance = chip(rows=12, columns=13)
+# qubit_selector = qubit_selection(chip_instance, qubit_number=10)
+# qubit_selector.quselected()

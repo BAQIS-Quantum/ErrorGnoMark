@@ -1,0 +1,39 @@
+Token has been set: ROKILmIl4`zT[p8zmPZrFjYNCzS1WnI:qgFJi[m8fK5/1IO5J{OyhkOvNUO6d{OzZEO4FkPjBIfmKDMjN{N7JUN7FkNhNENuRENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnMkGnM{mXdiKHRliYbii3ZjpkJzW3d2Kzf
+Chip Structure: 12 rows x 13 columns
+Selected Qubits and Connectivity:
+- - - Q . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+==================================================
+Selected Qubit Indices: [0, 1, 2, 3]
+Qubit Connectivity: [[0, 1], [1, 2], [2, 3]]
+==================================================
+Single Qubit RB completed in 9.22 seconds.
+Single Qubit XEB completed in 41.75 seconds.
+Single Qubit CSB completed in 7.15 seconds.
+Two Qubit RB completed in 9.44 seconds.
+Two Qubit XEB completed in 34.39 seconds.
+Two Qubit CSB completed in 10.27 seconds.
+Two Qubit CNOT CSB completed in 12.74 seconds.
+m-Qubit GHZ Fidelity completed in 0.29 seconds.
+m-Qubit StanQV Fidelity completed in 2.35 seconds.
+m-Qubit MRB Fidelity completed in 5.92 seconds.
+m-Qubit Speed CLOPS completed in 2.20 seconds.
+Final Energy: -0.7029303908753176 Problem Description: Hamiltonian with 4 terms on 2 qubits using EfficientSU2 ansatz.
+m-Qubit VQE completed in 0.25 seconds.
+Total execution time: 135.96 seconds.
+EGM results saved to data_egm/Baihua_egm_data_20250421_145330.json
+Successfully read JSON data from data_egm/Baihua_egm_data_20250421_145330.json
+Directory 'tables' already exists.
+Level02 report saved as 'tables/level02_report_20250421_145330.txt'.
+Successfully read JSON data from data_egm/Baihua_egm_data_20250421_145330.json
+Directory 'tables' already exists.

@@ -1,5 +1,6 @@
 # Standard library imports
 import random
+import logging
 import re
 import time
 import warnings
@@ -19,8 +20,7 @@ from qiskit_aer.noise import (  # Noise modeling for simulations
 )
 from qiskit_aer.noise.errors.quantum_error import NoiseError  # For handling quantum errors
 
-# Add the ErrorGnoMark package to the system path
-sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
+
 from errorgnomark.token_manager import get_token
 from errorgnomark.fake_data import generate_fake_data_rbq1, generate_fake_data_rbq2  # Fake data generation
 from quark import Task  # Custom task handling for ErrorGnoMark
@@ -32,6 +32,8 @@ warnings.filterwarnings(
 )
 
 import random
+
+
 
 def build_custom_noise_model():
     """
@@ -169,7 +171,7 @@ class QuantumJobRunner:
             shots=1,
             print_progress=True,
             use_fake_data=None,
-            delay_between_tasks=5,
+            delay_between_tasks=7,
             max_retries=5,
             elapsed_time=False
         ):
@@ -247,7 +249,7 @@ class QuantumJobRunner:
 
                 while True:
                     try:
-                        time.sleep(5)
+                        time.sleep(7)
                         res = tmgr.result(tid)
 
                         if res and 'status' in res:
@@ -263,7 +265,7 @@ class QuantumJobRunner:
                                     elapsed_times.append(task_elapsed_time)
                                 break
                     except (ReadTimeout, RequestException):
-                        time.sleep(5)
+                        time.sleep(7)
 
                 if delay_between_tasks > 0:
                     time.sleep(delay_between_tasks)

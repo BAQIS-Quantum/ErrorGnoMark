@@ -8,8 +8,7 @@ import numpy as np
 # Third-party imports
 import matplotlib.pyplot as plt  # For creating visualizations
 
-# Add the ErrorGnoMark package to the system path
-sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
+
 # ErrorGnoMark-specific imports
 from errorgnomark.results_tools.visualization import VisualPlot  # For generating visual plots
 
@@ -407,6 +406,44 @@ class EGMReportManager:
 
         self._draw_table_text(title, column_names, data, output_filename)
 
+
+    def draw_res_egmq2_csb_cnot(self):
+        """
+        Draws a table for the res_egmq2_csb_cnot metric.
+        """
+        metric_name = "res_egmq2_csb_cnot"
+        metric_data = self.results.get(metric_name, {})
+        qubit_pairs_results = metric_data.get("qubit_pairs_results", [])
+        if not qubit_pairs_results:
+            print(f"No qubit pairs results found for {metric_name}.")
+            return
+
+        data = []
+        for pair, result in zip(self.qubit_connectivity, qubit_pairs_results):
+            process_infidelity = result.get("process_infidelity", "N/A")
+            stochastic_infidelity = result.get("stochastic_infidelity", "N/A")
+            theta_error = result.get("theta_error", "N/A")
+            phi_error = result.get("phi_error", "N/A")
+
+            # Format values to 4 decimal places if they are floats
+            formatted_process_infidelity = f"{process_infidelity:.4f}" if isinstance(process_infidelity, float) else process_infidelity
+            formatted_stochastic_infidelity = f"{stochastic_infidelity:.4f}" if isinstance(stochastic_infidelity, float) else stochastic_infidelity
+            formatted_theta_error = f"{theta_error:.4f}" if isinstance(theta_error, float) else theta_error
+            formatted_phi_error = f"{phi_error:.4f}" if isinstance(phi_error, float) else phi_error
+
+            # Format qubit pair as (x,y)
+            pair_str = f"({pair[0]},{pair[1]})"
+
+            data.append([pair_str, formatted_process_infidelity, formatted_stochastic_infidelity, formatted_theta_error, formatted_phi_error])
+
+        column_names = ["Qubits", "Process Infid", "CSB_S", "CSB_T", "CSB_A"]
+        title = self.format_title(metric_name)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{metric_name}_{timestamp}.txt"
+
+        self._draw_table_text(title, column_names, data, output_filename)
+
+
     def draw_res_egmqm_ghz(self):
         """
         Draw a table for the metric res_egmqm_ghz.
@@ -571,6 +608,7 @@ class EGMReportManager:
         self.draw_res_egmq2_rb()
         self.draw_res_egmq2_xeb()
         self.draw_res_egmq2_csb_cz()
+        self.draw_res_egmq2_csb_cnot()
         self.draw_res_egmqm_ghz()
         self.draw_res_egmqm_stqv()
         self.draw_res_egmqm_mrb()
@@ -578,17 +616,19 @@ class EGMReportManager:
 
 
     def egm_level02_table(self,        
-        rbq1_selected = True,
-        xebq1_selected = True,
-        csbq1_selected = True,
-        rbq2_selected = True,
-        xebq2_selected = True,
-        csbq2_selected = True,
-        ghzqm_selected = True,
-        qvqm_selected = True,
-        mrbqm_selected = True,
-        clopsqm_selected = True,
-        vqeqm_selected = True):
+        rbq1_selected =  True,
+        xebq1_selected =  True,
+        csbq1_selected =  True,
+        rbq2_selected =  True,
+        xebq2_selected =  True,
+        csbq2_selected =  True,
+        csbq2_cnot_selected =  True,
+        ghzqm_selected =  True,
+        qvqm_selected =  True,
+        mrbqm_selected =  True,
+        clopsqm_selected =  True,
+        vqeqm_selected =  True
+        ):
         """
         Generates a comprehensive Level02 report that includes information on 
         Single-Qubit Gate Quality, Two-Qubit Gate Quality, Multi-Qubit Gates Quality,
@@ -746,7 +786,33 @@ class EGMReportManager:
 
             report += self._format_table(csb_two_q_columns, csb_two_q_data) + "\n\n"
 
-        # Section 7: Multi-Qubit Gate Quality - GHZ Fidelity
+
+        # Section 7: CNOT CSB Errors (Moved here)
+        if csbq2_cnot_selected:  # Add this section for CNOT CSB errors
+            report += "## Section 7: CNOT Gate Quality - CSB\n"
+            report += "-" * 50 + "\n"
+            report += "**Channel Spectrum Benchmarking (CSB)**: Evaluates process, stochastic, and angle errors for CNOT qubit pairs.\n\n"
+
+            # Build CSB results for CNOT (CSB_P, CSB_S, CSB_T, CSB_A)
+            csb_cnot_data = []
+            for pair in self.qubit_connectivity:
+                x, y = pair
+                csb_p = self.results.get("res_egmq2_csb_cnot", {}).get("qubit_pairs_results", [])
+                index = self.qubit_connectivity.index(pair)
+                if index < len(csb_p):
+                    process_infid = csb_p[index].get("process_infidelity", "N/A")
+                    stochastic_infid = csb_p[index].get("stochastic_infidelity", "N/A")
+                    theta_error = csb_p[index].get("theta_error", "N/A")
+                    phi_error = csb_p[index].get("phi_error", "N/A")
+
+                    csb_cnot_data.append([f"({x},{y})", process_infid, stochastic_infid, theta_error, phi_error])
+                else:
+                    csb_cnot_data.append([f"({x},{y})", "N/A", "N/A", "N/A", "N/A"])
+
+            report += self._format_table(csb_two_q_columns, csb_cnot_data) + "\n\n"
+
+
+        # Section 8: Multi-Qubit Gate Quality - GHZ Fidelity
         if ghzqm_selected:
             report += "## Section 7: Multi-Qubit Gates Quality - Fidelity GHZ\n"
             report += "-" * 50 + "\n"
@@ -765,7 +831,7 @@ class EGMReportManager:
 
             report += self._format_table(multi_q_columns_ghz, multi_q_data_ghz) + "\n\n"
 
-        # Section 8: Quantum Volume
+        # Section 9: Quantum Volume
         if qvqm_selected:
             report += "## Section 8: Multi-Qubit Gates Quality - Quantum Volume\n"
             report += "-" * 50 + "\n"
@@ -794,7 +860,7 @@ class EGMReportManager:
             else:
                 report += "**Quantum Volume data is missing or incomplete. Skipping this section.**\n\n"
 
-        # Section 9: MRB
+        # Section 10: MRB
         if mrbqm_selected:
             report += "## Section 9: Multi-Qubit Gates Quality - MRB\n"
             report += "-" * 50 + "\n"
@@ -837,7 +903,7 @@ class EGMReportManager:
             # Format the table output (you can format it into a readable structure or use the `self._format_table` method)
             report += self._format_table(mrb_columns, mrb_data) + "\n\n"
 
-        # Section 10: CLOPS
+        # Section 11: CLOPS
         if clopsqm_selected:
             clops = self.results.get("res_egmqm_clops", {}).get("CLOPSQM", "N/A")
 
@@ -854,7 +920,7 @@ class EGMReportManager:
                 # If 'clops' is "N/A", simply display "N/A"
                 report += f"CLOPS: N/A\n"
 
-        # Section 11: VQE
+        # Section 12: VQE
         if vqeqm_selected:
             vqe = self.results.get("res_egmqm_vqe", {})
             vqe_problem = vqe.get("Problem Description", "N/A")
@@ -871,16 +937,36 @@ class EGMReportManager:
             f.write(report)
         print(f"Level02 report saved as '{output_path}'.")
 
+       
+
+    def _save_figure(self, figure, filepath):
+        """
+        Save a figure to the specified filepath.
+
+        Args:
+            figure: The matplotlib figure to be saved.
+            filepath (str): The file path to save the figure.
+        """
+        try:
+            figure.savefig(filepath)
+            print(f"Figure saved to {filepath}")
+        except Exception as e:
+            print(f"Failed to save figure: {e}")
+        finally:
+            # Close the figure after saving it to avoid memory issues
+            plt.close(figure)
 
 
     def egm_level02_figure(self,
-            rbq1_selected=True,
-            xebq1_selected=True,
-            csbq1_selected=True,
-            rbq2_selected=True,
-            xebq2_selected=True,
-            mrbqm_selected=True,
-            ghzqm_selected=True):  # New parameter to select GHZ plot
+                rbq1_selected=True,
+                xebq1_selected=True,
+                csbq1_selected=True,
+                rbq2_selected=True,
+                xebq2_selected=True,
+                csbq2_cz_selected=True,
+                csbq2_cnot_selected=True,  # Add new parameter for CSBQ2_CNOT plot
+                mrbqm_selected=True,
+                ghzqm_selected=True):  # New parameter for CSBQ2_CZ plot
         """
         Generate visualizations for metrics and save them as images based on selected options.
         """
@@ -894,22 +980,24 @@ class EGMReportManager:
         csbq1_path = os.path.join(self.figures_dir, "CSBQ1_Heatmap.png")
         rbq2_path = os.path.join(self.figures_dir, "RBQ2_Heatmap.png")
         xebq2_path = os.path.join(self.figures_dir, "XEBQ2_Heatmap.png")
+        csbq2_cz_path = os.path.join(self.figures_dir, "CSBQ2_CZ_Heatmap.png")  # Path for CSBQ2_CZ plot
+        csbq2_cnot_path = os.path.join(self.figures_dir, "CSBQ2_CNOT_Heatmap.png")  # Path for CSBQ2_CNOT plot
         mrbqm_path = os.path.join(self.figures_dir, "MRBQM_Heatmap.png")
         ghzqm_path = os.path.join(self.figures_dir, "GHZQM_Fidelity.png")  # Path for GHZ fidelity plot
 
         # Generate and save the plots based on the selected options
         if rbq1_selected:
-            visualizer.plot_rbq1(grid_size=(5, 5))
+            visualizer.plot_rbq1(grid_size=(12, 13))
             plt.savefig(rbq1_path)
             plt.close()
 
         if xebq1_selected:
-            visualizer.plot_xebq1(grid_size=(5, 5))
+            visualizer.plot_xebq1(grid_size=(12, 13))
             plt.savefig(xebq1_path)
             plt.close()
 
         if csbq1_selected:
-            visualizer.plot_csbq1(grid_size=(5, 5))
+            visualizer.plot_csbq1(grid_size=(12, 13))
             plt.savefig(csbq1_path)
             plt.close()
 
@@ -921,6 +1009,18 @@ class EGMReportManager:
         if xebq2_selected:
             visualizer.plot_xebq2()
             plt.savefig(xebq2_path)
+            plt.close()
+
+        # Generate and save the CSBQ2_CZ plot if selected
+        if csbq2_cz_selected:  # Check if the CSBQ2_CZ plot is selected
+            visualizer.plot_csbq2_cz()  # Call the CSBQ2_CZ plot function
+            plt.savefig(csbq2_cz_path)  # Save the plot as a PNG file
+            plt.close()
+
+        # Generate and save the CSBQ2_CNOT plot if selected
+        if csbq2_cnot_selected:  # Check if the CSBQ2_CNOT plot is selected
+            visualizer.plot_csbq2_cnot()  # Call the CSBQ2_CNOT plot function
+            plt.savefig(csbq2_cnot_path)  # Save the plot as a PNG file
             plt.close()
 
         if mrbqm_selected:
@@ -940,7 +1040,7 @@ class EGMReportManager:
 
 # # Define the path to the JSON file
 # current_dir = os.getcwd()  # Get the current working directory
-# file_path = os.path.join(current_dir, "data_egm", "Baihua_egm_data_20250103_153026.json")  # Build the full file path
+# file_path = "/Users/ousiachai/Desktop/ErrorGnoMark/errorgnomark/data_egm/Baihua_egm_data_20250406_231821.json"  # Correct the file path
 
 # # Create an instance of EGMReportManager
 # report_manager = EGMReportManager(file_path)
@@ -952,3 +1052,4 @@ class EGMReportManager:
 # report_manager.egm_level02_figure()
 
 # print("Reports and figures have been successfully generated!")
+

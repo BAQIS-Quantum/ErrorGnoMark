@@ -1,0 +1,401 @@
+                       Errorgnomark Report of 'QXX' Chip                        
+================================================================================
+
+Chip Structure: 12 rows x 13 columns
+--------------------------------------------------
+Selected Qubit Indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]
+Qubit Connectivity: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [13, 14], [14, 15], [15, 16], [16, 17], [17, 18], [18, 19], [19, 20], [20, 21], [21, 22], [22, 23], [23, 24], [24, 25], [26, 27], [27, 28], [28, 29], [29, 30], [30, 31], [31, 32], [32, 33], [33, 34], [34, 35], [35, 36], [36, 37], [37, 38], [39, 40], [40, 41], [41, 42], [42, 43], [43, 44], [44, 45], [45, 46], [46, 47], [47, 48]]
+================================================================================
+
+Chip Structure Layout:
+Q Q Q Q Q Q Q Q Q Q Q Q Q
+Q Q Q Q Q Q Q Q Q Q Q Q Q
+Q Q Q Q Q Q Q Q Q Q Q Q Q
+Q Q Q Q Q Q Q Q Q Q . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+
+## Section 1: Single-Qubit Gate Quality - RB
+--------------------------------------------------
+**Randomized Benchmarking (RB)**: Measures gate error rates.
+**Cross-Entropy Benchmarking (XEB)**: Evaluates gate fidelity.
+
+┌─────┬───┬───┐
+│Qubit│ RB│XEB│
+├─────┼───┼───┤
+│  0  │N/A│N/A│
+│  1  │N/A│N/A│
+│  2  │N/A│N/A│
+│  3  │N/A│N/A│
+│  4  │N/A│N/A│
+│  5  │N/A│N/A│
+│  6  │N/A│N/A│
+│  7  │N/A│N/A│
+│  8  │N/A│N/A│
+│  9  │N/A│N/A│
+│  10 │N/A│N/A│
+│  11 │N/A│N/A│
+│  12 │N/A│N/A│
+│  13 │N/A│N/A│
+│  14 │N/A│N/A│
+│  15 │N/A│N/A│
+│  16 │N/A│N/A│
+│  17 │N/A│N/A│
+│  18 │N/A│N/A│
+│  19 │N/A│N/A│
+│  20 │N/A│N/A│
+│  21 │N/A│N/A│
+│  22 │N/A│N/A│
+│  23 │N/A│N/A│
+│  24 │N/A│N/A│
+│  25 │N/A│N/A│
+│  26 │N/A│N/A│
+│  27 │N/A│N/A│
+│  28 │N/A│N/A│
+│  29 │N/A│N/A│
+│  30 │N/A│N/A│
+│  31 │N/A│N/A│
+│  32 │N/A│N/A│
+│  33 │N/A│N/A│
+│  34 │N/A│N/A│
+│  35 │N/A│N/A│
+│  36 │N/A│N/A│
+│  37 │N/A│N/A│
+│  38 │N/A│N/A│
+│  39 │N/A│N/A│
+│  40 │N/A│N/A│
+│  41 │N/A│N/A│
+│  42 │N/A│N/A│
+│  43 │N/A│N/A│
+│  44 │N/A│N/A│
+│  45 │N/A│N/A│
+│  46 │N/A│N/A│
+│  47 │N/A│N/A│
+│  48 │N/A│N/A│
+└─────┴───┴───┘
+
+
+## Section 2: Single-Qubit Gate Quality - XEB
+--------------------------------------------------
+**Cross-Entropy Benchmarking (XEB)**: Evaluates gate fidelity.
+
+┌─────┬───┬───┐
+│Qubit│ RB│XEB│
+├─────┼───┼───┤
+│  0  │N/A│N/A│
+│  1  │N/A│N/A│
+│  2  │N/A│N/A│
+│  3  │N/A│N/A│
+│  4  │N/A│N/A│
+│  5  │N/A│N/A│
+│  6  │N/A│N/A│
+│  7  │N/A│N/A│
+│  8  │N/A│N/A│
+│  9  │N/A│N/A│
+│  10 │N/A│N/A│
+│  11 │N/A│N/A│
+│  12 │N/A│N/A│
+│  13 │N/A│N/A│
+│  14 │N/A│N/A│
+│  15 │N/A│N/A│
+│  16 │N/A│N/A│
+│  17 │N/A│N/A│
+│  18 │N/A│N/A│
+│  19 │N/A│N/A│
+│  20 │N/A│N/A│
+│  21 │N/A│N/A│
+│  22 │N/A│N/A│
+│  23 │N/A│N/A│
+│  24 │N/A│N/A│
+│  25 │N/A│N/A│
+│  26 │N/A│N/A│
+│  27 │N/A│N/A│
+│  28 │N/A│N/A│
+│  29 │N/A│N/A│
+│  30 │N/A│N/A│
+│  31 │N/A│N/A│
+│  32 │N/A│N/A│
+│  33 │N/A│N/A│
+│  34 │N/A│N/A│
+│  35 │N/A│N/A│
+│  36 │N/A│N/A│
+│  37 │N/A│N/A│
+│  38 │N/A│N/A│
+│  39 │N/A│N/A│
+│  40 │N/A│N/A│
+│  41 │N/A│N/A│
+│  42 │N/A│N/A│
+│  43 │N/A│N/A│
+│  44 │N/A│N/A│
+│  45 │N/A│N/A│
+│  46 │N/A│N/A│
+│  47 │N/A│N/A│
+│  48 │N/A│N/A│
+└─────┴───┴───┘
+
+
+## Section 3: Single-Qubit Gate Quality - CSB (pi/2 - X)
+--------------------------------------------------
+**Channel Spectrum Benchmarking (CSB)**: Measures process, stochastic, and angle error rates for qubit operations.
+**CSB_P**: Process Infidelity
+**CSB_S**: Stochastic Infidelity
+**CSB_A**: Angle Error
+
+┌─────┬─────┬─────┬─────┐
+│Qubit│CSB_P│CSB_S│CSB_A│
+├─────┼─────┼─────┼─────┤
+│  0  │ N/A │ N/A │ N/A │
+│  1  │ N/A │ N/A │ N/A │
+│  2  │ N/A │ N/A │ N/A │
+│  3  │ N/A │ N/A │ N/A │
+│  4  │ N/A │ N/A │ N/A │
+│  5  │ N/A │ N/A │ N/A │
+│  6  │ N/A │ N/A │ N/A │
+│  7  │ N/A │ N/A │ N/A │
+│  8  │ N/A │ N/A │ N/A │
+│  9  │ N/A │ N/A │ N/A │
+│  10 │ N/A │ N/A │ N/A │
+│  11 │ N/A │ N/A │ N/A │
+│  12 │ N/A │ N/A │ N/A │
+│  13 │ N/A │ N/A │ N/A │
+│  14 │ N/A │ N/A │ N/A │
+│  15 │ N/A │ N/A │ N/A │
+│  16 │ N/A │ N/A │ N/A │
+│  17 │ N/A │ N/A │ N/A │
+│  18 │ N/A │ N/A │ N/A │
+│  19 │ N/A │ N/A │ N/A │
+│  20 │ N/A │ N/A │ N/A │
+│  21 │ N/A │ N/A │ N/A │
+│  22 │ N/A │ N/A │ N/A │
+│  23 │ N/A │ N/A │ N/A │
+│  24 │ N/A │ N/A │ N/A │
+│  25 │ N/A │ N/A │ N/A │
+│  26 │ N/A │ N/A │ N/A │
+│  27 │ N/A │ N/A │ N/A │
+│  28 │ N/A │ N/A │ N/A │
+│  29 │ N/A │ N/A │ N/A │
+│  30 │ N/A │ N/A │ N/A │
+│  31 │ N/A │ N/A │ N/A │
+│  32 │ N/A │ N/A │ N/A │
+│  33 │ N/A │ N/A │ N/A │
+│  34 │ N/A │ N/A │ N/A │
+│  35 │ N/A │ N/A │ N/A │
+│  36 │ N/A │ N/A │ N/A │
+│  37 │ N/A │ N/A │ N/A │
+│  38 │ N/A │ N/A │ N/A │
+│  39 │ N/A │ N/A │ N/A │
+│  40 │ N/A │ N/A │ N/A │
+│  41 │ N/A │ N/A │ N/A │
+│  42 │ N/A │ N/A │ N/A │
+│  43 │ N/A │ N/A │ N/A │
+│  44 │ N/A │ N/A │ N/A │
+│  45 │ N/A │ N/A │ N/A │
+│  46 │ N/A │ N/A │ N/A │
+│  47 │ N/A │ N/A │ N/A │
+│  48 │ N/A │ N/A │ N/A │
+└─────┴─────┴─────┴─────┘
+
+
+## Section 4: Two-Qubit Gate Quality - RB
+--------------------------------------------------
+**Randomized Benchmarking (RB)**: Measures gate error rates for two qubits.
+
+┌───────┬───────┬───┐
+│ Qubits│   RB  │XEB│
+├───────┼───────┼───┤
+│ (0,1) │ 0.0015│N/A│
+│ (1,2) │ 0.0204│N/A│
+│ (2,3) │ 0.0107│N/A│
+│ (3,4) │ 0.0202│N/A│
+│ (4,5) │ 0.0117│N/A│
+│ (5,6) │ 0.0197│N/A│
+│ (6,7) │ 0.0002│N/A│
+│ (7,8) │-0.0004│N/A│
+│ (8,9) │ 0.0222│N/A│
+│ (9,10)│ 0.0049│N/A│
+│(10,11)│ 0.0242│N/A│
+│(11,12)│ 0.0095│N/A│
+│(13,14)│ 0.0249│N/A│
+│(14,15)│-0.0059│N/A│
+│(15,16)│ 0.0108│N/A│
+│(16,17)│-0.0009│N/A│
+│(17,18)│ 0.0030│N/A│
+│(18,19)│ 0.0083│N/A│
+│(19,20)│ 0.0270│N/A│
+│(20,21)│ 0.0029│N/A│
+│(21,22)│ 0.0190│N/A│
+│(22,23)│ 0.0067│N/A│
+│(23,24)│ 0.0255│N/A│
+│(24,25)│-0.0077│N/A│
+│(26,27)│ 0.0340│N/A│
+│(27,28)│ 0.0044│N/A│
+│(28,29)│ 0.0228│N/A│
+│(29,30)│ 0.0166│N/A│
+│(30,31)│-0.0010│N/A│
+│(31,32)│-0.0148│N/A│
+│(32,33)│ 0.0085│N/A│
+│(33,34)│ 0.0290│N/A│
+│(34,35)│ 0.0222│N/A│
+│(35,36)│-0.0149│N/A│
+│(36,37)│ 0.0324│N/A│
+│(37,38)│ 0.0131│N/A│
+│(39,40)│ 0.0295│N/A│
+│(40,41)│ 0.0027│N/A│
+│(41,42)│ 0.0063│N/A│
+│(42,43)│ 0.0196│N/A│
+│(43,44)│ 0.0303│N/A│
+│(44,45)│ 0.0035│N/A│
+│(45,46)│ 0.0196│N/A│
+│(46,47)│ 0.0084│N/A│
+│(47,48)│ 0.0196│N/A│
+└───────┴───────┴───┘
+
+
+## Section 5: Two-Qubit Gate Quality - XEB
+--------------------------------------------------
+**Cross-Entropy Benchmarking (XEB)**: Evaluates two-qubit gate fidelity.
+
+┌───────┬───┬───┐
+│ Qubits│ RB│XEB│
+├───────┼───┼───┤
+│ (0,1) │N/A│N/A│
+│ (1,2) │N/A│N/A│
+│ (2,3) │N/A│N/A│
+│ (3,4) │N/A│N/A│
+│ (4,5) │N/A│N/A│
+│ (5,6) │N/A│N/A│
+│ (6,7) │N/A│N/A│
+│ (7,8) │N/A│N/A│
+│ (8,9) │N/A│N/A│
+│ (9,10)│N/A│N/A│
+│(10,11)│N/A│N/A│
+│(11,12)│N/A│N/A│
+│(13,14)│N/A│N/A│
+│(14,15)│N/A│N/A│
+│(15,16)│N/A│N/A│
+│(16,17)│N/A│N/A│
+│(17,18)│N/A│N/A│
+│(18,19)│N/A│N/A│
+│(19,20)│N/A│N/A│
+│(20,21)│N/A│N/A│
+│(21,22)│N/A│N/A│
+│(22,23)│N/A│N/A│
+│(23,24)│N/A│N/A│
+│(24,25)│N/A│N/A│
+│(26,27)│N/A│N/A│
+│(27,28)│N/A│N/A│
+│(28,29)│N/A│N/A│
+│(29,30)│N/A│N/A│
+│(30,31)│N/A│N/A│
+│(31,32)│N/A│N/A│
+│(32,33)│N/A│N/A│
+│(33,34)│N/A│N/A│
+│(34,35)│N/A│N/A│
+│(35,36)│N/A│N/A│
+│(36,37)│N/A│N/A│
+│(37,38)│N/A│N/A│
+│(39,40)│N/A│N/A│
+│(40,41)│N/A│N/A│
+│(41,42)│N/A│N/A│
+│(42,43)│N/A│N/A│
+│(43,44)│N/A│N/A│
+│(44,45)│N/A│N/A│
+│(45,46)│N/A│N/A│
+│(46,47)│N/A│N/A│
+│(47,48)│N/A│N/A│
+└───────┴───┴───┘
+
+
+## Section 6: Two-Qubit Gate Quality - CSB
+--------------------------------------------------
+**Channel Spectrum Benchmarking (CSB)**: Evaluates process, stochastic, and angle errors for qubit pairs.
+
+┌───────┬─────┬─────┬─────┬─────┐
+│ Qubits│CSB_P│CSB_S│CSB_T│CSB_A│
+├───────┼─────┼─────┼─────┼─────┤
+│ (0,1) │ N/A │ N/A │ N/A │ N/A │
+│ (1,2) │ N/A │ N/A │ N/A │ N/A │
+│ (2,3) │ N/A │ N/A │ N/A │ N/A │
+│ (3,4) │ N/A │ N/A │ N/A │ N/A │
+│ (4,5) │ N/A │ N/A │ N/A │ N/A │
+│ (5,6) │ N/A │ N/A │ N/A │ N/A │
+│ (6,7) │ N/A │ N/A │ N/A │ N/A │
+│ (7,8) │ N/A │ N/A │ N/A │ N/A │
+│ (8,9) │ N/A │ N/A │ N/A │ N/A │
+│ (9,10)│ N/A │ N/A │ N/A │ N/A │
+│(10,11)│ N/A │ N/A │ N/A │ N/A │
+│(11,12)│ N/A │ N/A │ N/A │ N/A │
+│(13,14)│ N/A │ N/A │ N/A │ N/A │
+│(14,15)│ N/A │ N/A │ N/A │ N/A │
+│(15,16)│ N/A │ N/A │ N/A │ N/A │
+│(16,17)│ N/A │ N/A │ N/A │ N/A │
+│(17,18)│ N/A │ N/A │ N/A │ N/A │
+│(18,19)│ N/A │ N/A │ N/A │ N/A │
+│(19,20)│ N/A │ N/A │ N/A │ N/A │
+│(20,21)│ N/A │ N/A │ N/A │ N/A │
+│(21,22)│ N/A │ N/A │ N/A │ N/A │
+│(22,23)│ N/A │ N/A │ N/A │ N/A │
+│(23,24)│ N/A │ N/A │ N/A │ N/A │
+│(24,25)│ N/A │ N/A │ N/A │ N/A │
+│(26,27)│ N/A │ N/A │ N/A │ N/A │
+│(27,28)│ N/A │ N/A │ N/A │ N/A │
+│(28,29)│ N/A │ N/A │ N/A │ N/A │
+│(29,30)│ N/A │ N/A │ N/A │ N/A │
+│(30,31)│ N/A │ N/A │ N/A │ N/A │
+│(31,32)│ N/A │ N/A │ N/A │ N/A │
+│(32,33)│ N/A │ N/A │ N/A │ N/A │
+│(33,34)│ N/A │ N/A │ N/A │ N/A │
+│(34,35)│ N/A │ N/A │ N/A │ N/A │
+│(35,36)│ N/A │ N/A │ N/A │ N/A │
+│(36,37)│ N/A │ N/A │ N/A │ N/A │
+│(37,38)│ N/A │ N/A │ N/A │ N/A │
+│(39,40)│ N/A │ N/A │ N/A │ N/A │
+│(40,41)│ N/A │ N/A │ N/A │ N/A │
+│(41,42)│ N/A │ N/A │ N/A │ N/A │
+│(42,43)│ N/A │ N/A │ N/A │ N/A │
+│(43,44)│ N/A │ N/A │ N/A │ N/A │
+│(44,45)│ N/A │ N/A │ N/A │ N/A │
+│(45,46)│ N/A │ N/A │ N/A │ N/A │
+│(46,47)│ N/A │ N/A │ N/A │ N/A │
+│(47,48)│ N/A │ N/A │ N/A │ N/A │
+└───────┴─────┴─────┴─────┴─────┘
+
+
+## Section 7: Multi-Qubit Gates Quality - Fidelity GHZ
+--------------------------------------------------
+**N-Qubit GHZ state fidelity**: Measures the fidelity of GHZ states on multiple qubits.
+
+┌───────┬────────────┐
+│NQUBITS│FIDELITY_GHZ│
+├───────┼────────────┤
+└───────┴────────────┘
+
+
+## Section 8: Multi-Qubit Gates Quality - Quantum Volume
+--------------------------------------------------
+**Quantum Volume**: Measures the complexity of quantum circuits that a quantum computer can process.
+
+**Quantum Volume data is missing or incomplete. Skipping this section.**
+
+## Section 9: Multi-Qubit Gates Quality - MRB
+--------------------------------------------------
+**Multi-Qubit Randomized Benchmarking (MRB)**: Measures multi-qubit gate error rates for different qubit lengths.
+
+┌───────────┬──────┐
+│Qubit Count│Qubits│
+├───────────┼──────┤
+└───────────┴──────┘
+
+
+CLOPS: N/A
+
+## Section 12: Multi-Qubit Gates Application
+--------------------------------------------------
+VQE Problem: N/A
+Final Energy: N/A
