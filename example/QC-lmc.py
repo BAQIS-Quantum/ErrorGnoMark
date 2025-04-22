@@ -13,16 +13,24 @@ Notes:
 """
 
 # Import Required Modules
-from errorgnomark import Errorgnomarker
+from errorgnomark.errorgnomarker import Errorgnomarker
 from errorgnomark.token_manager import define_token, get_token
 
 # Step 1: Define Your Token
 # Replace with your actual token
-define_token("your token")
+define_token("F8WL`4Y3NBdVhdRzK4Wy84O8[:q9t67K5P4T4i4{ip7/1YO4R{N6JEOvZUN{B{N5dEO4FkPjBIfmKDMjZUN7VkN7BkNhFkNuRENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnM2SX[vRYbjClN3JUO{JENzF{NjpkJzW3d2Kzf")
 
 # Step 2: Initialize the Errorgnomarker
 # Use simulation mode or real hardware mode
-egm = Errorgnomarker(chip_name="Baihua", result_get='noisysimulation')  # For simulation mode
+egm = Errorgnomarker(chip_name="Baihua", result_get='noisysimulation', qubit_to_be_used=10,
+                     initial_qubit=0,
+                     file_path=r"E:\Repositories\ErrorGnoMark\Chip_topology_structure_reading\Baihua_calibration_2025"
+                               r"-04-21 12_26_19.csv",
+                     weights={'T1': 0.3,
+                              'T2': 0.3,
+                              'Fidelity': 0.3,
+                              'Frequency': 0.1}  # 默认 None
+                     )  # 'noisysimulation' For simulation mode
 # egm = Errorgnomarker(chip_name="Baihua", result_get='hardware')  # For real hardware mode
 
 # Step 3: Run Diagnostics and Benchmarking

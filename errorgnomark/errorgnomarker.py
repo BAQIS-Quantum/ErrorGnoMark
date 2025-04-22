@@ -28,7 +28,9 @@ class Errorgnomarker(chip):
     Supports single-qubit, two-qubit, multi-qubit gates, and application-level tests.
     """
 
-    def __init__(self, chip_name="Baihua", result_get='noisysimulation'):
+    def __init__(self, chip_name="Baihua", result_get='noisysimulation', qubit_to_be_used=10,
+                 initial_qubit=0,
+                 file_path='', weights=None):
         """
         Initializes the ErrorGnoMarker with the specified chip configuration.
         """
@@ -36,24 +38,26 @@ class Errorgnomarker(chip):
         self.chip_name = chip_name
 
         if self.chip_name == "Baihua":
-            self.rows = 12
-            self.columns = 13
+            self.selection_options = {
+                'max_qubits_per_row': 13,
+                'min_qubit_index': 0,
+                'max_qubit_index': 155
+            }
+            self.selector = qubit_selection(
+                rows=12,
+                cols=13,
+                qubit_index_max=155,
+                qubit_to_be_used=qubit_to_be_used,
+                initial_qubit=initial_qubit,
+                option=self.selection_options,
+                file_path=file_path,
+                weights=weights
+            )
+
         else:
             raise ValueError(f"Unsupported chip name: {self.chip_name}")
 
         self.result_get = result_get
-        self.selection_options = {
-            'max_qubits_per_row': 13,
-            'min_qubit_index': 0,
-            'max_qubit_index': 155
-        }
-
-        self.selector = qubit_selection(
-            chip=self,
-            qubit_index_max=155,
-            qubit_number=156,
-            option=self.selection_options
-        )
 
         self.selection = self.selector.quselected()
         self.qubit_index_list = self.selection["qubit_index_list"]
