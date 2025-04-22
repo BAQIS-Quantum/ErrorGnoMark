@@ -736,6 +736,110 @@ class MetricQuality:
         return csb_results_list
 
 
+    def csbq2cnot(self, phi=np.pi, ndeg=3, rep=1, cutoff=1e-10):
+        """
+        Computes the CSB (Channel Spectrum Benchmarking) errors for the 2-qubit CNOT gate.
+
+        Parameters:
+            phi (float): The target phase for the CNOT gate, default is pi.
+            ndeg (int): The degree for the matrix pencil method, default is 3.
+            rep (int): The number of repetitions for each circuit, default is 1.
+            cutoff (float): Singular value cutoff for matrix operations, default is 1e-10.
+
+        Returns:
+            list: A list of dictionaries, each containing the error metrics for a qubit pair. 
+                Each dictionary includes:
+                - 'process_infidelity': Process infidelity of the gate.
+                - 'stochastic_infidelity': Stochastic infidelity of the gate.
+                - 'theta_error': Error in the theta parameter.
+                - 'phi_error': Error in the phi parameter.
+        """
+        csb_results_list = []  # Initialize list to store CSB results for each qubit pair
+
+        # Iterate over the hardware results for each qubit pair
+        for qubit_pair_index, qubit_circuits in enumerate(self.hardware_results):
+            # Compute CSB metrics for the current qubit pair's circuits
+            csb_result = self.compute_csb_q2cnot(
+                qubit_circuits, target_phase=phi, rep=rep, cutoff=cutoff
+            )
+            
+            # Append the results in a dictionary format
+            csb_results_list.append({
+                "process_infidelity": float(csb_result["process_infidelity"]),
+                "stochastic_infidelity": float(csb_result["stochastic_infidelity"]),
+                "theta_error": float(csb_result["theta_error"]),
+                "phi_error": float(csb_result["phi_error"])
+            })
+
+        return csb_results_list
+
+    def compute_csb_q2cnot(self, bitstring_counts, target_phase=np.pi, rep=1, cutoff=1e-10):
+        """
+        Compute CSB error metrics for the 2-qubit CNOT gate, including process infidelity, 
+        stochastic infidelity, theta error, and phi error.
+
+        Parameters:
+            bitstring_counts (list of dict): List of bitstring counts for each circuit.
+            target_phase (float): Target phase for the CNOT gate, default is pi.
+            rep (int): Number of repetitions of the CNOT gate, default is 1.
+            cutoff (float): Singular value cutoff for matrix operations, default is 1e-10.
+
+        Returns:
+            dict: A dictionary containing process infidelity, stochastic infidelity, 
+                theta error, and phi error.
+        """
+        # Step 1: Convert bitstring counts to probabilities, focusing on '11' counts for CNOT gate
+        probabilities = [counts.get('11', 0) / sum(counts.values()) for counts in bitstring_counts]
+        probabilities = np.array(probabilities)
+
+        # Step 2: Apply matrix pencil method for analysis
+        L = max(int(len(probabilities) * 0.4), 1)  # Use 40% of data length for L
+        N_poles = 4  # Number of poles (adjust as needed)
+
+        poles, amplitudes, singular_values = MetricQuality.matrix_pencil(
+            probabilities, L=L, N_poles=N_poles, cutoff=cutoff
+        )
+
+        # Step 3: Process poles and calculate errors
+        if len(poles) < N_poles:
+            poles = np.append(poles, [1] * (N_poles - len(poles)))  # Pad with 1s if insufficient poles
+
+        amps = np.abs(poles)
+        phases = np.angle(poles)
+        
+        # Accumulate phase without modulo to preserve phase information
+        target_phase_p = target_phase * rep
+        target_phase_p = (target_phase_p + np.pi) % (2 * np.pi) - np.pi  # Adjust to [-pi, pi]
+
+        # Compute phase differences and find the closest phase
+        phase_difs = np.abs(phases - target_phase_p)
+        angle_index = np.argmin(phase_difs)
+        phase_error = phase_difs[angle_index] / rep  # Normalize by repetitions
+
+        # Compute amplitude error (assuming ideal amplitude is 1)
+        amplitude_error = 1 - amps[angle_index] ** (1 / rep)
+
+        # Compute fidelity metrics
+        f_mean = 1 - amplitude_error
+        f_mean = min(f_mean, 1.0)  # Ensure fidelity does not exceed 1
+
+        # Compute stochastic fidelity
+        u_mean = 1 - amplitude_error  # Simplified assumption
+        u_mean = min(u_mean, 1.0)  # Ensure fidelity does not exceed 1
+
+        # Compute angle errors
+        theta_error = phase_error
+        phi_error = 0  # If there's no additional phase information, set phi_error to 0
+
+        # Convert np.float64 to float before returning
+        return {
+            "process_infidelity": float(max(1 - f_mean, 0.0)),  # Ensure non-negative infidelity
+            "stochastic_infidelity": float(max(1 - np.sqrt(u_mean), 0.0)),  # Ensure non-negative infidelity
+            "theta_error": float(theta_error),
+            "phi_error": float(phi_error)
+        }
+
+
     def ghzqm_fidelity(self):
         """
         Computes the fidelity of a GHZ state based on hardware results.

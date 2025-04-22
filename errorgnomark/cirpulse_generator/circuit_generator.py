@@ -14,6 +14,7 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np  # For numerical operations
 from qiskit import QuantumCircuit  # For creating and managing quantum circuits
 
+
 # Add the ErrorGnoMark package to the system path
 from errorgnomark.cirpulse_generator.elements import (
     ROTATION_ANGLES,
@@ -22,6 +23,7 @@ from errorgnomark.cirpulse_generator.elements import (
     get_random_rotation_gate,
     csbq1_circuit_generator,
     Csbq2_cz_circuit_generator,
+    Csbq2_cnot_circuit_generator,
     permute_qubits,
     apply_random_su4_layer,
     qv_circuit_layer,
@@ -64,7 +66,7 @@ class CircuitGenerator:
     could be used in principle.
     """
 
-    def __init__(self, qubit_select, qubit_connectivity, length_max=16, step_size=4):
+    def __init__(self, qubit_select, qubit_connectivity, length_max=40, step_size=4):
         """
         Initializes the Circuit Generator.
 
@@ -313,7 +315,7 @@ class CircuitGenerator:
         # Iterate over the selected qubits
         qubit_qubit_select_new = len(self.qubit_select) * [0]
         for qubit in qubit_qubit_select_new:
-            csb_gen = csbq1_circuit_generator(rot_axis='x', rot_angle=np.pi / 2, rep=rep)  # Create generator
+            csb_gen = csbq1_circuit_generator(rot_axis='x', rot_angle=np.pi/2, rep=rep)  # Create generator
             qubit_circuits = []
             
             # Iterate over different initial modes (e.g., ['x', 'z'])
@@ -400,6 +402,47 @@ class CircuitGenerator:
                 # For each mode, generate circuits and add them to the list for the current qubit pair
                 qubit_pair_circuits.extend(
                     cgen.csbq2_cz_circuit(len_list, mode=mode, nrep=1, qubit_indices=qubit_pair)
+                )
+            
+            # Add the generated circuits for the current qubit pair to the outer list
+            circuits.append(qubit_pair_circuits)
+
+        return circuits
+
+
+    def generate_csbcircuit_for_cnotgate(self):
+        """
+        Generates CSB circuits for the CNOT gate.
+
+        Returns:
+            list: A nested list of QuantumCircuit objects.
+                - Outer list corresponds to qubit pairs.
+                - Inner lists correspond to different modes.
+        """
+        # Circuit lengths from 0 to max length
+        len_list = list(range(self.length_max + 1))
+        
+        # Number of repetitions for each circuit (customizable, default is 6 repetitions)
+        nrep_list = [1 for _ in range(6)]  # Currently, set to 1 repetition
+        
+        # Define modes for generating circuits
+        mode_list = ['01', '02', '03', '12', '13', '23']
+        
+        # List to store all generated circuits
+        circuits = []
+
+        # Iterate over each qubit pair in the qubit connectivity list
+        for qubit_pair in self.qubit_connectivity:
+            qubit_pair_circuits = []  # Initialize list for circuits of the current qubit pair
+
+            # Create Csbq2_cnot_circuit_generator object (using a CNOT gate)
+            cgen = Csbq2_cnot_circuit_generator(theta=np.pi)
+
+            # Generate circuits for each mode
+            for mode in mode_list:
+                # For each mode, generate circuits and add them to the list for the current qubit pair
+                qubit_pair_circuits.extend(
+                    cgen.csbq2_cnot_circuit(len_list, mode=mode, nrep=1, qubit_indices=qubit_pair)
                 )
             
             # Add the generated circuits for the current qubit pair to the outer list

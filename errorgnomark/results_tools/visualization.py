@@ -430,6 +430,84 @@ class VisualPlot:
         plt.tight_layout()
         plt.show()
 
+    def plot_csbq2_cnot(self):
+        """
+        Generate a heatmap for two-qubit CSB (Controlled-NOT Gate) error rates.
+        The grid is fixed as 12x13, representing the chip layout.
+        """
+        chip_info = self.data["chip_info"]
+        rows = chip_info["rows"]  # 12
+        cols = chip_info["columns"]  # 13
+        qubit_pairs = self.data["qubit_connectivity"]
+        csb_data = self.data["results"]["res_egmq2_csb_cnot"]["qubit_pairs_results"]  # CSB data for CNOT gate
+
+        # Filter out any null or None data
+        filtered = [(pair, val) for pair, val in zip(qubit_pairs, csb_data) if val is not None]
+
+        # Find the actual used coordinates (rows, cols)
+        used_rows = [q // cols for pair, _ in filtered for q in pair]
+        used_cols = [q % cols for pair, _ in filtered for q in pair]
+
+        # Define the min and max row and column limits based on used data
+        min_row, max_row = max(min(used_rows) - 1, 0), min(max(used_rows) + 1, rows - 1)
+        min_col, max_col = max(min(used_cols) - 1, 0), min(max(used_cols) + 1, cols - 1)
+
+        norm = mcolors.Normalize(vmin=0, vmax=1)  # Normalize the data values for color mapping
+        cmap = cm.get_cmap("viridis")  # Use a perceptually uniform colormap
+
+        fig, ax = plt.subplots(figsize=(16, 10))
+        ax.set_aspect('equal')
+
+        # Set the axis ticks and labels based on the valid rows and columns
+        ax.set_xticks(np.arange(min_col, max_col + 1))
+        ax.set_yticks(np.arange(min_row, max_row + 1))
+        ax.set_xticklabels(np.arange(min_col, max_col + 1))
+        ax.set_yticklabels(np.arange(min_row, max_row + 1))
+        ax.set_xticks(np.arange(min_col, max_col + 1) - 0.5, minor=True)
+        ax.set_yticks(np.arange(min_row, max_row + 1) - 0.5, minor=True)
+        ax.grid(which='minor', color='black', linestyle='-', linewidth=0.5)
+
+        # Plot hexagons for each pair
+        hex_width = 0.3
+        for (qubit_1, qubit_2), value in filtered:
+            try:
+                # Ensure value is a float (if it's not, convert it)
+                process_infidelity = float(value["process_infidelity"])  # Ensure correct extraction of the value
+            except (TypeError, ValueError):
+                # Skip if the value is not a valid number
+                continue
+
+            row_1, col_1 = qubit_1 // cols, qubit_1 % cols
+            row_2, col_2 = qubit_2 // cols, qubit_2 % cols
+            x_center = (col_1 + col_2) / 2
+            y_center = (row_1 + row_2) / 2
+
+            # Create a hexagon and add it to the plot
+            hexagon = patches.RegularPolygon(
+                (x_center, y_center), numVertices=6, radius=hex_width,
+                orientation=np.pi / 6, color=cmap(norm(process_infidelity)),
+                lw=2, edgecolor='black'
+            )
+            ax.add_patch(hexagon)
+            ax.text(x_center, y_center, f'{process_infidelity:.3f}',
+                    color='white', ha='center', va='center', fontsize=7)
+
+        ax.set_xlim(min_col - 0.5, max_col + 0.5)
+        ax.set_ylim(min_row - 0.5, max_row + 0.5)
+        ax.set_title("CNOT Gate Error Rates (CSB)", fontsize=16)
+        ax.set_xlabel("Column", fontsize=14)
+        ax.set_ylabel("Row", fontsize=14)
+
+        # Use make_axes_locatable to ensure colorbar height matches the figure height
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="3%", pad=0.1)
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = fig.colorbar(sm, cax=cax)
+        cbar.set_label("Error Rate", rotation=270, labelpad=20)
+
+        plt.tight_layout()
+        plt.show()
 
     def plot_ghzqm_fidelity(self):
         """

@@ -75,17 +75,19 @@ class Errorgnomarker(chip):
         self.config_application_qmgate = ApplicationQmgate(self.qubit_connectivity, self.qubit_index_list, result_get=result_get)
 
     def egm_run(self, 
-        rbq1_selected=False,
-        xebq1_selected=False,
-        csbq1_selected=False,
-        rbq2_selected=False,
-        xebq2_selected=False,
-        csbq2_selected=False,
-        ghzqm_selected=False,
-        qvqm_selected=False,
-        mrbqm_selected=False,
-        clopsqm_selected=False,
-        vqeqm_selected=False):
+        rbq1_selected=True,
+        xebq1_selected=True,
+        csbq1_selected=True,
+        rbq2_selected=True,
+        xebq2_selected=True,
+        csbq2_selected=True,
+        csbq2_cnot_selected=True,
+        ghzqm_selected=True,
+        qvqm_selected=True,
+        mrbqm_selected=True,
+        clopsqm_selected=True,
+        vqeqm_selected=True
+        ):
         """
         Executes the EGM metrics and saves the results to a JSON file.
         Based on the selection flags, executes the relevant metric calculation.
@@ -133,7 +135,13 @@ class Errorgnomarker(chip):
                 try:
                     results['res_egmq2_csb'] = self._run_two_qubit_csb()
                 except Exception as e:
+
                     print(f"Error during Two Qubit CSB: {e}")
+            if csbq2_cnot_selected:  # Handle CNOT CSB logic
+                try:
+                    results['res_egmq2_csb_cnot'] = self._run_two_qubit_cnot_csb()
+                except Exception as e:
+                    print(f"Error during Two Qubit CNOT CSB: {e}")
 
             if ghzqm_selected:
                 try:
@@ -210,6 +218,7 @@ class Errorgnomarker(chip):
         print(f"Two Qubit RB completed in {elapsed_time:.2f} seconds.")
         return res
 
+
     def _run_two_qubit_xeb(self):
         start_time = time.time()
         res = self.config_quality_q2gate.q2xeb()
@@ -222,6 +231,13 @@ class Errorgnomarker(chip):
         res = self.config_quality_q2gate.q2csb_cz()
         elapsed_time = time.time() - start_time
         print(f"Two Qubit CSB completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_two_qubit_cnot_csb(self):
+        start_time = time.time()
+        res = self.config_quality_q2gate.q2csb_cnot()
+        elapsed_time = time.time() - start_time
+        print(f"Two Qubit CNOT CSB completed in {elapsed_time:.2f} seconds.")
         return res
 
     def _run_m_qubit_ghz(self):

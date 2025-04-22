@@ -1,10 +1,10 @@
 Token has been set: ROKILmIl4`zT[p8zmPZrFjYNCzS1WnI:qgFJi[m8fK5/1IO5J{OyhkOvNUO6d{OzZEO4FkPjBIfmKDMjN{N7JUN7FkNhNENuRENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnMkGnM{mXdiKHRliYbii3ZjpkJzW3d2Kzf
 Chip Structure: 12 rows x 13 columns
 Selected Qubits and Connectivity:
-- - - - - - - - - - - - Q
-- - - - - - - - - - - - Q
-- - - - - - - - - - - - Q
-- - - - - - - - - Q . . .
+- - - Q . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
+. . . . . . . . . . . . .
 . . . . . . . . . . . . .
 . . . . . . . . . . . . .
 . . . . . . . . . . . . .
@@ -14,14 +14,26 @@ Selected Qubits and Connectivity:
 . . . . . . . . . . . . .
 . . . . . . . . . . . . .
 ==================================================
-Selected Qubit Indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]
-Qubit Connectivity: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [13, 14], [14, 15], [15, 16], [16, 17], [17, 18], [18, 19], [19, 20], [20, 21], [21, 22], [22, 23], [23, 24], [24, 25], [26, 27], [27, 28], [28, 29], [29, 30], [30, 31], [31, 32], [32, 33], [33, 34], [34, 35], [35, 36], [36, 37], [37, 38], [39, 40], [40, 41], [41, 42], [42, 43], [43, 44], [44, 45], [45, 46], [46, 47], [47, 48]]
+Selected Qubit Indices: [0, 1, 2, 3]
+Qubit Connectivity: [[0, 1], [1, 2], [2, 3]]
 ==================================================
-Two Qubit RB completed in 23.12 seconds.
-Total execution time: 23.12 seconds.
-EGM results saved to data_egm/Baihua_egm_data_20250404_150947.json
-Successfully read JSON data from data_egm/Baihua_egm_data_20250404_150947.json
+Single Qubit RB completed in 9.22 seconds.
+Single Qubit XEB completed in 41.75 seconds.
+Single Qubit CSB completed in 7.15 seconds.
+Two Qubit RB completed in 9.44 seconds.
+Two Qubit XEB completed in 34.39 seconds.
+Two Qubit CSB completed in 10.27 seconds.
+Two Qubit CNOT CSB completed in 12.74 seconds.
+m-Qubit GHZ Fidelity completed in 0.29 seconds.
+m-Qubit StanQV Fidelity completed in 2.35 seconds.
+m-Qubit MRB Fidelity completed in 5.92 seconds.
+m-Qubit Speed CLOPS completed in 2.20 seconds.
+Final Energy: -0.7029303908753176 Problem Description: Hamiltonian with 4 terms on 2 qubits using EfficientSU2 ansatz.
+m-Qubit VQE completed in 0.25 seconds.
+Total execution time: 135.96 seconds.
+EGM results saved to data_egm/Baihua_egm_data_20250421_145330.json
+Successfully read JSON data from data_egm/Baihua_egm_data_20250421_145330.json
 Directory 'tables' already exists.
-Level02 report saved as 'tables/level02_report_20250404_150947.txt'.
-Successfully read JSON data from data_egm/Baihua_egm_data_20250404_150947.json
+Level02 report saved as 'tables/level02_report_20250421_145330.txt'.
+Successfully read JSON data from data_egm/Baihua_egm_data_20250421_145330.json
 Directory 'tables' already exists.
