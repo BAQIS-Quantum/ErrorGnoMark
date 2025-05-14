@@ -22,6 +22,7 @@ from errorgnomark.cirpulse_generator.elements import (
     get_random_rotation_gate,
     csbq1_circuit_generator,
     Csbq2_cz_circuit_generator,
+    Csbq2_cnot_circuit_generator,
     permute_qubits,
     apply_random_su4_layer,
     qv_circuit_layer,
@@ -64,7 +65,7 @@ class CircuitGenerator:
     could be used in principle.
     """
 
-    def __init__(self, qubit_select, qubit_connectivity, length_max=16, step_size=4):
+    def __init__(self, qubit_select, qubit_connectivity, length_max=40, step_size=4):
         """
         Initializes the Circuit Generator.
 
@@ -313,7 +314,7 @@ class CircuitGenerator:
         # Iterate over the selected qubits
         qubit_qubit_select_new = len(self.qubit_select) * [0]
         for qubit in qubit_qubit_select_new:
-            csb_gen = csbq1_circuit_generator(rot_axis='x', rot_angle=np.pi / 2, rep=rep)  # Create generator
+            csb_gen = csbq1_circuit_generator(rot_axis='x', rot_angle=np.pi/2, rep=rep)  # Create generator
             qubit_circuits = []
             
             # Iterate over different initial modes (e.g., ['x', 'z'])
@@ -400,6 +401,47 @@ class CircuitGenerator:
                 # For each mode, generate circuits and add them to the list for the current qubit pair
                 qubit_pair_circuits.extend(
                     cgen.csbq2_cz_circuit(len_list, mode=mode, nrep=1, qubit_indices=qubit_pair)
+                )
+            
+            # Add the generated circuits for the current qubit pair to the outer list
+            circuits.append(qubit_pair_circuits)
+
+        return circuits
+
+
+    def generate_csbcircuit_for_cnotgate(self):
+        """
+        Generates CSB circuits for the CNOT gate.
+
+        Returns:
+            list: A nested list of QuantumCircuit objects.
+                - Outer list corresponds to qubit pairs.
+                - Inner lists correspond to different modes.
+        """
+        # Circuit lengths from 0 to max length
+        len_list = list(range(self.length_max + 1))
+        
+        # Number of repetitions for each circuit (customizable, default is 6 repetitions)
+        nrep_list = [1 for _ in range(6)]  # Currently, set to 1 repetition
+        
+        # Define modes for generating circuits
+        mode_list = ['01', '02', '03', '12', '13', '23']
+        
+        # List to store all generated circuits
+        circuits = []
+
+        # Iterate over each qubit pair in the qubit connectivity list
+        for qubit_pair in self.qubit_connectivity:
+            qubit_pair_circuits = []  # Initialize list for circuits of the current qubit pair
+
+            # Create Csbq2_cnot_circuit_generator object (using a CNOT gate)
+            cgen = Csbq2_cnot_circuit_generator(theta=np.pi)
+
+            # Generate circuits for each mode
+            for mode in mode_list:
+                # For each mode, generate circuits and add them to the list for the current qubit pair
+                qubit_pair_circuits.extend(
+                    cgen.csbq2_cnot_circuit(len_list, mode=mode, nrep=1, qubit_indices=qubit_pair)
                 )
             
             # Add the generated circuits for the current qubit pair to the outer list
@@ -505,138 +547,116 @@ class CircuitGenerator:
 
         return all_circuits
 
-
-    def mrbqm_circuit(self, density_cz=0.5, ncr=2):
+    def mrbqm_circuit(self, density_cz: float = 0.75, ncr: int = 2):
         """
-        Generates quantum circuits based on the provided CZ gate density and number of circuits.
+        Generate MRB‑QM circuits for qubit groups of size ≥2.
 
-        Parameters:
-            density_cz (float): Density of CZ gates in the circuit (0 < density_cz <= 1).
-            ncr (int): Number of circuits to generate for each length in length_list.
+        Parameters
+        ----------
+        density_cz : float
+            Probability (0,1] of inserting a CZ‑layer at each depth layer.
+        ncr : int
+            Number of random circuits per length.
 
-        Returns:
-            list of list of list of QuantumCircuit: Generated quantum circuits organized as 
-                circuits[num_qubits][length][ncr].
-            dict: A dictionary of qubit lists for each length, structured as 
-                qubits_for_length[num_qubits][length].
+        Returns
+        -------
+        circuits : list
+            circuits[num_qubits-2][length_index][ncr]  (QuantumCircuit objects)
+        qubits_for_length : dict
+            qubits_for_length[num_qubits][length] = [qubit indices]
         """
-        # Validate the density_cz parameter
+        # ── 0. 参数检查 ──────────────────────────────────────────
         if not (0 < density_cz <= 1):
-            raise ValueError("density_cz must be within the range (0, 1].")
+            raise ValueError("density_cz must be in the interval (0, 1].")
+        if ncr < 1:
+            raise ValueError("ncr must be ≥1.")
 
-        # Generate the list of circuit lengths based on step_size and length_max
-        length_list = list(range(self.step_size, self.length_max + 1, self.step_size))
+        # ── 1. 预备列表与容器 ────────────────────────────────────
+        length_list        = list(range(self.step_size,
+                                        self.length_max + 1,
+                                        self.step_size))
+        circuits           = []          # [num_qubits‑2][len_index][ncr]
+        qubits_for_length  = {}          # {num_qubits:{length:[qubits]}}
 
-        # Initialize the nested circuits list
-        circuits = []  # Structure: circuits[num_qubits][length][ncr]
-        qubits_for_length = {}  # Dictionary to store qubits for each length
-
-        # Sort the selected qubits to ensure consistent ordering
         sorted_qubits = sorted(self.qubit_select)
+        if len(sorted_qubits) < 2:
+            raise ValueError("MRB‑QM needs at least 2 qubits to form CZ pairs.")
 
-        # Outer loop: Iterate over the number of qubits, starting from 2 and increasing by 2
-        for num_qubits in range(2, len(sorted_qubits) + 1, 2):
+        # ── 2. 外层：不同 qubit 组大小 (从 2 到全部) ───────────────
+        for num_qubits in range(2, len(sorted_qubits) + 1):
             current_qubits = sorted_qubits[:num_qubits]
-            n_qubits = max(current_qubits) + 1  # Determine the number of qubits for the current circuit
+            n_qubits       = max(current_qubits) + 1   # 寄存器大小
 
-            # Filter qubit connectivity to include only pairs within the current qubits
-            current_connectivity = [
-                pair for pair in self.qubit_connectivity
-                if pair[0] in current_qubits and pair[1] in current_qubits
-            ]
+            circuits_per_qubit = []                    # 长度层次容器
+            qubits_for_length[num_qubits] = {}
 
-            # Initialize the list for the current number of qubits
-            circuits_per_qubit = []
-            qubits_for_length[num_qubits] = {}  # Initialize the dictionary for this number of qubits
-
-            # Middle loop: Iterate over each circuit length
+            # ── 3. 中层：不同线路长度 ────────────────────────────
             for length in length_list:
-                # Calculate the maximum number of CZ gates for the current length and qubit count
-                nmax_czgate = int(density_cz * np.floor((length * num_qubits) / 2))
-
-                # Initialize the list for the current length
                 circuits_per_length = []
 
-                # Inner loop: Generate ncr circuits for the current qubit count and length
+                # ── 4. 内层：同长度生成 ncr 条随机线路 ───────────
                 for _ in range(ncr):
-                    # Initialize the quantum circuit with qubits and classical bits
                     qc = QuantumCircuit(n_qubits, n_qubits)
 
-                    # Step 1: Apply initial random single-qubit Clifford gates
-                    clifford_qc = self.clifford_set.random_single_gate_clifford(current_qubits)
-                    qc = qc.compose(clifford_qc)
+                    # 4‑1 初始随机 Clifford
+                    clifford_qc = self.clifford_set.random_single_gate_clifford(
+                        current_qubits)
+                    qc.compose(clifford_qc, inplace=True)
                     qc.barrier()
 
-                    # Initialize lists to store applied Pauli and CZ layers for inversion
-                    applied_paulis = []
-                    applied_czs = []
+                    applied_paulis, applied_czs = [], []
 
-                    # Step 2: Generate each layer of the circuit
-                    for layer in range(length):
-                        # Step 2a: Apply random Pauli gates to all qubits
+                    # 4‑2 正向随机层
+                    for _layer in range(length):
+                        # (a) 随机 Pauli
                         pauli_layer = self.clifford_set.random_pauli(current_qubits)
-                        qc = qc.compose(pauli_layer)
+                        qc.compose(pauli_layer, inplace=True)
                         qc.barrier()
                         applied_paulis.append(pauli_layer)
 
-                        # Step 2b: Decide whether to apply a CZ layer based on density_cz
+                        # (b) CZ 层（按 density_cz 概率）
                         if random.random() <= density_cz:
-                            # Step 2b1: Apply a full CZ layer, ensuring all qubits are covered
-                            qubits_shuffled = copy.deepcopy(current_qubits)
+                            qubits_shuffled = current_qubits[:]
                             random.shuffle(qubits_shuffled)
-                            cz_pairs = [(qubits_shuffled[i], qubits_shuffled[i + 1]) for i in range(0, num_qubits, 2)]
-
-                            # Step 2b2: Apply CZ gates to the selected pairs
-                            for pair in cz_pairs:
-                                qc.cz(pair[0], pair[1])
-                            
-                            # Store the CZ pairs for inversion
+                            # 步长 2，避免越界；奇数个比特时末位留空
+                            cz_pairs = [(qubits_shuffled[i], qubits_shuffled[i + 1])
+                                        for i in range(0, num_qubits - 1, 2)]
+                            for q0, q1 in cz_pairs:
+                                qc.cz(q0, q1)
                             applied_czs.append(cz_pairs)
                         else:
-                            # No CZ layer applied in this layer
                             applied_czs.append([])
-
-                    qc.barrier()
-
-                    # Step 3: Apply central random Pauli gates to all qubits
-                    central_pauli_layer = self.clifford_set.random_pauli(current_qubits)
-                    qc = qc.compose(central_pauli_layer)
-                    qc.barrier()
-
-                    # Step 4: Invert the middle layers by re-applying CZ and Pauli gates in reverse order
-                    for layer in reversed(range(length)):
-                        # Step 4a: Re-apply CZ gates if they were applied in the forward pass
-                        cz_pairs = applied_czs[layer]
-                        if cz_pairs:
-                            for pair in cz_pairs:
-                                qc.cz(pair[0], pair[1])
                         qc.barrier()
 
-                        # Step 4b: Re-apply the same Pauli gates
-                        pauli_qc = applied_paulis[layer]
-                        qc = qc.compose(pauli_qc)
-                        qc.barrier()
-
-                    # Step 5: Apply the inverse of the initial Clifford gates in reverse order
-                    qc = qc.compose(clifford_qc.inverse())
+                    # 4‑3 中央 Pauli
+                    central_pauli = self.clifford_set.random_pauli(current_qubits)
+                    qc.compose(central_pauli, inplace=True)
                     qc.barrier()
 
-                    # Step 6: Measure all qubits
+                    # 4‑4 反向还原层
+                    for rev_idx in reversed(range(length)):
+                        # 反向 CZ
+                        for q0, q1 in applied_czs[rev_idx]:
+                            qc.cz(q0, q1)
+                        qc.barrier()
+                        # 反向 Pauli
+                        qc.compose(applied_paulis[rev_idx], inplace=True)
+                        qc.barrier()
+
+                    # 4‑5 撤销初始 Clifford
+                    qc.compose(clifford_qc.inverse(), inplace=True)
+                    qc.barrier()
+
+                    # 4‑6 测量
                     qc.measure(current_qubits, current_qubits)
 
-                    # Add the generated circuit to the current length list
                     circuits_per_length.append(qc)
 
-                # Add the current length's circuits to the current qubit count's list
                 circuits_per_qubit.append(circuits_per_length)
-
-                # Store the qubits used for the current length
                 qubits_for_length[num_qubits][length] = current_qubits
 
-            # Add the current qubit count's circuits to the main circuits list
             circuits.append(circuits_per_qubit)
 
-        # Return the quantum circuits and the qubits used for each length
         return circuits, qubits_for_length
 
 
@@ -702,12 +722,3 @@ class CircuitGenerator:
             return all_circuits  # Return the list of generated circuits for all layers
 
 
-
-# # Initialize CircuitGenerator and generate MRB circuits
-# qubit_index_list = [0,1,2,3,4]
-# qubit_connectivity = [[0,1],[1,2],[2,3],[3,4]]
-# ncr = 3
-# circuit_gen = CircuitGenerator(
-# qubit_select=qubit_index_list,qubit_connectivity=qubit_connectivity)
-# generated_circuits, qubits_for_length = circuit_gen.mrbqm_circuit(ncr=ncr)  # Structure: [qubit_group][length][ncr]
-# print (generated_circuits[1][0][0])

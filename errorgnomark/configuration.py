@@ -15,7 +15,6 @@ from qiskit_aer import AerSimulator  # For simulating quantum circuits
 from qiskit.primitives import Estimator  # For estimating circuit properties
 
 
-# Add the ErrorGnoMark package to the system path
 
 from errorgnomark.cirpulse_generator.circuit_generator import CircuitGenerator  # For circuit generation
 from errorgnomark.execute import QuantumJobRunner  # For executing quantum jobs
@@ -35,7 +34,7 @@ class QualityQ1Gate:
         self.result_get = result_get
 
 
-    def q1rb(self, length_max=16, step_size=4, use_fake_data=None):
+    def q1rb(self, length_max=20, step_size=4, use_fake_data=None):
         """
         Generates and runs 1-qubit random benchmarking circuits, and calculates error rates.
 
@@ -60,7 +59,7 @@ class QualityQ1Gate:
             length_max=length_max,
             step_size=step_size
         )
-        circuits = circuit_gen.rbq1_circuit(ncr=10)
+        circuits = circuit_gen.rbq1_circuit(ncr=20)
 
         # Step 2: Execute circuits and collect results
         total_qubits = len(self.qubit_index_list)  # Number of qubit indices
@@ -107,7 +106,7 @@ class QualityQ1Gate:
 
         
 
-    def q1xeb(self, length_max=16, step_size=4, use_fake_data=None):
+    def q1xeb(self, length_max=32, step_size=4, use_fake_data=None):
         """
         Generates and runs 1-qubit XEB circuits, including both hardware/fake data execution
         and ideal simulation, and calculates error rates.
@@ -125,12 +124,13 @@ class QualityQ1Gate:
             length_max=length_max,
             step_size=step_size
         )
-        circuits_xeb1 = circuit_gen.xebq1_circuit(ncr=2)  # Returns [qubit][length][ncr circuits]
+        circuits_xeb1 = circuit_gen.xebq1_circuit(ncr=30)  # Returns [qubit][length][ncr circuits]
 
         # Step 2: Execute circuits and collect results
         total_steps = len(circuits_xeb1)  # Total number of qubits
         all_results_simulation = []  # Initialize simulation results as [qubit][length][ncr]
         all_results_hardware = []  # Initialize hardware results
+
 
         with tqdm(total=total_steps, desc="Running Q1XEB Tasks", unit="qubit") as pbar:  # Progress bar
             if use_fake_data == 'fake_dataq1':  # If using fake data
@@ -179,6 +179,8 @@ class QualityQ1Gate:
         }
 
 
+
+
     def q1csb_pi_over_2_x(self, csb_avg=True):
         """
         Generate and execute π/2-x direction CSB circuits, then calculate and return the error rates.
@@ -186,7 +188,9 @@ class QualityQ1Gate:
         # Generate π/2-x direction CSB circuits
         circuit_gen = CircuitGenerator(
             qubit_select=self.qubit_index_list,
-            qubit_connectivity=[],  # Not used for 1-qubit circuits
+            qubit_connectivity=[],
+            length_max=40, 
+            step_size=4  # Not used for 1-qubit circuits
         )
         pi_over_2_x_circuits = circuit_gen.generate_pi_over_2_x_csb_circuits()
 
@@ -260,7 +264,7 @@ class QualityQ1Gate:
 
 
 
-    def q1csb_gate(self, gate_name, rep=1, cutoff=1e-10, target_phase=np.pi / 2):
+    def q1csb_gate(self, gate_name, rep=1, cutoff=1e-10, target_phase=np.pi):
         """
         Generate and execute CSB circuits for a specified quantum gate, then calculate and return the error rates.
 
@@ -339,7 +343,7 @@ class QualityQ2Gate:
 
 
 
-    def q2rb(self, length_max=16, step_size=4, use_fake_data=None):
+    def q2rb(self, length_max=24, step_size=4, use_fake_data=None):
         """
         Generates and runs 2-qubit random benchmarking circuits, and calculates error rates.
 
@@ -360,7 +364,7 @@ class QualityQ2Gate:
             step_size=step_size
         )
 
-        circuits = circuit_gen.rbq2_circuit(ncr=10)  # Generate 2-qubit RB circuits
+        circuits = circuit_gen.rbq2_circuit(ncr=20)  # Generate 2-qubit RB circuits
 
         # Step 2: Execute circuits and collect results sequentially
         total_qubit_pairs = len(circuits)  # Total number of qubit pairs
@@ -414,7 +418,7 @@ class QualityQ2Gate:
 
 
 
-    def q2xeb(self, length_max=16, step_size=4, use_fake_data=None):
+    def q2xeb(self, length_max=32, step_size=4, use_fake_data=None):
         """
         Generates and runs 2-qubit XEB (cross-entropy benchmarking) circuits, including both hardware/fake data execution
         and ideal simulation, and calculates error rates.
@@ -435,7 +439,7 @@ class QualityQ2Gate:
             length_max=length_max,
             step_size=step_size
         )
-        circuits_xeb2 = circuit_gen.xebq2_circuit(ncr=2)  # Returns [qubit pair][length][ncr circuits]
+        circuits_xeb2 = circuit_gen.xebq2_circuit(ncr=30)  # Returns [qubit pair][length][ncr circuits]
 
         # Initialize containers for hardware and simulation results
         all_results_simulation = []  # [qubit pair][length][ncr]
@@ -512,8 +516,8 @@ class QualityQ2Gate:
         generator = CircuitGenerator(
             qubit_select=[],  # Not used in current implementation
             qubit_connectivity=qubit_connectivity,
-            length_max=6,    # Adjust as necessary
-            step_size=2      # Adjust as necessary
+            length_max=24,    # Adjust as necessary
+            step_size=4      # Adjust as necessary
         )
         circuits_nested = generator.generate_csbcircuit_for_czgate()
 
@@ -552,8 +556,59 @@ class QualityQ2Gate:
 
         return csb_results_with_source
 
+    def q2csb_cnot(self):
+        """
+        Calculates the CSB error (process purity, random purity, theta error, and phi error) for 2-qubit CNOT gates.
 
+        Returns:
+            dict: A dictionary containing the source of results and the error metrics for each qubit pair.
+        """
+        # Step 1: Determine qubit connectivity based on result_get
+        if self.result_get == 'noisysimulation':
+            qubit_connectivity = [[0, 1] for _ in self.qubit_pair_list]
+        else:
+            qubit_connectivity = self.qubit_pair_list
 
+        # Step 2: Generate circuits using CircuitGenerator
+        generator = CircuitGenerator(
+            qubit_select=[],  # Not used in current implementation
+            qubit_connectivity=qubit_connectivity,
+            length_max=30,
+            step_size=4
+        )
+        circuits_nested = generator.generate_csbcircuit_for_cnotgate()
+
+        # Step 3: Execute the circuits and collect results
+        total_steps = len(circuits_nested)
+        hardware_results = []
+
+        with tqdm(total=total_steps, desc="Running Q2CSB CNOT Tasks", unit="pair") as pbar:
+            for qubit_pair_circuits in circuits_nested:
+                job_runner = QuantumJobRunner(qubit_pair_circuits)
+                if self.result_get == 'hardware':
+                    results = job_runner.quarkstudio_run(compile=False)
+                elif self.result_get == 'noisysimulation':
+                    results = job_runner.simulation_ideal_qiskit(noise_model=True)
+                else:
+                    raise ValueError(f"Unknown result_get option: {self.result_get}")
+
+                hardware_results.append(results)
+                pbar.update(1)
+
+        # Step 4: Compute CSB error using MetricQuality
+        metric = MetricQuality(all_results={
+            'hardware': hardware_results,
+            'simulation': hardware_results
+        })
+        csb_results = metric.csbq2cnot()
+
+        # Step 5: Return the results with source information
+        csb_results_with_source = {
+            "source": self.result_get,
+            "qubit_pairs_results": csb_results
+        }
+
+        return csb_results_with_source
 
 
 
@@ -665,6 +720,7 @@ class QualityQmgate:
         )
         generated_circuits, qubits_for_length = circuit_gen.mrbqm_circuit(ncr=ncr)  # Structure: [qubit_group][length][ncr]
 
+        # print ('generated_circuits',generated_circuits[0])
         # Total number of tasks for the progress bar
         total_steps = sum(len(length_circuits) for qubit_group_circuits in generated_circuits for length_circuits in qubit_group_circuits)
 

@@ -9,7 +9,8 @@ from datetime import datetime  # For handling date and time
 from requests.exceptions import RequestException, ReadTimeout  # For HTTP requests and error handling
 from tqdm import tqdm  # For progress bar visualization
 
-# Add the ErrorGnoMark package to the system path
+# Local imports
+
 from errorgnomark.cirpulse_generator.qubit_selector import qubit_selection, chip  # For qubit selection and chip setup
 from errorgnomark.configuration import (  # For various quality and benchmarking configurations
     QualityQ1Gate,
@@ -43,14 +44,14 @@ class Errorgnomarker(chip):
         self.result_get = result_get
         self.selection_options = {
             'max_qubits_per_row': 13,
-            'min_qubit_index': 0,
+            'min_qubit_index': 2,
             'max_qubit_index': 155
         }
 
         self.selector = qubit_selection(
             chip=self,
             qubit_index_max=155,
-            qubit_number=9,
+            qubit_number=6,
             option=self.selection_options
         )
 
@@ -76,11 +77,13 @@ class Errorgnomarker(chip):
         rbq2_selected=True,
         xebq2_selected=True,
         csbq2_selected=True,
+        csbq2_cnot_selected=True,
         ghzqm_selected=True,
         qvqm_selected=True,
         mrbqm_selected=True,
         clopsqm_selected=True,
-        vqeqm_selected=True):
+        vqeqm_selected=True
+        ):
         """
         Executes the EGM metrics and saves the results to a JSON file.
         Based on the selection flags, executes the relevant metric calculation.
@@ -128,7 +131,13 @@ class Errorgnomarker(chip):
                 try:
                     results['res_egmq2_csb'] = self._run_two_qubit_csb()
                 except Exception as e:
+
                     print(f"Error during Two Qubit CSB: {e}")
+            if csbq2_cnot_selected:  # Handle CNOT CSB logic
+                try:
+                    results['res_egmq2_csb_cnot'] = self._run_two_qubit_cnot_csb()
+                except Exception as e:
+                    print(f"Error during Two Qubit CNOT CSB: {e}")
 
             if ghzqm_selected:
                 try:
@@ -205,6 +214,7 @@ class Errorgnomarker(chip):
         print(f"Two Qubit RB completed in {elapsed_time:.2f} seconds.")
         return res
 
+
     def _run_two_qubit_xeb(self):
         start_time = time.time()
         res = self.config_quality_q2gate.q2xeb()
@@ -217,6 +227,13 @@ class Errorgnomarker(chip):
         res = self.config_quality_q2gate.q2csb_cz()
         elapsed_time = time.time() - start_time
         print(f"Two Qubit CSB completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_two_qubit_cnot_csb(self):
+        start_time = time.time()
+        res = self.config_quality_q2gate.q2csb_cnot()
+        elapsed_time = time.time() - start_time
+        print(f"Two Qubit CNOT CSB completed in {elapsed_time:.2f} seconds.")
         return res
 
     def _run_m_qubit_ghz(self):
@@ -315,6 +332,36 @@ class Errorgnomarker(chip):
 
 
 
+
+from errorgnomark.token_manager import define_token, get_token
+# Define your token
+define_token("ROKILmIl4`zT[p8zmPZrFjYNCzS1WnI:qgFJi[m8fK5/1IO5J{OyhkOvNUO6d{OzZEO4FkPjBIfmKDMjN{N7JUN7FkNhNENuRENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnMkGnM{mXdiKHRliYbii3ZjpkJzW3d2Kzf")
+
+# Example usage:
+if __name__ == "__main__":
+    egm = Errorgnomarker(chip_name="Baihua", result_get='noisysimulation')
+    # Run the EGM metrics and get results
+    results = egm.egm_run(
+        rbq1_selected=True,
+        xebq1_selected=True,
+        csbq1_selected=True,
+        rbq2_selected=True,
+        xebq2_selected=True,
+        csbq2_selected=True,
+        csbq2_cnot_selected=True,
+        ghzqm_selected=True,
+        qvqm_selected=True,
+        mrbqm_selected=True,
+        clopsqm_selected=True,
+        vqeqm_selected=True
+    )
+
+    # Optionally, you can use the following methods to generate visuals after running the metrics:
+    # Draw the visual table for selected metrics
+    egm.draw_visual_table()
+
+    # Plot the visual figures for selected metrics
+    egm.plot_visual_figure()
 
 
 
