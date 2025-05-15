@@ -15,6 +15,7 @@ from qiskit_aer import AerSimulator  # For simulating quantum circuits
 from qiskit.primitives import Estimator  # For estimating circuit properties
 
 
+
 from errorgnomark.cirpulse_generator.circuit_generator import CircuitGenerator  # For circuit generation
 from errorgnomark.execute import QuantumJobRunner  # For executing quantum jobs
 from errorgnomark.data_analysis.layer_cirgate import MetricQuality, MetricSpeed  # For analyzing circuit metrics
@@ -609,9 +610,6 @@ class QualityQ2Gate:
 
         return csb_results_with_source
 
-
-
-
 class QualityQmgate:
 
     def __init__(self, qubit_connectivity, qubit_index_list,result_get = 'noisysimulation'):
@@ -719,6 +717,7 @@ class QualityQmgate:
         )
         generated_circuits, qubits_for_length = circuit_gen.mrbqm_circuit(ncr=ncr)  # Structure: [qubit_group][length][ncr]
 
+        # print ('generated_circuits',generated_circuits[0])
         # Total number of tasks for the progress bar
         total_steps = sum(len(length_circuits) for qubit_group_circuits in generated_circuits for length_circuits in qubit_group_circuits)
 

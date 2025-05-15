@@ -72,43 +72,102 @@ def build_custom_noise_model():
     
     return noise_model
 
+# def map_circuit(circuit, active_qubits, active_cbits):
+#     """
+#     Map qubits and classical bits to qubit 0 (and cbit 0) except for two-qubit gates, 
+#     which will map qubit indices [0, 1] for two-qubit gates and one qubit for others.
+#     """
+#     # Create a new circuit with the appropriate number of qubits and classical bits
+#     new_nqubits = 2 if len(active_qubits) > 1 else 1  # For two-qubit operations, keep two qubits
+#     new_ncbits = 1  # Only one classical bit for the measurement result
+#     new_circuit = QuantumCircuit(new_nqubits, new_ncbits)
+
+#     # Map active qubits: if there are two qubits, map them to 0 and 1, else map to 0
+#     qubit_mapping = {}
+#     if len(active_qubits) == 2:
+#         qubit_mapping = {active_qubits[0]: 0, active_qubits[1]: 1}
+#     else:
+#         qubit_mapping = {active_qubits[0]: 0}  # Map all to qubit 0 if there's only 1 qubit
+
+#     # Map classical bits: map all classical bits to cbit 0
+#     cbit_mapping = {old: 0 for old in active_cbits}
+
+#     # Loop through instructions and map the qubits for each operation
+#     for instruction, qargs, cargs in circuit.data:
+#         new_qargs = []
+#         for qbit in qargs:
+#             new_qargs.append(new_circuit.qubits[qubit_mapping[circuit.qubits.index(qbit)]])
+
+#         # Classical bits mapping
+#         new_cargs = [new_circuit.clbits[cbit_mapping[circuit.clbits.index(cbit)]] for cbit in cargs] if cargs else []
+        
+#         # Add the instruction to the new circuit
+#         new_circuit.append(instruction, new_qargs, new_cargs)
+
+#     # # Debugging: Check the new circuit structure
+#     # print(f"New circuit created: {new_circuit}")
+
+#     return new_circuit, qubit_mapping, cbit_mapping
+
+
 def map_circuit(circuit, active_qubits, active_cbits):
     """
-    Map qubits and classical bits to qubit 0 (and cbit 0) except for two-qubit gates, 
-    which will map qubit indices [0, 1] for two-qubit gates and one qubit for others.
+    Remap qubits and classical bits in a circuit.
+
+    Rules:
+      • If active_qubits contains 0 and len(active_qubits) <= 2:
+          – 1 qubit: map it → new qubit 0
+          – 2 qubits: map them → new qubit 0,1
+      • Otherwise (e.g. original indices start >0 or >2 qubits):
+          – Map all original qubits 0..N-1 → new qubits 0..N-1
+
+    All classical bits are merged into cbit 0.
     """
-    # Create a new circuit with the appropriate number of qubits and classical bits
-    new_nqubits = 2 if len(active_qubits) > 1 else 1  # For two-qubit operations, keep two qubits
-    new_ncbits = 1  # Only one classical bit for the measurement result
+    total_qubits = circuit.num_qubits
+    new_ncbits = 1
+
+    # Decide qubit mapping
+    if 0 in active_qubits and len(active_qubits) <= 2:
+        # Case: 1 or 2 active qubits, including qubit 0
+        n_active = len(active_qubits)
+        new_nqubits = n_active
+        if n_active == 1:
+            qubit_mapping = {active_qubits[0]: 0}
+        else:  # n_active == 2
+            qubit_mapping = {
+                active_qubits[0]: 0,
+                active_qubits[1]: 1
+            }
+    else:
+        # Fallback: use the full original register
+        new_nqubits = total_qubits
+        qubit_mapping = {old: old for old in range(total_qubits)}
+
+    # Build new circuit
     new_circuit = QuantumCircuit(new_nqubits, new_ncbits)
 
-    # Map active qubits: if there are two qubits, map them to 0 and 1, else map to 0
-    qubit_mapping = {}
-    if len(active_qubits) == 2:
-        qubit_mapping = {active_qubits[0]: 0, active_qubits[1]: 1}
-    else:
-        qubit_mapping = {active_qubits[0]: 0}  # Map all to qubit 0 if there's only 1 qubit
-
-    # Map classical bits: map all classical bits to cbit 0
+    # Map classical bits to cbit 0
     cbit_mapping = {old: 0 for old in active_cbits}
 
-    # Loop through instructions and map the qubits for each operation
-    for instruction, qargs, cargs in circuit.data:
+    # Rebuild instructions
+    for instr, qargs, cargs in circuit.data:
+        # Remap quantum args
         new_qargs = []
-        for qbit in qargs:
-            new_qargs.append(new_circuit.qubits[qubit_mapping[circuit.qubits.index(qbit)]])
+        for q in qargs:
+            old_idx = circuit.qubits.index(q)
+            if old_idx not in qubit_mapping:
+                raise KeyError(f"Qubit {old_idx} not in mapping.")
+            new_qargs.append(new_circuit.qubits[qubit_mapping[old_idx]])
 
-        # Classical bits mapping
-        new_cargs = [new_circuit.clbits[cbit_mapping[circuit.clbits.index(cbit)]] for cbit in cargs] if cargs else []
-        
-        # Add the instruction to the new circuit
-        new_circuit.append(instruction, new_qargs, new_cargs)
+        # Remap classical args
+        new_cargs = []
+        for c in cargs:
+            old_c = circuit.clbits.index(c)
+            new_cargs.append(new_circuit.clbits[cbit_mapping[old_c]])
 
-    # # Debugging: Check the new circuit structure
-    # print(f"New circuit created: {new_circuit}")
+        new_circuit.append(instr, new_qargs, new_cargs)
 
     return new_circuit, qubit_mapping, cbit_mapping
-
 
 
 class QuantumJobRunner:
