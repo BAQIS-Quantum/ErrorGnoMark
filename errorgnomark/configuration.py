@@ -21,7 +21,7 @@ from errorgnomark.data_analysis.layer_cirgate import MetricQuality, MetricSpeed 
 
 
 class QualityQ1Gate:
-    def __init__(self, qubit_index_list, result_get = 'noisysimulation'):
+    def __init__(self, qubit_index_list, result_get='noisysimulation'):
         """
         Initializes the QualityQ1Gate class with the given qubit indices and result type.
 
@@ -31,7 +31,6 @@ class QualityQ1Gate:
         """
         self.qubit_index_list = qubit_index_list
         self.result_get = result_get
-
 
     def q1rb(self, length_max=20, step_size=4, use_fake_data=None):
         """
@@ -614,7 +613,7 @@ class QualityQ2Gate:
 
 class QualityQmgate:
 
-    def __init__(self, qubit_connectivity, qubit_index_list,result_get = 'noisysimulation'):
+    def __init__(self, qubit_connectivity, qubit_index_list, result_get='noisysimulation'):
         """
         Initializes the PropertyQ2Gate class with the given qubit pairs.
         
@@ -681,7 +680,6 @@ class QualityQmgate:
             'qubit_index': self.qubit_index_list,  # Include qubit index information
             'source': self.result_get  # Indicate the source of the data (hardware or simulation)
         }
-
 
     def qmmrb(self, density_cz=0.75, ncr=5):
         """

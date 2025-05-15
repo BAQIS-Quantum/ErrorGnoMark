@@ -312,6 +312,7 @@ class QuantumJobRunner:
         counts, execution_times = [], []
         total_circuits = len(self.circuits)
 
+        # TODO active_qubits始终只有两个，这是2bit间的操作吗
         for idx, circuit in enumerate(self.circuits):
             active_qubits, active_cbits, total_cbits = get_active_qubits_and_cbits(circuit)
             if not active_qubits:

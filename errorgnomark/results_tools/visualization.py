@@ -99,7 +99,7 @@ class VisualPlot:
             print(f"Figure saved as {save_path}")
 
         # Show the plot
-        plt.show()
+        # plt.show()
 
 
 
@@ -242,9 +242,13 @@ class VisualPlot:
             y_center = (row_1 + row_2) / 2
 
             hexagon = patches.RegularPolygon(
-                (x_center, y_center), numVertices=6, radius=hex_width,
-                orientation=np.pi / 6, color=cmap(norm(error_rate)),
-                lw=2, edgecolor='black'
+                (x_center, y_center),
+                numVertices=6,
+                radius=hex_width,
+                orientation=np.pi / 6,
+                facecolor=cmap(norm(error_rate)),  # 仅设置填充色
+                edgecolor='black',  # 单独设置边框
+                lw=2
             )
             ax.add_patch(hexagon)
             ax.text(x_center, y_center, f'{error_rate:.3f}',
@@ -266,7 +270,7 @@ class VisualPlot:
         cbar.set_label("Error Rate", rotation=270, labelpad=20)
 
         plt.tight_layout()
-        plt.show()
+        # plt.show()
 
 
     def plot_xebq2(self):
@@ -323,9 +327,13 @@ class VisualPlot:
 
             # Create a hexagon and add it to the plot
             hexagon = patches.RegularPolygon(
-                (x_center, y_center), numVertices=6, radius=hex_width,
-                orientation=np.pi / 6, color=cmap(norm(process_infidelity)),
-                lw=2, edgecolor='black'
+                (x_center, y_center),
+                numVertices=6,
+                radius=hex_width,
+                orientation=np.pi / 6,
+                facecolor=cmap(norm(process_infidelity)),  # 仅设置填充色
+                edgecolor='black',  # 单独设置边框
+                lw=2
             )
             ax.add_patch(hexagon)
             ax.text(x_center, y_center, f'{process_infidelity:.3f}',
@@ -346,7 +354,7 @@ class VisualPlot:
         cbar.set_label("Error Rate", rotation=270, labelpad=20)
 
         plt.tight_layout()
-        plt.show()
+        # plt.show()
 
 
 
@@ -405,9 +413,13 @@ class VisualPlot:
 
             # Create a hexagon and add it to the plot
             hexagon = patches.RegularPolygon(
-                (x_center, y_center), numVertices=6, radius=hex_width,
-                orientation=np.pi / 6, color=cmap(norm(process_infidelity)),
-                lw=2, edgecolor='black'
+                (x_center, y_center),
+                numVertices=6,
+                radius=hex_width,
+                orientation=np.pi / 6,
+                facecolor=cmap(norm(process_infidelity)),  # 仅设置填充色
+                edgecolor='black',  # 单独设置边框
+                lw=2
             )
             ax.add_patch(hexagon)
             ax.text(x_center, y_center, f'{process_infidelity:.3f}',
@@ -428,7 +440,7 @@ class VisualPlot:
         cbar.set_label("Error Rate", rotation=270, labelpad=20)
 
         plt.tight_layout()
-        plt.show()
+        # plt.show()
 
     def plot_csbq2_cnot(self):
         """
@@ -484,9 +496,13 @@ class VisualPlot:
 
             # Create a hexagon and add it to the plot
             hexagon = patches.RegularPolygon(
-                (x_center, y_center), numVertices=6, radius=hex_width,
-                orientation=np.pi / 6, color=cmap(norm(process_infidelity)),
-                lw=2, edgecolor='black'
+                (x_center, y_center),
+                numVertices=6,
+                radius=hex_width,
+                orientation=np.pi / 6,
+                facecolor=cmap(norm(process_infidelity)),  # 仅设置填充色
+                edgecolor='black',  # 单独设置边框
+                lw=2
             )
             ax.add_patch(hexagon)
             ax.text(x_center, y_center, f'{process_infidelity:.3f}',
@@ -507,7 +523,7 @@ class VisualPlot:
         cbar.set_label("Error Rate", rotation=270, labelpad=20)
 
         plt.tight_layout()
-        plt.show()
+        # plt.show()
 
     def plot_ghzqm_fidelity(self):
         """
@@ -546,7 +562,7 @@ class VisualPlot:
 
         # Display the plot
         plt.tight_layout()
-        plt.show()
+        # plt.show()
         
     def plot_mrbqm(self):
         """

@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def build_chessboard_graph(chip_row, chip_col, file_path=r""):
+def build_chessboard_graph(chip_row, chip_col, file_path=r"", run_all=False):
     """
     构建棋盘格量子芯片的图结构，并筛选可用节点
 
@@ -74,31 +74,45 @@ def build_chessboard_graph(chip_row, chip_col, file_path=r""):
                 nodes_part = nodes_part.strip()
                 cz_value = cz_value.strip()
 
-                # 仅当CZ值非零时建立连接
-                if cz_value != '0':
+                if not run_all:
+                    # 仅当CZ值非零时建立连接
+                    if cz_value != '0':
+                        node1, node2 = nodes_part.split('_')
+                        # 验证节点存在性后添加边
+                        if node1 in G.nodes and node2 in G.nodes:
+                            G.add_edge(node1, node2)
+                        else:
+                            print(f"警告：连接关系 {connection} 包含不存在的节点")
+                    # else:
+                    #     print(f"信息：跳过cz值为0的连接 {connection}")
+                else:
                     node1, node2 = nodes_part.split('_')
                     # 验证节点存在性后添加边
                     if node1 in G.nodes and node2 in G.nodes:
                         G.add_edge(node1, node2)
-                    else:
-                        print(f"警告：连接关系 {connection} 包含不存在的节点")
-                # else:
-                #     print(f"信息：跳过cz值为0的连接 {connection}")
 
-    # 筛选可用节点（T1/T2/Fidelity均非零）
-    available_nodes = []
-    for index, row in df.iterrows():
-        node_id = str(row.iloc[0])  # 第一列是节点ID
-        t1 = row.iloc[1]  # 第二列是T1
-        t2 = row.iloc[2]  # 第三列是T2
-        fidelity = row.iloc[3]  # 第四列是Single qubit fidelity
+    if not run_all:
+        # 筛选可用节点（T1/T2/Fidelity均非零）
+        available_nodes = []
+        for index, row in df.iterrows():
+            node_id = str(row.iloc[0])  # 第一列是节点ID
+            t1 = row.iloc[1]  # 第二列是T1
+            t2 = row.iloc[2]  # 第三列是T2
+            fidelity = row.iloc[3]  # 第四列是Single qubit fidelity
 
-        # 检查三个参数是否都不为零
-        if t1 != 0 and t2 != 0 and fidelity != 0:
+            # 检查三个参数是否都不为零
+            if t1 != 0 and t2 != 0 and fidelity != 0:
+                if node_id in G.nodes:  # 确保节点存在于图中
+                    available_nodes.append(node_id)
+                else:
+                    print(f"警告：节点 {node_id} 参数有效但不在图中")
+    else:
+        available_nodes = []
+        for index, row in df.iterrows():
+            node_id = str(row.iloc[0])  # 第一列是节点ID
+
             if node_id in G.nodes:  # 确保节点存在于图中
                 available_nodes.append(node_id)
-            else:
-                print(f"警告：节点 {node_id} 参数有效但不在图中")
 
     return G, available_nodes
 
@@ -270,8 +284,8 @@ def select_connected_nodes(chessboard_graph, available_nodes, X, df, initial_qub
             degrees = dict(subgraph.degree())    # 每个节点的连接数
             max_degree = max(degrees.values())   # 最大连接数（用于归一化）
             node_priority = {
-                node: 0.5 * (degrees[node] / max_degree) +
-                      0.5 * param_scores[node]
+                node: 0.8 * (degrees[node] / max_degree) +
+                      0.2 * param_scores[node]
                 for node in degrees
             }
 
@@ -282,7 +296,7 @@ def select_connected_nodes(chessboard_graph, available_nodes, X, df, initial_qub
 
             # 从最高优先级节点开始扩展选择
             # TODO 初始节点选择
-            selected = set([sorted_nodes[initial_qubit]])  # 初始种子节点 initial_qubit
+            selected = set([str(initial_qubit)])  # 初始种子节点 initial_qubit
 
             while len(selected) < X and len(selected) < len(sorted_nodes):
                 # 找出与已选节点直接相连的候选节点
@@ -409,7 +423,7 @@ class qubit_selection:
 
     def __init__(self, rows=12, cols=13, qubit_index_max=50, qubit_to_be_used=9,
                  initial_qubit=0,
-                 option=None, file_path='', weights=None):
+                 option=None, file_path='', weights=None, run_all=False):
         # self.chip = chip
         self.qubit_index_max = qubit_index_max
         self.qubit_to_be_used = int(qubit_to_be_used)  # Ensure this is an integer
@@ -419,6 +433,7 @@ class qubit_selection:
         self.file_path = file_path
         self.weights = weights
         self.initial_qubit = initial_qubit
+        self.run_all = run_all
 
     def quselected(self):
         """
@@ -429,57 +444,78 @@ class qubit_selection:
                 - "qubit_index_list" (list): Indices of selected qubits.
                 - "qubit_connectivity" (list): Connectivity data as pairs of qubits.
         """
+        if not self.run_all:
 
-        chessboard_graph, available_nodes = build_chessboard_graph(self.rows, self.columns, file_path=self.file_path)
-        visualize_chessboard(chessboard_graph, available_nodes)
+            chessboard_graph, available_nodes = build_chessboard_graph(self.rows, self.columns, file_path=self.file_path,
+                                                                       run_all=self.run_all)
+            visualize_chessboard(chessboard_graph, available_nodes)
 
-        if self.qubit_to_be_used > len(available_nodes):
-            print(f"要使用的量子比特数量{qubit_to_be_used}大于可用量子比特数: {len(available_nodes)}"
-                  f"，请重新选择。")
+            if self.qubit_to_be_used > len(available_nodes):
+                print(f"要使用的量子比特数量{qubit_to_be_used}大于可用量子比特数: {len(available_nodes)}"
+                      f"，请重新选择。")
 
-        df = pd.read_csv(self.file_path)
-        selected_nodes, edge_count = select_connected_nodes(chessboard_graph, available_nodes, self.qubit_to_be_used,
-                                                            df=df,
-                                                            initial_qubit=self.initial_qubit,
-                                                            weights=self.weights)
+            df = pd.read_csv(self.file_path)
+            selected_nodes, edge_count = select_connected_nodes(chessboard_graph, available_nodes, self.qubit_to_be_used,
+                                                                df=df,
+                                                                initial_qubit=self.initial_qubit,
+                                                                weights=self.weights)
 
-        if 1:
-            # 可视化选中的节点
-            pos = nx.get_node_attributes(chessboard_graph, 'pos')
-            plt.figure(figsize=(10, 8))
+            if 1:
+                # 可视化选中的节点
+                pos = nx.get_node_attributes(chessboard_graph, 'pos')
+                plt.figure(figsize=(10, 8))
 
-            # 绘制所有节点
-            nx.draw_networkx_nodes(chessboard_graph, pos, node_color='lightgray', node_size=100)
-            nx.draw_networkx_edges(chessboard_graph, pos, edge_color='lightgray')
+                # 绘制所有节点
+                nx.draw_networkx_nodes(chessboard_graph, pos, node_color='lightgray', node_size=100)
+                nx.draw_networkx_edges(chessboard_graph, pos, edge_color='lightgray')
 
-            # 高亮显示选中的节点和连接
-            subgraph = chessboard_graph.subgraph(selected_nodes)
-            nx.draw_networkx_nodes(subgraph, pos, node_color='red', node_size=300)
-            nx.draw_networkx_edges(subgraph, pos, edge_color='red', width=2)
+                # 高亮显示选中的节点和连接
+                subgraph = chessboard_graph.subgraph(selected_nodes)
+                nx.draw_networkx_nodes(subgraph, pos, node_color='red', node_size=300)
+                nx.draw_networkx_edges(subgraph, pos, edge_color='red', width=2)
 
-            # 绘制标签
-            labels = {node: node for node in selected_nodes}
-            nx.draw_networkx_labels(chessboard_graph, pos, labels, font_size=8)
+                # 绘制标签
+                labels = {node: node for node in selected_nodes}
+                nx.draw_networkx_labels(chessboard_graph, pos, labels, font_size=8)
 
-            plt.title(f"选中的{self.qubit_to_be_used}个相邻节点（红色）")
-            plt.show()
+                plt.title(f"选中的{self.qubit_to_be_used}个相邻节点（红色）")
+                plt.show()
 
-        # 转换为序号并排序
-        node_indices = sorted(int(x) for x in selected_nodes)
+            # 转换为序号并排序
+            node_indices = sorted(int(x) for x in selected_nodes)
 
-        # 保存选中节点的连接关系
-        selected_connections = []
-        for edge in chessboard_graph.edges:
-            node1, node2 = edge
-            if node1 in selected_nodes and node2 in selected_nodes:
-                idx1 = int(node1)
-                idx2 = int(node2)
-                selected_connections.append([idx1, idx2])
+            # 保存选中节点的连接关系
+            selected_connections = []
+            for edge in chessboard_graph.edges:
+                node1, node2 = edge
+                if node1 in selected_nodes and node2 in selected_nodes:
+                    idx1 = int(node1)
+                    idx2 = int(node2)
+                    selected_connections.append([idx1, idx2])
 
-        # 保存可用点和连接关系
-        save_to_txt(node_indices, selected_connections)
+            # 保存可用点和连接关系
+            save_to_txt(node_indices, selected_connections)
 
-        best_selection = {"qubit_index_list": node_indices, "qubit_connectivity": selected_connections}
+            best_selection = {"qubit_index_list": node_indices, "qubit_connectivity": selected_connections}
+
+        else:
+            chessboard_graph, available_nodes = build_chessboard_graph(self.rows, self.columns, file_path=self.file_path,
+                                                                       run_all=self.run_all)
+            node_indices = sorted(int(x) for x in available_nodes)
+
+            # 保存选中节点的连接关系
+            selected_connections = []
+            for edge in chessboard_graph.edges:
+                node1, node2 = edge
+                if node1 in available_nodes and node2 in available_nodes:
+                    idx1 = int(node1)
+                    idx2 = int(node2)
+                    selected_connections.append([idx1, idx2])
+
+            # 保存可用点和连接关系
+            save_to_txt(node_indices, selected_connections)
+
+            best_selection = {"qubit_index_list": node_indices, "qubit_connectivity": selected_connections}
 
         return best_selection
 
@@ -487,9 +523,9 @@ class qubit_selection:
 if __name__ == '__main__':
     rows = 12
     cols = 13
-    qubit_to_be_used = 20
-    file_path = (r"E:\Repositories\ErrorGnoMark\Chip_topology_structure_reading\Baihua_calibration_2025-04-21 "
-                 r"12_26_19.csv")
+    qubit_to_be_used = 10
+    file_path = (r"E:\Repositories\ErrorGnoMark\example\Baihua_calibration_2025"
+                               r"-04-21 12_26_19.csv")
 
     selection_options = {
         'max_qubits_per_row': 13,
@@ -503,7 +539,9 @@ if __name__ == '__main__':
         qubit_index_max=155,
         qubit_to_be_used=qubit_to_be_used,
         option=selection_options,
-        file_path=file_path
+        file_path=file_path,
+        initial_qubit=10,
+        run_all=True
     )
 
     selection = selector.quselected()

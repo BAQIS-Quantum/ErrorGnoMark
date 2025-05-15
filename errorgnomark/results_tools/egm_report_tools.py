@@ -36,9 +36,6 @@ class EGMReportManager:
         self._create_output_dir()
         self._create_figures_dir()
 
-
-
-
     def _read_json(self):
         """
         Read the JSON data file.
@@ -230,9 +227,6 @@ class EGMReportManager:
         table = f"{top_border}{header}{separator}{data_rows}{bottom_border}"
         return table
 
-
-
-
     def draw_res_egmq1_rb(self):
         """
         Draws a table for the res_egmq1_rb metric.
@@ -406,7 +400,6 @@ class EGMReportManager:
 
         self._draw_table_text(title, column_names, data, output_filename)
 
-
     def draw_res_egmq2_csb_cnot(self):
         """
         Draws a table for the res_egmq2_csb_cnot metric.
@@ -442,7 +435,6 @@ class EGMReportManager:
         output_filename = f"{metric_name}_{timestamp}.txt"
 
         self._draw_table_text(title, column_names, data, output_filename)
-
 
     def draw_res_egmqm_ghz(self):
         """
@@ -597,7 +589,6 @@ class EGMReportManager:
         
         return chip_layout
 
-
     def generate_all_tables(self):
         """
         Generate all benchmarking tables.
@@ -613,22 +604,20 @@ class EGMReportManager:
         self.draw_res_egmqm_stqv()
         self.draw_res_egmqm_mrb()
 
-
-
     def egm_level02_table(self,        
-        rbq1_selected =  True,
-        xebq1_selected =  True,
-        csbq1_selected =  True,
-        rbq2_selected =  True,
-        xebq2_selected =  True,
-        csbq2_selected =  True,
-        csbq2_cnot_selected =  True,
-        ghzqm_selected =  True,
-        qvqm_selected =  True,
-        mrbqm_selected =  True,
-        clopsqm_selected =  True,
-        vqeqm_selected =  True
-        ):
+                          rbq1_selected=True,
+                          xebq1_selected=True,
+                          csbq1_selected=True,
+                          rbq2_selected=True,
+                          xebq2_selected=True,
+                          csbq2_selected=True,
+                          csbq2_cnot_selected=True,
+                          ghzqm_selected=True,
+                          qvqm_selected=True,
+                          mrbqm_selected=True,
+                          clopsqm_selected=True,
+                          vqeqm_selected=True
+                          ):
         """
         Generates a comprehensive Level02 report that includes information on 
         Single-Qubit Gate Quality, Two-Qubit Gate Quality, Multi-Qubit Gates Quality,
@@ -636,8 +625,6 @@ class EGMReportManager:
         """
 
         # selecteds for each specific section (set to True by default, you can set them to False to skip sections)
-
-
         # Get the JSON file name
         file_name = os.path.basename(self.json_file_path)
 
@@ -786,7 +773,6 @@ class EGMReportManager:
 
             report += self._format_table(csb_two_q_columns, csb_two_q_data) + "\n\n"
 
-
         # Section 7: CNOT CSB Errors (Moved here)
         if csbq2_cnot_selected:  # Add this section for CNOT CSB errors
             report += "## Section 7: CNOT Gate Quality - CSB\n"
@@ -810,7 +796,6 @@ class EGMReportManager:
                     csb_cnot_data.append([f"({x},{y})", "N/A", "N/A", "N/A", "N/A"])
 
             report += self._format_table(csb_two_q_columns, csb_cnot_data) + "\n\n"
-
 
         # Section 8: Multi-Qubit Gate Quality - GHZ Fidelity
         if ghzqm_selected:
@@ -956,17 +941,20 @@ class EGMReportManager:
             # Close the figure after saving it to avoid memory issues
             plt.close(figure)
 
-
     def egm_level02_figure(self,
-                rbq1_selected=True,
-                xebq1_selected=True,
-                csbq1_selected=True,
-                rbq2_selected=True,
-                xebq2_selected=True,
-                csbq2_cz_selected=True,
-                csbq2_cnot_selected=True,  # Add new parameter for CSBQ2_CNOT plot
-                mrbqm_selected=True,
-                ghzqm_selected=True):  # New parameter for CSBQ2_CZ plot
+                           rbq1_selected=False,
+                           xebq1_selected=False,
+                           csbq1_selected=False,
+                           rbq2_selected=False,
+                           xebq2_selected=False,
+                           csbq2_selected=False,
+                           csbq2_cnot_selected=False,  # Add new parameter for CSBQ2_CNOT plot
+                           ghzqm_selected=False,       # New parameter for CSBQ2_CZ plot
+                           qvqm_selected=False,
+                           mrbqm_selected=False,
+                           clopsqm_selected=False,
+                           vqeqm_selected=False,
+                           ):
         """
         Generate visualizations for metrics and save them as images based on selected options.
         """
@@ -1012,7 +1000,7 @@ class EGMReportManager:
             plt.close()
 
         # Generate and save the CSBQ2_CZ plot if selected
-        if csbq2_cz_selected:  # Check if the CSBQ2_CZ plot is selected
+        if csbq2_selected:  # Check if the CSBQ2_CZ plot is selected
             visualizer.plot_csbq2_cz()  # Call the CSBQ2_CZ plot function
             plt.savefig(csbq2_cz_path)  # Save the plot as a PNG file
             plt.close()
