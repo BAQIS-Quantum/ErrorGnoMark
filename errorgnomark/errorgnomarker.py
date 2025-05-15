@@ -393,3 +393,39 @@ class Errorgnomarker(chip):
 
 
 
+
+
+from errorgnomark.token_manager import define_token, get_token
+# Define your token
+define_token("ROKILmIl4`zT[p8zmPZrFjYNCzS1WnI:qgFJi[m8fK5/1IO5J{OyhkOvNUO6d{OzZEO4FkPjBIfmKDMjN{N7JUN7FkNhNENuRENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnMkGnM{mXdiKHRliYbii3ZjpkJzW3d2Kzf")
+
+# Example usage:
+if __name__ == "__main__":
+    egm = Errorgnomarker(chip_name="Baihua", result_get='noisysimulation')
+    # Run the EGM metrics and get results
+    results = egm.egm_run(
+        rbq1_selected=True,
+        xebq1_selected=True,
+        csbq1_selected=True,
+        rbq2_selected=True,
+        xebq2_selected=True,
+        csbq2_selected=True,
+        csbq2_cnot_selected=True,
+        ghzqm_selected=True,
+        qvqm_selected=True,
+        mrbqm_selected=True,
+        clopsqm_selected=True,
+        vqeqm_selected=True
+    )
+
+    # Optionally, you can use the following methods to generate visuals after running the metrics:
+    # Draw the visual table for selected metrics
+    egm.draw_visual_table()
+
+    # Plot the visual figures for selected metrics
+    egm.plot_visual_figure()
+
+
+
+
+
