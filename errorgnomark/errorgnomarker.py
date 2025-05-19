@@ -29,8 +29,8 @@ class Errorgnomarker(chip):
     """
 
     def __init__(self, chip_name="Baihua", result_get='noisysimulation', qubit_to_be_used=10,
-                 initial_qubit=0,
-                 file_path='', weights=None, run_all=False,
+                 start_qubit=0,
+                 file_path='', weights=None, run_all_Execute=False,
                  rbq1_selected=False,  # Execute Single Qubit RB for Q1
                  xebq1_selected=True,  # Execute Single Qubit XEB for Q1
                  csbq1_selected=False,  # Execute Single Qubit CSB for Q1
@@ -77,7 +77,7 @@ class Errorgnomarker(chip):
         self.clopsqm_selected = self.clopsqm_selected[0]
         # self.vqeqm_selected = self.vqeqm_selected[0]
 
-        self.run_all = run_all
+        self.run_all = run_all_Execute
         if self.chip_name == "Baihua":
             self.selection_options = {
                 'max_qubits_per_row': 13,
@@ -89,7 +89,7 @@ class Errorgnomarker(chip):
                 cols=13,
                 qubit_index_max=155,
                 qubit_to_be_used=qubit_to_be_used,
-                initial_qubit=initial_qubit,
+                initial_qubit=start_qubit,
                 option=self.selection_options,
                 file_path=file_path,
                 weights=weights,
@@ -285,7 +285,10 @@ class Errorgnomarker(chip):
 
     def _run_m_qubit_mrb(self):
         start_time = time.time()
-        res = self.config_quality_qmgate.qmmrb()
+        res = self.config_quality_qmgate.qmmrb(mrb_special_rum_all=self.run_all,
+            mrb_special_qubit_index_list=[2,3,4,5,6,7,8,15,16,17,29,30],
+            mrb_special_qubit_connectivity=[[2,3],[2,15],[3,4],[4,5],[5,6],[6,7],
+                                          [7,8],[15,16],[16,17],[17,30],[29,30]])   # 这些是目前仅能选择的符合mrb要求的点
         elapsed_time = time.time() - start_time
         print(f"m-Qubit MRB Fidelity completed in {elapsed_time:.2f} seconds.")
         return res
@@ -395,35 +398,35 @@ class Errorgnomarker(chip):
 
 
 
-from errorgnomark.token_manager import define_token, get_token
+# from errorgnomark.token_manager import define_token, get_token
 # Define your token
-define_token("ROKILmIl4`zT[p8zmPZrFjYNCzS1WnI:qgFJi[m8fK5/1IO5J{OyhkOvNUO6d{OzZEO4FkPjBIfmKDMjN{N7JUN7FkNhNENuRENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnMkGnM{mXdiKHRliYbii3ZjpkJzW3d2Kzf")
+# define_token("ROKILmIl4`zT[p8zmPZrFjYNCzS1WnI:qgFJi[m8fK5/1IO5J{OyhkOvNUO6d{OzZEO4FkPjBIfmKDMjN{N7JUN7FkNhNENuRENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnMkGnM{mXdiKHRliYbii3ZjpkJzW3d2Kzf")
 
 # Example usage:
 if __name__ == "__main__":
-    egm = Errorgnomarker(chip_name="Baihua", result_get='noisysimulation')
-    # Run the EGM metrics and get results
-    results = egm.egm_run(
-        rbq1_selected=True,
-        xebq1_selected=True,
-        csbq1_selected=True,
-        rbq2_selected=True,
-        xebq2_selected=True,
-        csbq2_selected=True,
-        csbq2_cnot_selected=True,
-        ghzqm_selected=True,
-        qvqm_selected=True,
-        mrbqm_selected=True,
-        clopsqm_selected=True,
-        vqeqm_selected=True
-    )
+        egm = Errorgnomarker(chip_name="Baihua", result_get='noisysimulation')
+        # Run the EGM metrics and get results
+        results = egm.egm_run(
+            rbq1_selected=True,
+            xebq1_selected=True,
+            csbq1_selected=True,
+            rbq2_selected=True,
+            xebq2_selected=True,
+            csbq2_selected=True,
+            csbq2_cnot_selected=True,
+            ghzqm_selected=True,
+            qvqm_selected=True,
+            mrbqm_selected=True,
+            clopsqm_selected=True,
+            vqeqm_selected=True
+        )
 
-    # Optionally, you can use the following methods to generate visuals after running the metrics:
-    # Draw the visual table for selected metrics
-    egm.draw_visual_table()
+        # Optionally, you can use the following methods to generate visuals after running the metrics:
+        # Draw the visual table for selected metrics
+        egm.draw_visual_table()
 
-    # Plot the visual figures for selected metrics
-    egm.plot_visual_figure()
+        # Plot the visual figures for selected metrics
+        egm.plot_visual_figure()
 
 
 

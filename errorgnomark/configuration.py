@@ -679,7 +679,9 @@ class QualityQmgate:
             'source': self.result_get  # Indicate the source of the data (hardware or simulation)
         }
 
-    def qmmrb(self, density_cz=0.75, ncr=5):
+    def qmmrb(self, density_cz=0.75, ncr=5, mrb_special_rum_all=False,
+              mrb_special_qubit_index_list=None,
+              mrb_special_qubit_connectivity=None):
         """
         Generates and executes quantum circuits based on the provided CZ gate density and number of circuits.
 
@@ -709,10 +711,16 @@ class QualityQmgate:
         all_simulation = [] # Structure: [qubit_group][length][ncr_circuit]
 
         # Initialize CircuitGenerator and generate MRB circuits
-        circuit_gen = CircuitGenerator(
-            qubit_select=self.qubit_index_list,
-            qubit_connectivity=self.qubit_connectivity
-        )
+        if mrb_special_rum_all:
+            circuit_gen = CircuitGenerator(
+                qubit_select=mrb_special_qubit_index_list,
+                qubit_connectivity=mrb_special_qubit_connectivity
+            )
+        else:
+            circuit_gen = CircuitGenerator(
+                qubit_select=self.qubit_index_list,
+                qubit_connectivity=self.qubit_connectivity
+            )
         generated_circuits, qubits_for_length = circuit_gen.mrbqm_circuit(ncr=ncr)  # Structure: [qubit_group][length][ncr]
 
         # print ('generated_circuits',generated_circuits[0])

@@ -295,7 +295,7 @@ def select_connected_nodes(chessboard_graph, available_nodes, X, df, initial_qub
                                   reverse=True)
 
             # 从最高优先级节点开始扩展选择
-            # TODO 初始节点选择
+            # TODO 起始节点选择
             selected = set([str(initial_qubit)])  # 初始种子节点 initial_qubit
 
             while len(selected) < X and len(selected) < len(sorted_nodes):
@@ -448,7 +448,9 @@ class qubit_selection:
 
             chessboard_graph, available_nodes = build_chessboard_graph(self.rows, self.columns, file_path=self.file_path,
                                                                        run_all=self.run_all)
-            visualize_chessboard(chessboard_graph, available_nodes)
+            if 1:
+                # 可视化所有节点
+                visualize_chessboard(chessboard_graph, available_nodes)
 
             if self.qubit_to_be_used > len(available_nodes):
                 print(f"要使用的量子比特数量{qubit_to_be_used}大于可用量子比特数: {len(available_nodes)}"
