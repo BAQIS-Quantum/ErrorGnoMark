@@ -22,15 +22,15 @@ define_token("F8WL`4Y3NBdVhdRzK4Wy84O8[:q9t67K5P4T4i4{ip7/1YO4R{N6JEOvZUN{B{N5dE
 
 # Step 2: Initialize the Errorgnomarker
 # Use simulation mode or real hardware mode
-egm = Errorgnomarker(chip_name="Baihua", result_get='noisysimulation', qubit_to_be_used=12,
-                     start_qubit=8,
+egm = Errorgnomarker(chip_name="Baihua", result_get='noisysimulation',  # 'hardware' For real hardware mode
+                     qubit_to_be_used=12,  # 输入要使用的qubit数量
+                     start_qubit=8,        # 选择起始qubit序号
                      file_path=r"./Baihua_calibration_2025-04-21 12_26_19.csv",
-                     weights={'T1': 0.5,
-                              'T2': 0.5,
+                     weights={'T1': 0.5,   # 在此中调节各系数在计算qubit分数时的权重占比。
+                              'T2': 0.5,   # 该权重用于自动从start_qubit开始选择其他qubit
                               'Fidelity': 0,
-                              'Frequency': 0},  # 默认 None。连通性0.8 + T1和T2得分 0.2
-                     run_all_Execute=False,  # Execute All Task for All Qubits
-                     rbq1_selected=True,  # Execute Single Qubit RB for Q1
+                              'Frequency': 0},  # 默认 None。连通性得分占比80% + T1、T2、Fidelity、Frequency得分占比20%
+                     run_all_Execute=False,  # 选择所有qubits
                      xebq1_selected=True,  # Execute Single Qubit XEB for Q1
                      csbq1_selected=True,  # Execute Single Qubit CSB for Q1
                      rbq2_selected=True,  # Execute Two Qubit RB for Q2
@@ -40,8 +40,9 @@ egm = Errorgnomarker(chip_name="Baihua", result_get='noisysimulation', qubit_to_
                      ghzqm_selected=True,  # Execute m-Qubit GHZ Fidelity
                      qvqm_selected=True,  # Execute m-Qubit StanQV Fidelity
                      mrbqm_selected=True,  # Execute m-Qubit MRB Fidelity。
+                                           # 若run_all_Execute=False，
                                            # 为了mrb能运行，所选的qubit序号不能超过31。
-                                           # 若使用Run all模式，则固定选择[2,3,4,5,6,7,8,15,16,17,29,30]
+                                           # 若run_all_Execute=True，则固定选择[2,3,4,5,6,7,8,15,16,17,29,30]
                      clopsqm_selected=True,  # Execute m-Qubit Speed CLOPS
                      vqeqm_selected=True  # Execute m-Qubit VQE
                      )  # 'noisysimulation' For simulation mode
