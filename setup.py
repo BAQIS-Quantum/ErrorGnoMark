@@ -22,7 +22,7 @@ def read_long_description():
 
 setup(
     name='ErrorGnoMark',  # Package name
-    version='0.1.4',  # Initial version number
+    version='0.1.6',  # Initial version number
     author='Chai Xudan, Wang Jingbo, Xiaoxiao',  # Author/organization name
     author_email='chaixd@baqis.ac.cn',  # Contact email
     url='https://github.com/BAQIS-Quantum/ErrorGnoMark',  # Project repository URL

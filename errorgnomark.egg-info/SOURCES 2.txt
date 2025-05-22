@@ -2,12 +2,7 @@ LICENSE
 README.md
 setup.py
 ErrorGnoMark.egg-info/PKG-INFO
-ErrorGnoMark.egg-info/PKG-INFO 2
-ErrorGnoMark.egg-info/SOURCES 2.txt
 ErrorGnoMark.egg-info/SOURCES.txt
-ErrorGnoMark.egg-info/dependency_links 2.txt
 ErrorGnoMark.egg-info/dependency_links.txt
-ErrorGnoMark.egg-info/requires 2.txt
 ErrorGnoMark.egg-info/requires.txt
-ErrorGnoMark.egg-info/top_level 2.txt
 ErrorGnoMark.egg-info/top_level.txt

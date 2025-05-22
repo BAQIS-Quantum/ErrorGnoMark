@@ -110,64 +110,69 @@ def build_custom_noise_model():
 #     return new_circuit, qubit_mapping, cbit_mapping
 
 
+from qiskit import QuantumCircuit
+
 def map_circuit(circuit, active_qubits, active_cbits):
     """
-    Remap qubits and classical bits in a circuit.
+    Remap qubits and classical bits in `circuit` onto a compact register.
 
-    Rules:
-      • If active_qubits contains 0 and len(active_qubits) <= 2:
-          – 1 qubit: map it → new qubit 0
-          – 2 qubits: map them → new qubit 0,1
-      • Otherwise (e.g. original indices start >0 or >2 qubits):
-          – Map all original qubits 0..N-1 → new qubits 0..N-1
+    Mapping rules
+    -------------
+    1. If exactly **one** qubit is used        → map it to new qubit 0
+    2. If exactly **two** qubits are used      → map them to new qubits 0 and 1
+    3. If **three or more** qubits are used    → sort them ascending and map to 0…N-1
+    4. If N > 30                               → raise ValueError  
+       (the built-in state-vector simulator in Qiskit Aer is limited to ~30 qubits)
 
-    All classical bits are merged into cbit 0.
+    All classical bits are merged and mapped to the single classical bit 0.
     """
-    total_qubits = circuit.num_qubits
-    new_ncbits = 1
+    # -------- Input sanitisation ----------
+    active_qubits = sorted(set(active_qubits))
+    active_cbits  = sorted(set(active_cbits))
+    n_act_q       = len(active_qubits)
 
-    # Decide qubit mapping
-    if 0 in active_qubits and len(active_qubits) <= 2:
-        # Case: 1 or 2 active qubits, including qubit 0
-        n_active = len(active_qubits)
-        new_nqubits = n_active
-        if n_active == 1:
-            qubit_mapping = {active_qubits[0]: 0}
-        else:  # n_active == 2
-            qubit_mapping = {
-                active_qubits[0]: 0,
-                active_qubits[1]: 1
-            }
-    else:
-        # Fallback: use the full original register
-        new_nqubits = total_qubits
-        qubit_mapping = {old: old for old in range(total_qubits)}
+    # -------- Safety checks ----------
+    if n_act_q == 0:
+        raise ValueError("active_qubits is empty – nothing to map.")
+    if n_act_q > 30:
+        raise ValueError("State-vector back-ends typically support ≤30 qubits.")
 
-    # Build new circuit
-    new_circuit = QuantumCircuit(new_nqubits, new_ncbits)
+    # -------- Build qubit-mapping ----------
+    if n_act_q == 1:                       # Case ①: single-qubit circuit
+        qubit_mapping = {active_qubits[0]: 0}
+        new_nqubits   = 1
+    elif n_act_q == 2:                     # Case ②: two-qubit circuit
+        qubit_mapping = {
+            active_qubits[0]: 0,
+            active_qubits[1]: 1
+        }
+        new_nqubits = 2
+    else:                                  # Case ③: ≥3 qubits – map sequentially
+        qubit_mapping = {q: i for i, q in enumerate(active_qubits)}
+        new_nqubits   = n_act_q
 
-    # Map classical bits to cbit 0
-    cbit_mapping = {old: 0 for old in active_cbits}
+    # -------- Classical bits: collapse to bit 0 ----------
+    new_ncbits   = 1
+    cbit_mapping = {c: 0 for c in active_cbits}
 
-    # Rebuild instructions
-    for instr, qargs, cargs in circuit.data:
-        # Remap quantum args
-        new_qargs = []
-        for q in qargs:
-            old_idx = circuit.qubits.index(q)
-            if old_idx not in qubit_mapping:
-                raise KeyError(f"Qubit {old_idx} not in mapping.")
-            new_qargs.append(new_circuit.qubits[qubit_mapping[old_idx]])
+    # -------- Create the new circuit ----------
+    new_circ = QuantumCircuit(new_nqubits, new_ncbits)
 
-        # Remap classical args
-        new_cargs = []
-        for c in cargs:
-            old_c = circuit.clbits.index(c)
-            new_cargs.append(new_circuit.clbits[cbit_mapping[old_c]])
+    # -------- Re-append each instruction with remapped bits ----------
+    for inst, qargs, cargs in circuit.data:
+        # Remap quantum arguments
+        new_qargs = [
+            new_circ.qubits[ qubit_mapping[ circuit.qubits.index(q) ] ]
+            for q in qargs if circuit.qubits.index(q) in qubit_mapping
+        ]
+        # Remap classical arguments
+        new_cargs = [
+            new_circ.clbits[ cbit_mapping[ circuit.clbits.index(c) ] ]
+            for c in cargs if circuit.clbits.index(c) in cbit_mapping
+        ]
+        new_circ.append(inst, new_qargs, new_cargs)
 
-        new_circuit.append(instr, new_qargs, new_cargs)
-
-    return new_circuit, qubit_mapping, cbit_mapping
+    return new_circ, qubit_mapping, cbit_mapping
 
 
 class QuantumJobRunner:
