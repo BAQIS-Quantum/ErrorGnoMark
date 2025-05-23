@@ -14,6 +14,7 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np  # For numerical operations
 from qiskit import QuantumCircuit  # For creating and managing quantum circuits
 
+sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
 
 # Add the ErrorGnoMark package to the system path
 from errorgnomark.cirpulse_generator.elements import (
