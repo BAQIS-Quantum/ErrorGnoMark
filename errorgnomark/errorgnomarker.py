@@ -30,7 +30,7 @@ class Errorgnomarker(chip):
 
     def __init__(self, chip_name="Baihua", result_get='noisysimulation', qubit_to_be_used=10,
                  start_qubit=0,
-                 file_path='', weights=None, run_all_Execute=False,
+                 file_path='', weights=None, run_all_Qubits=False,
                  rbq1_selected=False,  # Execute Single Qubit RB for Q1
                  xebq1_selected=True,  # Execute Single Qubit XEB for Q1
                  csbq1_selected=False,  # Execute Single Qubit CSB for Q1
@@ -77,7 +77,7 @@ class Errorgnomarker(chip):
         self.clopsqm_selected = self.clopsqm_selected[0]
         # self.vqeqm_selected = self.vqeqm_selected[0]
 
-        self.run_all = run_all_Execute
+        self.run_all = run_all_Qubits
         if self.chip_name == "Baihua":
             self.selection_options = {
                 'max_qubits_per_row': 13,

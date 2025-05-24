@@ -30,7 +30,7 @@ egm = Errorgnomarker(chip_name="Baihua", result_get='noisysimulation',  # 'hardw
                               'T2': 0.5,   # 该权重用于自动从start_qubit开始选择其他qubit
                               'Fidelity': 0,
                               'Frequency': 0},  # 默认 None。连通性得分占比80% + T1、T2、Fidelity、Frequency得分占比20%
-                     run_all_Execute=True,  # 选择所有qubits。若run_all_Execute=True，则qubit_to_be_used和start_qubit失效
+                     run_all_Qubits=False,  # 选择所有qubits。若run_all_Execute=True，则qubit_to_be_used和start_qubit失效
                      xebq1_selected=True,  # Execute Single Qubit XEB for Q1
                      csbq1_selected=True,  # Execute Single Qubit CSB for Q1
                      rbq2_selected=True,  # Execute Two Qubit RB for Q2
