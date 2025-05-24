@@ -2,7 +2,11 @@
 
 ## Overview
 
-ErrorGnoMark (Error Diagnose & Benchmark) is a comprehensive tool developed by the Quantum Operating System Group at the Beijing Academy of Quantum Information Sciences. It aims to provide a complete and thorough benchmark and diagnostic information for quantum chip[^2][^3], covering different layers of the quantum operating system: physical layer, quantum gate (circuit) layer, and application Layer. It evaluates key dimensions such as Scalability, Quality, and Speed[^1]. 
+Benchmarking and characterization are now core services for quantum cloud platforms, enabling reliable performance evaluation, user trust, and industry standardization.
+
+ErrorGnoMark (Error Diagnose & Benchmark) is a comprehensive tool developed by the Quantum Operating System Group at the Beijing Academy of Quantum Information Sciences.  It is designed around standardized testing workflows, highly automated execution mechanisms, and platform-level interface adaptability. It supports multi-dimensional performance assessment, including single- and two-qubit gate benchmarking[^1][^2][^3], multi-qubit entanglement, coherent and incoherent noise modeling, and gate-level crosstalk analysis. The system enables full-stack deployment and integration—from cloud user interfaces to local chip control hardware—allowing seamless, one-click test execution, automated data acquisition, and performance analysis. Standardized benchmarking reports, covering fidelity, throughput, and latency, are generated for continuous and automated online monitoring of quantum chips.
+
+
 
 <p align="center">
   <img src="errorgnomark/bmqc.png" alt="ErrorGnoMark Illustration" width="500px">
@@ -10,19 +14,28 @@ ErrorGnoMark (Error Diagnose & Benchmark) is a comprehensive tool developed by t
 
 ### Potential Applications
 
-ErrorGnoMark plays a crucial role in the journey toward building a fully functional quantum computer. Below are its key applications:
+### ErrorGnoMark: Main Application Modes
 
-- **Hardware Control**: Facilitates quantum chip calibration, improves the reliability of simulators, and enables optimal quantum control.
+**1. Real-Time Error Feedback for End-Users**  
+Provides transparent, real-time error diagnostics for quantum chips, enabling users to access clear and timely performance data.
 
-- **Compiler Optimization**: Enhances compiler performance by leveraging error information, such as crosstalk, to optimize quantum gate operations.
+**2. Backend Performance Engine for Quantum Compilers**  
+Acts as a backend performance feedback engine for quantum compilers (e.g., Qsteed), supporting logical gate mapping optimization and circuit-level routing adjustments.
 
-- **Cloud & Direct User Access**: Enables precise real-time monitoring of chip performance (e.g., error rates) and supports advanced quantum error correction (QEC) experiments.
+**3. Support for Local Control Systems**  
+Delivers precise references for device calibration, error modeling, and optimal control within local control systems.
+
+---
+
+**Result Presentation**  
+Based on these capabilities, the platform can periodically publish standardized benchmarking reports across various hardware platforms (e.g., ≥10 reports), offering trustworthy third-party data for user decision-making, platform management, and regulatory evaluation.  The results are available in both tabular (text-based) formats and visualized graphical displays, allowing users to select their preferred mode of presentation.**
+
 
 
 ## Version Information
 
-**ErrorGnoMark 0.1.0**  
-*Note: This is the initial version. Future updates will align with advancements in relevant research fields and evolving application requirements.*
+**ErrorGnoMark 0.1.4**  
+*Note: This is the latest version. Future updates will align with advancements in relevant research fields and evolving application requirements.*
 
 ## Installation
 
@@ -42,7 +55,7 @@ git clone https://github.com/BAQIS-Quantum/ErrorGnoMark`
 ```
 
 ```bash
-cd ErrorGnoMark`
+cd errorgnomark`
 ```
 
 ```bash
@@ -75,27 +88,6 @@ Before using **ErrorGnoMark** for quantum error diagnosis, we recommend users be
 ### Tutorials
 
 **ErrorGnoMark** offers a range of tutorials, from beginner to advanced topics. These tutorials are available on the official website, and users interested in research or development are encouraged to download and utilize Jupyter Notebooks.
-
-#### **Table of Contents**
-- **Overview of Quantum Chip Errors**: Technical adjustments, common issues, and solutions.
-- **Quantum Benchmarking**:
-  - **Hardware Layer Characterization**: Analyzing hardware performance metrics.
-  - **Quantum Gate (Circuit) Benchmarking**[^3]: Evaluating the fidelity and reliability of gate-level operations.
-  - **Quantum Chip Application Performance Testing**: Testing and validating chip performance for practical applications.
-
-- **Databases for Benchmarking and Characterization**:
-  In the context of calibration, **ErrorGnoMark** focuses on combining {characterization + benchmarking} data to build two types of databases:
-  
-  - **Characterization Data**: 
-    - This data includes pulse-level control parameters such as \(T_1\) and \(T_2\) times and other metrics critical for understanding quantum hardware performance and limitations.
-  
-  - **Benchmarking Data**: 
-    - This data consists of various benchmark scores at the gate level, providing quantitative measures of gate performance and system reliability.
-
-These databases are structured to distinguish between **pulse-level** and **gate-level** data:
-- **Gate-Level Compilation**: Directly utilizes benchmarking data for gate optimization.
-
-- **Pulse-Level Compilation**: Focuses on quantum optimal control, leveraging characterization data to fine-tune and enhance quantum operations.
 
 
 

@@ -1,0 +1,8 @@
+LICENSE
+README.md
+setup.py
+ErrorGnoMark.egg-info/PKG-INFO
+ErrorGnoMark.egg-info/SOURCES.txt
+ErrorGnoMark.egg-info/dependency_links.txt
+ErrorGnoMark.egg-info/requires.txt
+ErrorGnoMark.egg-info/top_level.txt

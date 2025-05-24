@@ -1,6 +1,6 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: ErrorGnoMark
-Version: 0.1.4
+Version: 0.1.6
 Summary: A Toolkit for Error Diagnosis and Benchmarking for Quantum Chip
 Home-page: https://github.com/BAQIS-Quantum/ErrorGnoMark
 Author: Chai Xudan, Wang Jingbo, Xiaoxiao
@@ -16,20 +16,171 @@ Classifier: Topic :: Scientific/Engineering :: Physics
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 License-File: LICENSE
-Requires-Dist: numpy<2.0,>=1.23
-Requires-Dist: scipy<2.0,>=1.9
-Requires-Dist: matplotlib<4.0,>=3.7
-Requires-Dist: qiskit<1.0,>=0.39
-Requires-Dist: qiskit-aer<1.0,>=0.13
-Requires-Dist: tqdm<5.0,>=4.64
-Requires-Dist: requests<3.0,>=2.28
-Requires-Dist: joblib<2.0,>=1.2
+Requires-Dist: annotated-types==0.7.0
+Requires-Dist: antlr4-python3-runtime==4.9.2
+Requires-Dist: appdirs==1.4.4
+Requires-Dist: appnope==0.1.4
+Requires-Dist: asttokens==3.0.0
+Requires-Dist: backports.tarfile==1.2.0
+Requires-Dist: beautifulsoup4
+Requires-Dist: bokeh==3.7.2
+Requires-Dist: Bottleneck==1.4.2
+Requires-Dist: Brotli==1.1.0
+Requires-Dist: build==1.2.2.post1
+Requires-Dist: certifi==2024.8.30
+Requires-Dist: charset-normalizer==3.4.1
+Requires-Dist: click==8.1.8
+Requires-Dist: clirk
+Requires-Dist: cloudpickle==3.1.1
+Requires-Dist: colorama==0.4.6
+Requires-Dist: comm==0.2.2
+Requires-Dist: contourpy==1.3.1
+Requires-Dist: cycler==0.12.1
+Requires-Dist: cytoolz==1.0.1
+Requires-Dist: dask==2024.12.1
+Requires-Dist: dask-expr==0.4.0
+Requires-Dist: debugpy==1.8.13
+Requires-Dist: decorator==5.2.1
+Requires-Dist: dill==0.3.9
+Requires-Dist: distributed==2024.12.1
+Requires-Dist: docutils==0.21.2
+Requires-Dist: ErrorGnoMark==0.1.0
+Requires-Dist: et_xmlfile==2.0.0
+Requires-Dist: exceptiongroup==1.2.2
+Requires-Dist: executing==2.2.0
+Requires-Dist: fire==0.7.0
+Requires-Dist: fonttools==4.55.3
+Requires-Dist: fsspec==2024.12.0
+Requires-Dist: gmpy2==2.2.1
+Requires-Dist: HeapDict==1.0.1
+Requires-Dist: idna==3.10
+Requires-Dist: importlib_metadata==8.6.1
+Requires-Dist: ipykernel==6.29.5
+Requires-Dist: ipython==8.34.0
+Requires-Dist: jaraco.classes==3.4.0
+Requires-Dist: jaraco.context==6.0.1
+Requires-Dist: jaraco.functools==4.1.0
+Requires-Dist: jedi==0.19.2
+Requires-Dist: Jinja2==3.1.6
+Requires-Dist: joblib==1.4.2
+Requires-Dist: jupyter_client==8.6.3
+Requires-Dist: jupyter_core==5.7.2
+Requires-Dist: keyring==25.6.0
+Requires-Dist: kiwisolver==1.4.7
+Requires-Dist: lark-parser==0.12.0
+Requires-Dist: llvmlite==0.44.0
+Requires-Dist: lmdb==1.6.2
+Requires-Dist: locket==1.0.0
+Requires-Dist: lz4==4.4.4
+Requires-Dist: markdown-it-py==3.0.0
+Requires-Dist: MarkupSafe==3.0.2
+Requires-Dist: matplotlib==3.9.3
+Requires-Dist: matplotlib-inline==0.1.7
+Requires-Dist: mdurl==0.1.2
+Requires-Dist: more-itertools==10.5.0
+Requires-Dist: mpmath==1.3.0
+Requires-Dist: msgpack==1.1.0
+Requires-Dist: narwhals==1.33.0
+Requires-Dist: nest-asyncio==1.6.0
+Requires-Dist: networkx==3.4.2
+Requires-Dist: nh3==0.2.20
+Requires-Dist: numba==0.61.0
+Requires-Dist: numexpr==2.10.2
+Requires-Dist: numpy==1.26.4
+Requires-Dist: openpyxl==3.1.5
+Requires-Dist: packaging==24.2
+Requires-Dist: pandas==2.2.3
+Requires-Dist: parso==0.8.4
+Requires-Dist: partd==1.4.2
+Requires-Dist: pbr==6.1.0
+Requires-Dist: pexpect==4.9.0
+Requires-Dist: pickleshare==0.7.5
+Requires-Dist: pillow==11.1.0
+Requires-Dist: pkginfo==1.12.0
+Requires-Dist: platformdirs==4.3.7
+Requires-Dist: prompt_toolkit==3.0.50
+Requires-Dist: psutil==7.0.0
+Requires-Dist: ptyprocess==0.7.0
+Requires-Dist: pure_eval==0.2.3
+Requires-Dist: pyarrow==11.0.0
+Requires-Dist: pydantic==2.11.2
+Requires-Dist: pydantic-settings==2.8.1
+Requires-Dist: pydantic_core==2.33.1
+Requires-Dist: Pygments==2.18.0
+Requires-Dist: pyparsing==3.2.0
+Requires-Dist: pyproject_hooks==1.2.0
+Requires-Dist: PySocks==1.7.1
+Requires-Dist: python-dateutil==2.9.0.post0
+Requires-Dist: python-dotenv==1.1.0
+Requires-Dist: pytz==2025.2
+Requires-Dist: pywin32==310
+Requires-Dist: pywin32-ctypes==0.2.3
+Requires-Dist: PyYAML==6.0.2
+Requires-Dist: pyzmq==26.4.0
+Requires-Dist: qiskit==1.3.1
+Requires-Dist: qiskit-aer==0.15.1
+Requires-Dist: quantum-blackbird==0.5.0
+Requires-Dist: quantum-xir==0.2.2
+Requires-Dist: quarkcircuit==0.2.7
+Requires-Dist: quarkstudio==7.1.5
+Requires-Dist: readme_renderer==44.0
+Requires-Dist: requests==2.32.3
+Requires-Dist: requests-toolbelt==1.0.0
+Requires-Dist: rfc3986==2.0.0
+Requires-Dist: rich==13.9.4
+Requires-Dist: rustworkx==0.15.1
+Requires-Dist: scipy==1.15.2
+Requires-Dist: six==1.17.0
+Requires-Dist: sortedcontainers==2.4.0
+Requires-Dist: soupsieve
+Requires-Dist: srpc==4.5.0
+Requires-Dist: stack-data==0.6.3
+Requires-Dist: stevedore==5.4.0
+Requires-Dist: StrawberryFields==0.23.0
+Requires-Dist: symengine==0.13.0
+Requires-Dist: sympy==1.13.3
+Requires-Dist: tblib==3.1.0
+Requires-Dist: termcolor==3.0.1
+Requires-Dist: thewalrus==0.21.0
+Requires-Dist: toml==0.10.2
+Requires-Dist: tomli==2.2.1
+Requires-Dist: toolz==1.0.0
+Requires-Dist: tornado==6.4.2
+Requires-Dist: tqdm==4.67.1
+Requires-Dist: traitlets==5.14.3
+Requires-Dist: twine==6.0.1
+Requires-Dist: typing-inspection==0.4.0
+Requires-Dist: typing_extensions==4.13.1
+Requires-Dist: tzdata==2025.2
+Requires-Dist: urllib3==2.3.0
+Requires-Dist: wcwidth==0.2.13
+Requires-Dist: xanadu-cloud-client==0.3.2
+Requires-Dist: xyzservices==2025.1.0
+Requires-Dist: zee==0.0.4
+Requires-Dist: zict==3.0.0
+Requires-Dist: zipp==3.21.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
 
 # ErrorGnoMark: Quantum Chip Error Diagnosis & Benchmark
 
 ## Overview
 
-ErrorGnoMark (Error Diagnose & Benchmark) is a comprehensive tool developed by the Quantum Operating System Group at the Beijing Academy of Quantum Information Sciences. It aims to provide a complete and thorough benchmark and diagnostic information for quantum chip[^2][^3], covering different layers of the quantum operating system: physical layer, quantum gate (circuit) layer, and application Layer. It evaluates key dimensions such as Scalability, Quality, and Speed[^1]. 
+Benchmarking and characterization are now core services for quantum cloud platforms, enabling reliable performance evaluation, user trust, and industry standardization.
+
+ErrorGnoMark (Error Diagnose & Benchmark) is a comprehensive tool developed by the Quantum Operating System Group at the Beijing Academy of Quantum Information Sciences.  It is designed around standardized testing workflows, highly automated execution mechanisms, and platform-level interface adaptability. It supports multi-dimensional performance assessment, including single- and two-qubit gate benchmarking[^1][^2][^3], multi-qubit entanglement, coherent and incoherent noise modeling, and gate-level crosstalk analysis. The system enables full-stack deployment and integration—from cloud user interfaces to local chip control hardware—allowing seamless, one-click test execution, automated data acquisition, and performance analysis. Standardized benchmarking reports, covering fidelity, throughput, and latency, are generated for continuous and automated online monitoring of quantum chips.
+
+
 
 <p align="center">
   <img src="errorgnomark/bmqc.png" alt="ErrorGnoMark Illustration" width="500px">
@@ -37,19 +188,28 @@ ErrorGnoMark (Error Diagnose & Benchmark) is a comprehensive tool developed by t
 
 ### Potential Applications
 
-ErrorGnoMark plays a crucial role in the journey toward building a fully functional quantum computer. Below are its key applications:
+### ErrorGnoMark: Main Application Modes
 
-- **Hardware Control**: Facilitates quantum chip calibration, improves the reliability of simulators, and enables optimal quantum control.
+**1. Real-Time Error Feedback for End-Users**  
+Provides transparent, real-time error diagnostics for quantum chips, enabling users to access clear and timely performance data.
 
-- **Compiler Optimization**: Enhances compiler performance by leveraging error information, such as crosstalk, to optimize quantum gate operations.
+**2. Backend Performance Engine for Quantum Compilers**  
+Acts as a backend performance feedback engine for quantum compilers (e.g., Qsteed), supporting logical gate mapping optimization and circuit-level routing adjustments.
 
-- **Cloud & Direct User Access**: Enables precise real-time monitoring of chip performance (e.g., error rates) and supports advanced quantum error correction (QEC) experiments.
+**3. Support for Local Control Systems**  
+Delivers precise references for device calibration, error modeling, and optimal control within local control systems.
+
+---
+
+**Result Presentation**  
+Based on these capabilities, the platform can periodically publish standardized benchmarking reports across various hardware platforms (e.g., ≥10 reports), offering trustworthy third-party data for user decision-making, platform management, and regulatory evaluation.  The results are available in both tabular (text-based) formats and visualized graphical displays, allowing users to select their preferred mode of presentation.**
+
 
 
 ## Version Information
 
-**ErrorGnoMark 0.1.0**  
-*Note: This is the initial version. Future updates will align with advancements in relevant research fields and evolving application requirements.*
+**ErrorGnoMark 0.1.4**  
+*Note: This is the latest version. Future updates will align with advancements in relevant research fields and evolving application requirements.*
 
 ## Installation
 
@@ -69,7 +229,7 @@ git clone https://github.com/BAQIS-Quantum/ErrorGnoMark`
 ```
 
 ```bash
-cd ErrorGnoMark`
+cd errorgnomark`
 ```
 
 ```bash
@@ -102,27 +262,6 @@ Before using **ErrorGnoMark** for quantum error diagnosis, we recommend users be
 ### Tutorials
 
 **ErrorGnoMark** offers a range of tutorials, from beginner to advanced topics. These tutorials are available on the official website, and users interested in research or development are encouraged to download and utilize Jupyter Notebooks.
-
-#### **Table of Contents**
-- **Overview of Quantum Chip Errors**: Technical adjustments, common issues, and solutions.
-- **Quantum Benchmarking**:
-  - **Hardware Layer Characterization**: Analyzing hardware performance metrics.
-  - **Quantum Gate (Circuit) Benchmarking**[^3]: Evaluating the fidelity and reliability of gate-level operations.
-  - **Quantum Chip Application Performance Testing**: Testing and validating chip performance for practical applications.
-
-- **Databases for Benchmarking and Characterization**:
-  In the context of calibration, **ErrorGnoMark** focuses on combining {characterization + benchmarking} data to build two types of databases:
-  
-  - **Characterization Data**: 
-    - This data includes pulse-level control parameters such as \(T_1\) and \(T_2\) times and other metrics critical for understanding quantum hardware performance and limitations.
-  
-  - **Benchmarking Data**: 
-    - This data consists of various benchmark scores at the gate level, providing quantitative measures of gate performance and system reliability.
-
-These databases are structured to distinguish between **pulse-level** and **gate-level** data:
-- **Gate-Level Compilation**: Directly utilizes benchmarking data for gate optimization.
-
-- **Pulse-Level Compilation**: Focuses on quantum optimal control, leveraging characterization data to fine-tune and enhance quantum operations.
 
 
 

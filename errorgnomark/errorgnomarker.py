@@ -9,7 +9,7 @@ from pathlib import Path
 from requests.exceptions import RequestException, ReadTimeout  # For HTTP requests and error handling
 from tqdm import tqdm  # For progress bar visualization
 
-# Local imports
+sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
 
 from errorgnomark.cirpulse_generator.qubit_selector import qubit_selection, chip  # For qubit selection and chip setup
 from errorgnomark.configuration import (  # For various quality and benchmarking configurations
@@ -116,6 +116,99 @@ class Errorgnomarker(chip):
         self.config_speed_qmgate = SpeedQmgate(self.qubit_connectivity, self.qubit_index_list, result_get=result_get)
         self.config_application_qmgate = ApplicationQmgate(self.qubit_connectivity, self.qubit_index_list, result_get=result_get)
 
+
+
+    def _run_single_qubit_rb(self):
+        start_time = time.time()
+        res = self.config_quality_q1gate.q1rb()
+        elapsed_time = time.time() - start_time
+        print(f"Single Qubit RB completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_single_qubit_xeb(self):
+        start_time = time.time()
+        res = self.config_quality_q1gate.q1xeb()
+        elapsed_time = time.time() - start_time
+        print(f"Single Qubit XEB completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_single_qubit_csb(self):
+        start_time = time.time()
+        res = self.config_quality_q1gate.q1csb_pi_over_2_x()
+        if res is None:
+            print("Error: Q1CSB π/2-x task did not complete successfully.")
+            return None
+        elapsed_time = time.time() - start_time
+        print(f"Single Qubit CSB completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_two_qubit_rb(self):
+        start_time = time.time()
+        res = self.config_quality_q2gate.q2rb()
+        elapsed_time = time.time() - start_time
+        print(f"Two Qubit RB completed in {elapsed_time:.2f} seconds.")
+        return res
+
+
+    def _run_two_qubit_xeb(self):
+        start_time = time.time()
+        res = self.config_quality_q2gate.q2xeb()
+        elapsed_time = time.time() - start_time
+        print(f"Two Qubit XEB completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_two_qubit_csb(self):
+        start_time = time.time()
+        res = self.config_quality_q2gate.q2csb_cz()
+        elapsed_time = time.time() - start_time
+        print(f"Two Qubit CSB completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_two_qubit_cnot_csb(self):
+        start_time = time.time()
+        res = self.config_quality_q2gate.q2csb_cnot()
+        elapsed_time = time.time() - start_time
+        print(f"Two Qubit CNOT CSB completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_m_qubit_ghz(self):
+        start_time = time.time()
+        res = self.config_quality_qmgate.qmghz_fidelity()
+        elapsed_time = time.time() - start_time
+        print(f"m-Qubit GHZ Fidelity completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_m_qubit_stqv(self):
+        start_time = time.time()
+        res = self.config_quality_qmgate.qmstanqv()
+        elapsed_time = time.time() - start_time
+        print(f"m-Qubit StanQV Fidelity completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_m_qubit_mrb(self):
+        start_time = time.time()
+        res = self.config_quality_qmgate.qmmrb(mrb_special_rum_all=self.run_all,
+            mrb_special_qubit_index_list=[2,3,4,5,6,7,8,15,16,17,29,30],
+            mrb_special_qubit_connectivity=[[2,3],[2,15],[3,4],[4,5],[5,6],[6,7],
+                                          [7,8],[15,16],[16,17],[17,30],[29,30]])   # 这些是目前仅能选择的符合mrb要求的点
+        elapsed_time = time.time() - start_time
+        print(f"m-Qubit MRB Fidelity completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_m_qubit_clops(self):
+        start_time = time.time()
+        res = self.config_speed_qmgate.qmclops()
+        elapsed_time = time.time() - start_time
+        print(f"m-Qubit Speed CLOPS completed in {elapsed_time:.2f} seconds.")
+        return res
+
+    def _run_m_qubit_vqe(self):
+        start_time = time.time()
+        res = self.config_application_qmgate.qmVQE()
+        elapsed_time = time.time() - start_time
+        print(f"m-Qubit VQE completed in {elapsed_time:.2f} seconds.")
+        return res
+
     def egm_run(self):
         """
         Executes the EGM metrics and saves the results to a JSON file.
@@ -216,96 +309,7 @@ class Errorgnomarker(chip):
 
         return results, filepath
 
-    def _run_single_qubit_rb(self):
-        start_time = time.time()
-        res = self.config_quality_q1gate.q1rb()
-        elapsed_time = time.time() - start_time
-        print(f"Single Qubit RB completed in {elapsed_time:.2f} seconds.")
-        return res
 
-    def _run_single_qubit_xeb(self):
-        start_time = time.time()
-        res = self.config_quality_q1gate.q1xeb()
-        elapsed_time = time.time() - start_time
-        print(f"Single Qubit XEB completed in {elapsed_time:.2f} seconds.")
-        return res
-
-    def _run_single_qubit_csb(self):
-        start_time = time.time()
-        res = self.config_quality_q1gate.q1csb_pi_over_2_x()
-        if res is None:
-            print("Error: Q1CSB π/2-x task did not complete successfully.")
-            return None
-        elapsed_time = time.time() - start_time
-        print(f"Single Qubit CSB completed in {elapsed_time:.2f} seconds.")
-        return res
-
-    def _run_two_qubit_rb(self):
-        start_time = time.time()
-        res = self.config_quality_q2gate.q2rb()
-        elapsed_time = time.time() - start_time
-        print(f"Two Qubit RB completed in {elapsed_time:.2f} seconds.")
-        return res
-
-
-    def _run_two_qubit_xeb(self):
-        start_time = time.time()
-        res = self.config_quality_q2gate.q2xeb()
-        elapsed_time = time.time() - start_time
-        print(f"Two Qubit XEB completed in {elapsed_time:.2f} seconds.")
-        return res
-
-    def _run_two_qubit_csb(self):
-        start_time = time.time()
-        res = self.config_quality_q2gate.q2csb_cz()
-        elapsed_time = time.time() - start_time
-        print(f"Two Qubit CSB completed in {elapsed_time:.2f} seconds.")
-        return res
-
-    def _run_two_qubit_cnot_csb(self):
-        start_time = time.time()
-        res = self.config_quality_q2gate.q2csb_cnot()
-        elapsed_time = time.time() - start_time
-        print(f"Two Qubit CNOT CSB completed in {elapsed_time:.2f} seconds.")
-        return res
-
-    def _run_m_qubit_ghz(self):
-        start_time = time.time()
-        res = self.config_quality_qmgate.qmghz_fidelity()
-        elapsed_time = time.time() - start_time
-        print(f"m-Qubit GHZ Fidelity completed in {elapsed_time:.2f} seconds.")
-        return res
-
-    def _run_m_qubit_stqv(self):
-        start_time = time.time()
-        res = self.config_quality_qmgate.qmstanqv()
-        elapsed_time = time.time() - start_time
-        print(f"m-Qubit StanQV Fidelity completed in {elapsed_time:.2f} seconds.")
-        return res
-
-    def _run_m_qubit_mrb(self):
-        start_time = time.time()
-        res = self.config_quality_qmgate.qmmrb(mrb_special_rum_all=self.run_all,
-            mrb_special_qubit_index_list=[2,3,4,5,6,7,8,15,16,17,29,30],
-            mrb_special_qubit_connectivity=[[2,3],[2,15],[3,4],[4,5],[5,6],[6,7],
-                                          [7,8],[15,16],[16,17],[17,30],[29,30]])   # 这些是目前仅能选择的符合mrb要求的点
-        elapsed_time = time.time() - start_time
-        print(f"m-Qubit MRB Fidelity completed in {elapsed_time:.2f} seconds.")
-        return res
-
-    def _run_m_qubit_clops(self):
-        start_time = time.time()
-        res = self.config_speed_qmgate.qmclops()
-        elapsed_time = time.time() - start_time
-        print(f"m-Qubit Speed CLOPS completed in {elapsed_time:.2f} seconds.")
-        return res
-
-    def _run_m_qubit_vqe(self):
-        start_time = time.time()
-        res = self.config_application_qmgate.qmVQE()
-        elapsed_time = time.time() - start_time
-        print(f"m-Qubit VQE completed in {elapsed_time:.2f} seconds.")
-        return res
 
     def _save_results_to_json(self, results):
         # Create 'data_egm' folder if it does not exist
@@ -398,37 +402,70 @@ class Errorgnomarker(chip):
 
 
 
-# from errorgnomark.token_manager import define_token, get_token
-# Define your token
-# define_token("ROKILmIl4`zT[p8zmPZrFjYNCzS1WnI:qgFJi[m8fK5/1IO5J{OyhkOvNUO6d{OzZEO4FkPjBIfmKDMjN{N7JUN7FkNhNENuRENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnMkGnM{mXdiKHRliYbii3ZjpkJzW3d2Kzf")
-
-# Example usage:
-if __name__ == "__main__":
-        egm = Errorgnomarker(chip_name="Baihua", result_get='noisysimulation')
-        # Run the EGM metrics and get results
-        results = egm.egm_run(
-            rbq1_selected=True,
-            xebq1_selected=True,
-            csbq1_selected=True,
-            rbq2_selected=True,
-            xebq2_selected=True,
-            csbq2_selected=True,
-            csbq2_cnot_selected=True,
-            ghzqm_selected=True,
-            qvqm_selected=True,
-            mrbqm_selected=True,
-            clopsqm_selected=True,
-            vqeqm_selected=True
-        )
-
-        # Optionally, you can use the following methods to generate visuals after running the metrics:
-        # Draw the visual table for selected metrics
-        egm.draw_visual_table()
-
-        # Plot the visual figures for selected metrics
-        egm.plot_visual_figure()
 
 
+"""
+A User Guide for Local QC Measurement & Control System
+
+This script demonstrates how to use the ErrorGnoMark software for quantum chip diagnostics and benchmarking.
+
+If you are using a local quantum computing (QC) measurement and control system, you can access the complete chip information online, including its topology and connectivity.
+
+Notes:
+- This example automatically defines a 5x5 chip structure.
+- The system selects 9 qubits: [0, 1, 2, 3, 4, 5, 6, 7, 8].
+- The chip, qubit index list, and qubit connectivity can be customized by the user.
+- To run on an actual chip, users need to register and provide a valid token.
+"""
+
+# Import Required Modules
+from errorgnomark.errorgnomarker import Errorgnomarker
+from errorgnomark.token_manager import define_token, get_token
+
+# Step 1: Define Your Token
+# Replace with your actual token
+define_token("x3ISVvciCZq2VbQ8Z:VvbTi`3yYiHPtxBuzTGwfBme8/1oN{hUP6F{NvlkN5lUO2BUO4FkPjBIfmKDMjlEN7d{N7BUNhNkNuVENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnMkGnM{mXdiKHRliYbii3ZjpkJzW3d2Kzf")
 
 
+# Step 2: Initialize the Errorgnomarker
+# Use simulation mode or real hardware mode
+egm = Errorgnomarker(
+    chip_name="Baihua",
+    result_get='noisysimulation',  # 'hardware' For real hardware mode
+    qubit_to_be_used=12,           # Enter the number of qubits to use
+    start_qubit=8,                 # Choose the starting qubit index
+    file_path=r"./Baihua_calibration_2025-04-21 12_26_19.csv",
+    weights={
+        'T1': 0.5,                 # Adjust the weight ratio for each coefficient in the calculation of qubit scores.
+        'T2': 0.5,                 # This weight is used to automatically select other qubits starting from start_qubit.
+        'Fidelity': 0,
+        'Frequency': 0
+    },                             # Default is None. Connectivity score accounts for 80% + T1, T2, Fidelity, and Frequency scores account for 20%.
+    run_all_Execute=False,          # Select all qubits. If run_all_Execute=True, qubit_to_be_used and start_qubit will be ignored.
+    rbq1_selected=True,            # Execute Single Qubit RB for Q1
+    xebq1_selected=True,           # Execute Single Qubit XEB for Q1
+    csbq1_selected=True,           # Execute Single Qubit CSB for Q1
+    rbq2_selected=True,            # Execute Two Qubit RB for Q2
+    xebq2_selected=True,           # Execute Two Qubit XEB for Q2
+    csbq2_selected=True,           # Execute Two Qubit CSB for Q2
+    csbq2_cnot_selected=True,      # Execute Two Qubit CNOT CSB
+    ghzqm_selected=True,           # Execute m-Qubit GHZ Fidelity
+    qvqm_selected=True,            # Execute m-Qubit StanQV Fidelity
+    mrbqm_selected=True,           # Execute m-Qubit MRB Fidelity.
+                                   # If run_all_Execute=False,
+                                   # For MRB to run, the selected qubit indices cannot exceed 31.
+                                   # If run_all_Execute=True, the fixed selection is [2,3,4,5,6,7,8,15,16,17,29,30]
+    clopsqm_selected=True,         # Execute m-Qubit Speed CLOPS
+    vqeqm_selected=True            # Execute m-Qubit VQE
+)  # 'noisysimulation' For simulation mode
+# egm = Errorgnomarker(chip_name="Baihua", result_get='hardware')  # For real hardware mode
+
+# Step 3: Run Diagnostics and Benchmarking
+results, filepath = egm.egm_run()
+
+# Step 4: Visualize Results
+egm.draw_visual_table(filepath=filepath)   # Draw the visual table for selected metrics
+egm.plot_visual_figure(filepath=filepath)  # Plot the visual figures for selected metrics
+
+# Results are saved in the data_egm folder, along with tables and figures if enabled.
 

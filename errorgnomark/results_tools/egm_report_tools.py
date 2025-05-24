@@ -8,6 +8,7 @@ import numpy as np
 # Third-party imports
 import matplotlib.pyplot as plt  # For creating visualizations
 
+sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
 
 # ErrorGnoMark-specific imports
 from errorgnomark.results_tools.visualization import VisualPlot  # For generating visual plots
@@ -1022,22 +1023,4 @@ class EGMReportManager:
             plt.savefig(ghzqm_path)  # Save the plot as a PNG file
             plt.close()
 
-
-# import os
-# from errorgnomark.results_tools.egm_report_tools import EGMReportManager  # Import your EGMReportManager class
-
-# # Define the path to the JSON file
-# current_dir = os.getcwd()  # Get the current working directory
-# file_path = "/Users/ousiachai/Desktop/ErrorGnoMark/errorgnomark/data_egm/Baihua_egm_data_20250406_231821.json"  # Correct the file path
-
-# # Create an instance of EGMReportManager
-# report_manager = EGMReportManager(file_path)
-
-# # Generate the Level02 table report
-# report_manager.egm_level02_table()
-
-# # Generate the Level02 figures
-# report_manager.egm_level02_figure()
-
-# print("Reports and figures have been successfully generated!")
 

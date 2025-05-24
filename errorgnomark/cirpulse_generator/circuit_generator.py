@@ -14,6 +14,7 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 import numpy as np  # For numerical operations
 from qiskit import QuantumCircuit  # For creating and managing quantum circuits
 
+sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
 
 # Add the ErrorGnoMark package to the system path
 from errorgnomark.cirpulse_generator.elements import (
@@ -550,12 +551,12 @@ class CircuitGenerator:
 
     def mrbqm_circuit(self, density_cz: float = 0.75, ncr: int = 2):
         """
-        Generate MRB‑QM circuits for qubit groups of size ≥2.
+        Generate MRB-QM circuits for qubit groups of size ≥2.
 
         Parameters
         ----------
         density_cz : float
-            Probability (0,1] of inserting a CZ‑layer at each depth layer.
+            Probability (0,1] of inserting a CZ-layer at each depth layer.
         ncr : int
             Number of random circuits per length.
 
@@ -566,40 +567,40 @@ class CircuitGenerator:
         qubits_for_length : dict
             qubits_for_length[num_qubits][length] = [qubit indices]
         """
-        # ── 0. 参数检查 ──────────────────────────────────────────
+        # -- 0. Parameter check -------------------------------------------
         if not (0 < density_cz <= 1):
             raise ValueError("density_cz must be in the interval (0, 1].")
         if ncr < 1:
             raise ValueError("ncr must be ≥1.")
 
-        # ── 1. 预备列表与容器 ────────────────────────────────────
+        # -- 1. Prepare lists and containers ------------------------------
         length_list        = list(range(self.step_size,
                                         self.length_max + 1,
                                         self.step_size))
-        circuits           = []          # [num_qubits‑2][len_index][ncr]
+        circuits           = []          # [num_qubits-2][len_index][ncr]
         qubits_for_length  = {}          # {num_qubits:{length:[qubits]}}
 
         sorted_qubits = sorted(self.qubit_select)
         if len(sorted_qubits) < 2:
-            raise ValueError("MRB‑QM needs at least 2 qubits to form CZ pairs.")
+            raise ValueError("MRB-QM needs at least 2 qubits to form CZ pairs.")
 
-        # ── 2. 外层：不同 qubit 组大小 (从 2 到全部) ───────────────
+        # -- 2. Outer loop: different group sizes (from 2 to all) ---------
         for num_qubits in range(2, len(sorted_qubits) + 1):
             current_qubits = sorted_qubits[:num_qubits]
-            n_qubits       = max(current_qubits) + 1   # 寄存器大小
+            n_qubits       = max(current_qubits) + 1   # Register size
 
-            circuits_per_qubit = []                    # 长度层次容器
+            circuits_per_qubit = []                    # Per-length container
             qubits_for_length[num_qubits] = {}
 
-            # ── 3. 中层：不同线路长度 ────────────────────────────
+            # -- 3. Middle loop: different circuit lengths -----------------
             for length in length_list:
                 circuits_per_length = []
 
-                # ── 4. 内层：同长度生成 ncr 条随机线路 ───────────
+                # -- 4. Inner loop: generate ncr random circuits for each length --
                 for _ in range(ncr):
                     qc = QuantumCircuit(n_qubits, n_qubits)
 
-                    # 4‑1 初始随机 Clifford
+                    # 4-1 Initial random Clifford
                     clifford_qc = self.clifford_set.random_single_gate_clifford(
                         current_qubits)
                     qc.compose(clifford_qc, inplace=True)
@@ -607,19 +608,19 @@ class CircuitGenerator:
 
                     applied_paulis, applied_czs = [], []
 
-                    # 4‑2 正向随机层
+                    # 4-2 Forward random layers
                     for _layer in range(length):
-                        # (a) 随机 Pauli
+                        # (a) Random Pauli
                         pauli_layer = self.clifford_set.random_pauli(current_qubits)
                         qc.compose(pauli_layer, inplace=True)
                         qc.barrier()
                         applied_paulis.append(pauli_layer)
 
-                        # (b) CZ 层（按 density_cz 概率）
+                        # (b) CZ layer (insert with density_cz probability)
                         if random.random() <= density_cz:
                             qubits_shuffled = current_qubits[:]
                             random.shuffle(qubits_shuffled)
-                            # 步长 2，避免越界；奇数个比特时末位留空
+                            # Step size 2, avoid out-of-bounds; leave last out for odd
                             cz_pairs = [(qubits_shuffled[i], qubits_shuffled[i + 1])
                                         for i in range(0, num_qubits - 1, 2)]
                             for q0, q1 in cz_pairs:
@@ -629,26 +630,26 @@ class CircuitGenerator:
                             applied_czs.append([])
                         qc.barrier()
 
-                    # 4‑3 中央 Pauli
+                    # 4-3 Central Pauli
                     central_pauli = self.clifford_set.random_pauli(current_qubits)
                     qc.compose(central_pauli, inplace=True)
                     qc.barrier()
 
-                    # 4‑4 反向还原层
+                    # 4-4 Reverse layers for uncomputation
                     for rev_idx in reversed(range(length)):
-                        # 反向 CZ
+                        # Reverse CZ
                         for q0, q1 in applied_czs[rev_idx]:
                             qc.cz(q0, q1)
                         qc.barrier()
-                        # 反向 Pauli
+                        # Reverse Pauli
                         qc.compose(applied_paulis[rev_idx], inplace=True)
                         qc.barrier()
 
-                    # 4‑5 撤销初始 Clifford
+                    # 4-5 Undo initial Clifford
                     qc.compose(clifford_qc.inverse(), inplace=True)
                     qc.barrier()
 
-                    # 4‑6 测量
+                    # 4-6 Measurement
                     qc.measure(current_qubits, current_qubits)
 
                     circuits_per_length.append(qc)
@@ -659,6 +660,7 @@ class CircuitGenerator:
             circuits.append(circuits_per_qubit)
 
         return circuits, qubits_for_length
+
 
 
 
