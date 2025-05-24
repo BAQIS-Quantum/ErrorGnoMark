@@ -34,7 +34,7 @@ def build_chessboard_graph(chip_row, chip_col, file_path=r"", run_all=False):
     """
 
     # Set Chinese font for display (can be replaced as needed)
-    rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'WenQuanYi Zen Hei']
+    # rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'WenQuanYi Zen Hei']
     rcParams['axes.unicode_minus'] = False  # Fix negative sign display
 
     try:
@@ -356,7 +356,7 @@ class qubit_selection:
             if 1:
                 visualize_chessboard(chessboard_graph, available_nodes)
             if self.qubit_to_be_used > len(available_nodes):
-                print(f"Requested qubit count {qubit_to_be_used} exceeds available: {len(available_nodes)}. Please select again.")
+                print(f"Requested qubit count {self.qubit_to_be_used} exceeds available: {len(available_nodes)}. Please select again.")
             df = pd.read_csv(self.file_path)
             selected_nodes, edge_count = select_connected_nodes(chessboard_graph, available_nodes, self.qubit_to_be_used,
                                                                 df=df,

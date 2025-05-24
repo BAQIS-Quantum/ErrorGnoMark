@@ -25,8 +25,8 @@ define_token("F8WL`4Y3NBdVhdRzK4Wy84O8[:q9t67K5P4T4i4{ip7/1YO4R{N6JEOvZUN{B{N5dE
 egm = Errorgnomarker(
     chip_name="Baihua",
     result_get='noisysimulation',  # 'hardware' For real hardware mode
-    qubit_to_be_used=12,           # Enter the number of qubits to use
-    start_qubit=8,                 # Choose the starting qubit index
+    qubit_to_be_used=4,           # Enter the number of qubits to use
+    start_qubit=50,                 # Choose the starting qubit index
     file_path=r"./Baihua_calibration_2025-04-21 12_26_19.csv",
     weights={
         'T1': 0.5,                 # Adjust the weight ratio for each coefficient in the calculation of qubit scores.
@@ -34,7 +34,7 @@ egm = Errorgnomarker(
         'Fidelity': 0,
         'Frequency': 0
     },                             # Default is None. Connectivity score accounts for 80% + T1, T2, Fidelity, and Frequency scores account for 20%.
-    run_all_Qubits=True,          # Select all qubits. If run_all_Execute=True, qubit_to_be_used and start_qubit will be ignored.
+    run_all_Qubits=False,          # Select all qubits. If run_all_Execute=True, qubit_to_be_used and start_qubit will be ignored.
     rbq1_selected=True,            # Execute Single Qubit RB for Q1
     xebq1_selected=True,           # Execute Single Qubit XEB for Q1
     csbq1_selected=True,           # Execute Single Qubit CSB for Q1
