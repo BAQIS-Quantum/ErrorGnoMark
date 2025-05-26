@@ -34,7 +34,7 @@ Based on these capabilities, the platform can periodically publish standardized 
 
 ## Version Information
 
-**ErrorGnoMark 0.1.4**  
+**ErrorGnoMark 0.1.7**  
 *Note: This is the latest version. Future updates will align with advancements in relevant research fields and evolving application requirements.*
 
 ## Installation
