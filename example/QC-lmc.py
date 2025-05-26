@@ -34,7 +34,7 @@ egm = Errorgnomarker(
         'Fidelity': 0,
         'Frequency': 0
     },                             # Default is None. Connectivity score accounts for 80% + T1, T2, Fidelity, and Frequency scores account for 20%.
-    run_all_Qubits=False,          # Select all qubits. If run_all_Execute=True, qubit_to_be_used and start_qubit will be ignored.
+    run_all_Qubits=True,          # Select all qubits. If run_all_Execute=True, qubit_to_be_used and start_qubit will be ignored.
     rbq1_selected=True,            # Execute Single Qubit RB for Q1
     xebq1_selected=True,           # Execute Single Qubit XEB for Q1
     csbq1_selected=True,           # Execute Single Qubit CSB for Q1
