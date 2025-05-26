@@ -9,7 +9,6 @@ from pathlib import Path
 from requests.exceptions import RequestException, ReadTimeout  # For HTTP requests and error handling
 from tqdm import tqdm  # For progress bar visualization
 
-sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
 
 from errorgnomark.cirpulse_generator.qubit_selector import qubit_selection, chip  # For qubit selection and chip setup
 from errorgnomark.configuration import (  # For various quality and benchmarking configurations

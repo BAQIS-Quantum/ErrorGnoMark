@@ -1,17 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import json
-
-import matplotlib.colors as mcolors
-from matplotlib import cm
-import json
-
-import numpy as np
-import matplotlib.pyplot as plt
 from matplotlib import cm, colors as mcolors
 import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+
+plt.rcParams['font.sans-serif'] = ['DejaVu Sans']  # matplotlib自带
+plt.rcParams['axes.unicode_minus'] = False
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 class VisualPlot:
     def __init__(self, file_path):
         """

@@ -7,6 +7,10 @@ import numpy as np
 
 # Third-party imports
 import matplotlib.pyplot as plt  # For creating visualizations
+import matplotlib.pyplot as plt
+
+plt.rcParams['font.sans-serif'] = ['DejaVu Sans']  # matplotlib自带
+plt.rcParams['axes.unicode_minus'] = False
 
 
 # ErrorGnoMark-specific imports
