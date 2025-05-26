@@ -8,7 +8,6 @@ import numpy as np
 # Third-party imports
 import matplotlib.pyplot as plt  # For creating visualizations
 
-sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
 
 # ErrorGnoMark-specific imports
 from errorgnomark.results_tools.visualization import VisualPlot  # For generating visual plots

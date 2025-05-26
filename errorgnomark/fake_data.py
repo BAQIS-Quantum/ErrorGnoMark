@@ -1,6 +1,5 @@
 import sys
-# Add the ErrorGnoMark package to the system path
-sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
+
 from errorgnomark.cirpulse_generator.qubit_selector import qubit_selection, chip
 import random
 from typing import List, Dict

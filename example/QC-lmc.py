@@ -1,24 +1,21 @@
 """
-A User Guide for Local QC Measurement & Control System
+User Guide: ErrorGnoMark Quantum Chip Diagnostic & Benchmarking (Local/Cloud QC System)
 
-This script demonstrates how to use the ErrorGnoMark software for quantum chip diagnostics and benchmarking.
+This guide demonstrates how to use the ErrorGnoMark software suite for comprehensive quantum chip diagnostics and benchmarking.
+Users can flexibly customize chip structure, qubit selection, and the set of metrics to evaluate, supporting both local and cloud QC platforms.
 
-If you are using a local quantum computing (QC) measurement and control system, you can access the complete chip information online, including its topology and connectivity.
-
-Notes:
-- This example automatically defines a 5x5 chip structure.
-- The system selects 9 qubits: [0, 1, 2, 3, 4, 5, 6, 7, 8].
-- The chip, qubit index list, and qubit connectivity can be customized by the user.
-- To run on an actual chip, users need to register and provide a valid token.
+Core Features:
+- Supports single-, two-, and multi-qubit benchmarking, error diagnosis, and application-level algorithm evaluation.
+- Customizable for chip name, number of qubits, starting qubit, specific benchmarks to run, and more.
+- Compatible with local or remote (cloud) quantum computing control systems.
 """
 
-# Import Required Modules
+# Step 1. Import Required Packages and Modules
 from errorgnomark.errorgnomarker import Errorgnomarker
 from errorgnomark.token_manager import define_token, get_token
 
-# Step 1: Define Your Token
-# Replace with your actual token
-define_token("hPjq54iTwV{DKN5z7Th5wNe.wVjVXYB8RiV{wtLfb3q/1YOzJUN5dEOvBUP2BUN5BUO4FkPjBIfmKDMjB{N7ZUN7hENhZkNuVENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnM2SX[vRYbjClN3JUO{JENzF{NjpkJzW3d2Kzf")
+# Step 2: Define Your Token
+define_token("yout token here") # Replace with your actual token
 
 # Step 2: Initialize the Errorgnomarker
 # Use simulation mode or real hardware mode
@@ -28,7 +25,8 @@ egm = Errorgnomarker(
                                    # 'noisysimulation' For simulation
     qubit_to_be_used=4,           # Enter the number of qubits to use
     start_qubit=50,                 # Choose the starting qubit index
-    file_path=r"./Baihua_calibration_2025-05-26 07_46_48.csv",
+    file_path=r"./Baihua_calibration_2025-05-26 07_46_48.csv", # 
+    # This file contains the latest published calibration information for the Baihua quantum chip as of May 26, 2025.
     weights={
         'T1': 0.5,                 # Adjust the weight ratio for each coefficient in the calculation of qubit scores.
         'T2': 0.5,                 # This weight is used to automatically select other qubits starting from start_qubit.

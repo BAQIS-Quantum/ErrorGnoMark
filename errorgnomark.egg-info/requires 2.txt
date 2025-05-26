@@ -1,8 +1,0 @@
-numpy<2.0,>=1.23
-scipy<2.0,>=1.9
-matplotlib<4.0,>=3.7
-qiskit<1.0,>=0.39
-qiskit-aer<1.0,>=0.13
-tqdm<5.0,>=4.64
-requests<3.0,>=2.28
-joblib<2.0,>=1.2

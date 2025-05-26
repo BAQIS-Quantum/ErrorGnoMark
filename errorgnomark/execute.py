@@ -20,7 +20,6 @@ from qiskit_aer.noise import (  # Noise modeling for simulations
 )
 from qiskit_aer.noise.errors.quantum_error import NoiseError  # For handling quantum errors
 
-sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
 
 from errorgnomark.token_manager import get_token
 from errorgnomark.fake_data import generate_fake_data_rbq1, generate_fake_data_rbq2  # Fake data generation
