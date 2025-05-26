@@ -18,16 +18,17 @@ from errorgnomark.token_manager import define_token, get_token
 
 # Step 1: Define Your Token
 # Replace with your actual token
-define_token("F8WL`4Y3NBdVhdRzK4Wy84O8[:q9t67K5P4T4i4{ip7/1YO4R{N6JEOvZUN{B{N5dEO4FkPjBIfmKDMjZUN7VkN7BkNhFkNuRENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnM2SX[vRYbjClN3JUO{JENzF{NjpkJzW3d2Kzf")
+define_token("hPjq54iTwV{DKN5z7Th5wNe.wVjVXYB8RiV{wtLfb3q/1YOzJUN5dEOvBUP2BUN5BUO4FkPjBIfmKDMjB{N7ZUN7hENhZkNuVENuVkNxJkJ7JDeimnJtBkPjxX[3WHcjxjJvOnM2SX[vRYbjClN3JUO{JENzF{NjpkJzW3d2Kzf")
 
 # Step 2: Initialize the Errorgnomarker
 # Use simulation mode or real hardware mode
 egm = Errorgnomarker(
     chip_name="Baihua",
     result_get='noisysimulation',  # 'hardware' For real hardware mode
+                                   # 'noisysimulation' For simulation
     qubit_to_be_used=4,           # Enter the number of qubits to use
     start_qubit=50,                 # Choose the starting qubit index
-    file_path=r"./Baihua_calibration_2025-04-21 12_26_19.csv",
+    file_path=r"./Baihua_calibration_2025-05-26 07_46_48.csv",
     weights={
         'T1': 0.5,                 # Adjust the weight ratio for each coefficient in the calculation of qubit scores.
         'T2': 0.5,                 # This weight is used to automatically select other qubits starting from start_qubit.
