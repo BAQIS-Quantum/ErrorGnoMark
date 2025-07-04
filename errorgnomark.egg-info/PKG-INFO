@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: ErrorGnoMark
-Version: 0.1.6
+Version: 0.1.9
 Summary: A Toolkit for Error Diagnosis and Benchmarking for Quantum Chip
 Home-page: https://github.com/BAQIS-Quantum/ErrorGnoMark
 Author: Chai Xudan, Wang Jingbo, Xiaoxiao
@@ -153,12 +153,22 @@ Requires-Dist: typing-inspection==0.4.0
 Requires-Dist: typing_extensions==4.13.1
 Requires-Dist: tzdata==2025.2
 Requires-Dist: urllib3==2.3.0
+Requires-Dist: networkx==3.4.2
 Requires-Dist: wcwidth==0.2.13
 Requires-Dist: xanadu-cloud-client==0.3.2
 Requires-Dist: xyzservices==2025.1.0
 Requires-Dist: zee==0.0.4
 Requires-Dist: zict==3.0.0
 Requires-Dist: zipp==3.21.0
+Requires-Dist: tqdm==4.67.1
+Requires-Dist: requests==2.32.3
+Requires-Dist: matplotlib==3.10.3
+Requires-Dist: pandas==2.2.3
+Requires-Dist: scipy==1.15.3
+Requires-Dist: joblib==1.5.1
+Requires-Dist: qiskit==0.46.3
+Requires-Dist: qiskit-aer==0.14.2
+Requires-Dist: quarkstudio==7.1.8
 Dynamic: author
 Dynamic: author-email
 Dynamic: classifier
@@ -208,7 +218,7 @@ Based on these capabilities, the platform can periodically publish standardized 
 
 ## Version Information
 
-**ErrorGnoMark 0.1.4**  
+**ErrorGnoMark 0.1.9**  
 *Note: This is the latest version. Future updates will align with advancements in relevant research fields and evolving application requirements.*
 
 ## Installation
@@ -235,6 +245,7 @@ cd errorgnomark`
 ```bash
 pip install -e
 ```
+If some dependencies are not installed automatically, you may see errors indicating that certain packages are missing when running the program. In this case, please refer to the requirements.txt file and manually install the required packages using the specified versions.
 
 ### Upgrade to the Latest Version
 To ensure you are using the latest features and improvements, update ErrorGnoMark with:

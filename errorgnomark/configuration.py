@@ -14,7 +14,6 @@ from qiskit.quantum_info import SparsePauliOp  # For representing Pauli operator
 from qiskit_aer import AerSimulator  # For simulating quantum circuits
 from qiskit.primitives import Estimator  # For estimating circuit properties
 
-sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
 
 
 from errorgnomark.cirpulse_generator.circuit_generator import CircuitGenerator  # For circuit generation

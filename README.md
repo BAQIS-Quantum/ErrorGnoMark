@@ -34,7 +34,7 @@ Based on these capabilities, the platform can periodically publish standardized 
 
 ## Version Information
 
-**ErrorGnoMark 0.1.4**  
+**ErrorGnoMark 0.1.9**  
 *Note: This is the latest version. Future updates will align with advancements in relevant research fields and evolving application requirements.*
 
 ## Installation
@@ -61,6 +61,7 @@ cd errorgnomark`
 ```bash
 pip install -e
 ```
+If some dependencies are not installed automatically, you may see errors indicating that certain packages are missing when running the program. In this case, please refer to the requirements.txt file and manually install the required packages using the specified versions.
 
 ### Upgrade to the Latest Version
 To ensure you are using the latest features and improvements, update ErrorGnoMark with:

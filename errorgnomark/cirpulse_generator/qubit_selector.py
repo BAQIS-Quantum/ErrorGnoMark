@@ -3,6 +3,11 @@ from matplotlib import rcParams
 import pandas as pd
 import matplotlib.pyplot as plt
 import math
+import matplotlib.pyplot as plt
+
+plt.rcParams['font.sans-serif'] = ['DejaVu Sans']  # matplotlib自带
+plt.rcParams['axes.unicode_minus'] = False
+
 
 def build_chessboard_graph(chip_row, chip_col, file_path=r"", run_all=False):
     """

@@ -2,12 +2,26 @@ LICENSE
 README.md
 setup.py
 ErrorGnoMark.egg-info/PKG-INFO
-ErrorGnoMark.egg-info/PKG-INFO 2
-ErrorGnoMark.egg-info/SOURCES 2.txt
 ErrorGnoMark.egg-info/SOURCES.txt
-ErrorGnoMark.egg-info/dependency_links 2.txt
 ErrorGnoMark.egg-info/dependency_links.txt
-ErrorGnoMark.egg-info/requires 2.txt
 ErrorGnoMark.egg-info/requires.txt
-ErrorGnoMark.egg-info/top_level 2.txt
 ErrorGnoMark.egg-info/top_level.txt
+errorgnomark/__init__.py
+errorgnomark/configuration.py
+errorgnomark/errorgnomarker.py
+errorgnomark/execute.py
+errorgnomark/fake_data.py
+errorgnomark/simulator.py
+errorgnomark/token_manager.py
+errorgnomark/cirpulse_generator/__init__.py
+errorgnomark/cirpulse_generator/circuit_generator.py
+errorgnomark/cirpulse_generator/elements.py
+errorgnomark/cirpulse_generator/others.py
+errorgnomark/cirpulse_generator/pulse_generator.py
+errorgnomark/cirpulse_generator/qubit_selector.py
+errorgnomark/data_analysis/__init__.py
+errorgnomark/data_analysis/layer_cirgate.py
+errorgnomark/data_analysis/layer_device.py
+errorgnomark/results_tools/__init__.py
+errorgnomark/results_tools/egm_report_tools.py
+errorgnomark/results_tools/visualization.py
