@@ -9,7 +9,7 @@ from pathlib import Path
 from requests.exceptions import RequestException, ReadTimeout  # For HTTP requests and error handling
 from tqdm import tqdm  # For progress bar visualization
 
-sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
+# sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
 
 from errorgnomark.cirpulse_generator.qubit_selector import qubit_selection, chip  # For qubit selection and chip setup
 from errorgnomark.configuration import (  # For various quality and benchmarking configurations
@@ -42,7 +42,10 @@ class Errorgnomarker(chip):
                  qvqm_selected=False,  # Execute m-Qubit StanQV Fidelity
                  mrbqm_selected=True,  # Execute m-Qubit MRB Fidelity
                  clopsqm_selected=False,  # Execute m-Qubit Speed CLOPS
-                 vqeqm_selected=False  # Execute m-Qubit VQE
+                 vqeqm_selected=False,  # Execute m-Qubit VQE
+                 Benchmarking=True,
+                 Characterization=False,
+                 mode='simultaneous'
                  ):
         """
         Initializes the ErrorGnoMarker with the specified chip configuration.
@@ -62,6 +65,9 @@ class Errorgnomarker(chip):
         self.mrbqm_selected = mrbqm_selected,  # Execute m-Qubit MRB Fidelity
         self.clopsqm_selected = clopsqm_selected,  # Execute m-Qubit Speed CLOPS
         self.vqeqm_selected = vqeqm_selected    # Execute m-Qubit VQE
+        self.Benchmarking = Benchmarking
+        self.Characterization = Characterization
+        self.mode = mode
 
         # 转换为bool
         self.rbq1_selected = self.rbq1_selected[0]
@@ -110,31 +116,30 @@ class Errorgnomarker(chip):
         print("Qubit Connectivity:", self.qubit_connectivity)
         print("=" * 50)
 
-        self.config_quality_q1gate = QualityQ1Gate(self.qubit_index_list, result_get=result_get)
-        self.config_quality_q2gate = QualityQ2Gate(self.qubit_connectivity, result_get=result_get)
-        self.config_quality_qmgate = QualityQmgate(self.qubit_connectivity, self.qubit_index_list, result_get=result_get)
-        self.config_speed_qmgate = SpeedQmgate(self.qubit_connectivity, self.qubit_index_list, result_get=result_get)
-        self.config_application_qmgate = ApplicationQmgate(self.qubit_connectivity, self.qubit_index_list, result_get=result_get)
-
+        self.config_quality_q1gate = QualityQ1Gate(self.qubit_index_list, result_get=self.result_get)
+        self.config_quality_q2gate = QualityQ2Gate(self.qubit_connectivity, result_get=self.result_get)
+        self.config_quality_qmgate = QualityQmgate(self.qubit_connectivity, self.qubit_index_list, result_get=self.result_get)
+        self.config_speed_qmgate = SpeedQmgate(self.qubit_connectivity, self.qubit_index_list, result_get=self.result_get)
+        self.config_application_qmgate = ApplicationQmgate(self.qubit_connectivity, self.qubit_index_list, result_get=self.result_get)
 
 
     def _run_single_qubit_rb(self):
         start_time = time.time()
-        res = self.config_quality_q1gate.q1rb()
+        res = self.config_quality_q1gate.q1rb(mode=self.mode)
         elapsed_time = time.time() - start_time
         print(f"Single Qubit RB completed in {elapsed_time:.2f} seconds.")
         return res
 
     def _run_single_qubit_xeb(self):
         start_time = time.time()
-        res = self.config_quality_q1gate.q1xeb()
+        res = self.config_quality_q1gate.q1xeb(mode=self.mode, Lightweighting=True)
         elapsed_time = time.time() - start_time
         print(f"Single Qubit XEB completed in {elapsed_time:.2f} seconds.")
         return res
 
     def _run_single_qubit_csb(self):
         start_time = time.time()
-        res = self.config_quality_q1gate.q1csb_pi_over_2_x()
+        res = self.config_quality_q1gate.q1csb_pi_over_2_x(mode=self.mode)
         if res is None:
             print("Error: Q1CSB π/2-x task did not complete successfully.")
             return None
@@ -215,97 +220,102 @@ class Errorgnomarker(chip):
         Based on the selection flags, executes the relevant metric calculation.
         """
         results = {}
-        total_tasks = 10  # Total tasks (metrics to be executed)
-        progress_bar = tqdm(total=total_tasks, desc="Overall Progress", position=0, leave=True)
+        filepath = None
+        if self.Benchmarking:
+            total_tasks = 10  # Total tasks (metrics to be executed)
+            progress_bar = tqdm(total=total_tasks, desc="Overall Progress", position=0, leave=True)
 
-        # Start the total execution timer
-        total_start_time = time.time()
+            # Start the total execution timer
+            total_start_time = time.time()
 
-        try:
-            # Execute selected metrics
-            if self.rbq1_selected:
-                try:
-                    results['res_egmq1_rb'] = self._run_single_qubit_rb()
-                except Exception as e:
-                    print(f"Error during Single Qubit RB: {e}")
+            try:
+                # Execute selected metrics
+                if self.rbq1_selected:
+                    try:
+                        results['res_egmq1_rb'] = self._run_single_qubit_rb()
+                    except Exception as e:
+                        print(f"Error during Single Qubit RB: {e}")
 
-            if self.xebq1_selected:
-                try:
-                    results['res_egmq1_xeb'] = self._run_single_qubit_xeb()
-                except Exception as e:
-                    print(f"Error during Single Qubit XEB: {e}")
+                if self.xebq1_selected:
+                    try:
+                        results['res_egmq1_xeb'] = self._run_single_qubit_xeb()
+                    except Exception as e:
+                        print(f"Error during Single Qubit XEB: {e}")
 
-            if self.csbq1_selected:
-                try:
-                    results['res_egmq1_csbp2x'] = self._run_single_qubit_csb()
-                except Exception as e:
-                    print(f"Error during Single Qubit CSB: {e}")
+                if self.csbq1_selected:
+                    try:
+                        results['res_egmq1_csbp2x'] = self._run_single_qubit_csb()
+                    except Exception as e:
+                        print(f"Error during Single Qubit CSB: {e}")
 
-            if self.rbq2_selected:
-                try:
-                    results['res_egmq2_rb'] = self._run_two_qubit_rb()
-                except Exception as e:
-                    print(f"Error during Two Qubit RB: {e}")
+                if self.rbq2_selected:
+                    try:
+                        results['res_egmq2_rb'] = self._run_two_qubit_rb()
+                    except Exception as e:
+                        print(f"Error during Two Qubit RB: {e}")
 
-            if self.xebq2_selected:
-                try:
-                    results['res_egmq2_xeb'] = self._run_two_qubit_xeb()
-                except Exception as e:
-                    print(f"Error during Two Qubit XEB: {e}")
+                if self.xebq2_selected:
+                    try:
+                        results['res_egmq2_xeb'] = self._run_two_qubit_xeb()
+                    except Exception as e:
+                        print(f"Error during Two Qubit XEB: {e}")
 
-            if self.csbq2_selected:
-                try:
-                    results['res_egmq2_csb'] = self._run_two_qubit_csb()
-                except Exception as e:
+                if self.csbq2_selected:
+                    try:
+                        results['res_egmq2_csb'] = self._run_two_qubit_csb()
+                    except Exception as e:
 
-                    print(f"Error during Two Qubit CSB: {e}")
-            if self.csbq2_cnot_selected:  # Handle CNOT CSB logic
-                try:
-                    results['res_egmq2_csb_cnot'] = self._run_two_qubit_cnot_csb()
-                except Exception as e:
-                    print(f"Error during Two Qubit CNOT CSB: {e}")
+                        print(f"Error during Two Qubit CSB: {e}")
+                if self.csbq2_cnot_selected:  # Handle CNOT CSB logic
+                    try:
+                        results['res_egmq2_csb_cnot'] = self._run_two_qubit_cnot_csb()
+                    except Exception as e:
+                        print(f"Error during Two Qubit CNOT CSB: {e}")
 
-            if self.ghzqm_selected:
-                try:
-                    results['res_egmqm_ghz'] = self._run_m_qubit_ghz()
-                except Exception as e:
-                    print(f"Error during m-Qubit GHZ Fidelity: {e}")
+                if self.ghzqm_selected:
+                    try:
+                        results['res_egmqm_ghz'] = self._run_m_qubit_ghz()
+                    except Exception as e:
+                        print(f"Error during m-Qubit GHZ Fidelity: {e}")
 
-            if self.qvqm_selected:
-                try:
-                    results['res_egmqm_stqv'] = self._run_m_qubit_stqv()
-                except Exception as e:
-                    print(f"Error during m-Qubit StanQV Fidelity: {e}")
+                if self.qvqm_selected:
+                    try:
+                        results['res_egmqm_stqv'] = self._run_m_qubit_stqv()
+                    except Exception as e:
+                        print(f"Error during m-Qubit StanQV Fidelity: {e}")
 
-            if self.mrbqm_selected:
-                try:
-                    results['res_egmqm_mrb'] = self._run_m_qubit_mrb()
-                except Exception as e:
-                    print(f"Error during m-Qubit MRB Fidelity: {e}")
+                if self.mrbqm_selected:
+                    try:
+                        results['res_egmqm_mrb'] = self._run_m_qubit_mrb()
+                    except Exception as e:
+                        print(f"Error during m-Qubit MRB Fidelity: {e}")
 
-            if self.clopsqm_selected:
-                try:
-                    results['res_egmqm_clops'] = self._run_m_qubit_clops()
-                except Exception as e:
-                    print(f"Error during m-Qubit Speed CLOPS: {e}")
+                if self.clopsqm_selected:
+                    try:
+                        results['res_egmqm_clops'] = self._run_m_qubit_clops()
+                    except Exception as e:
+                        print(f"Error during m-Qubit Speed CLOPS: {e}")
 
-            if self.vqeqm_selected:
-                try:
-                    results['res_egmqm_vqe'] = self._run_m_qubit_vqe()
-                except Exception as e:
-                    print(f"Error during m-Qubit VQE: {e}")
+                if self.vqeqm_selected:
+                    try:
+                        results['res_egmqm_vqe'] = self._run_m_qubit_vqe()
+                    except Exception as e:
+                        print(f"Error during m-Qubit VQE: {e}")
 
-        except Exception as e:
-            print(f"An unexpected error occurred during execution: {e}")
-        finally:
-            progress_bar.close()
+            except Exception as e:
+                print(f"An unexpected error occurred during execution: {e}")
+            finally:
+                progress_bar.close()
 
-        # Compute and print the total execution time
-        total_elapsed_time = time.time() - total_start_time
-        print(f"Total execution time: {total_elapsed_time:.2f} seconds.")
+            # Compute and print the total execution time
+            total_elapsed_time = time.time() - total_start_time
+            print(f"Total execution time: {total_elapsed_time:.2f} seconds.")
 
-        # Save results to JSON and return the filepath
-        filepath = self._save_results_to_json(results)
+            # Save results to JSON and return the filepath
+            filepath = self._save_results_to_json(results)
+
+        if self.Characterization:
+            pass
 
         return results, filepath
 
@@ -322,17 +332,30 @@ class Errorgnomarker(chip):
         filepath = os.path.join('data_egm', filename)
 
         # Prepare the full results dictionary with title and initial information
-        full_results = {
-            "title": filename,
-            "chip_info": {
-                "chip_name": self.chip_name,
-                "rows": self.rows,
-                "columns": self.columns
-            },
-            "qubit_index_list": self.qubit_index_list,
-            "qubit_connectivity": self.qubit_connectivity,
-            "results": results
-        }
+        if self.mode == 'respective':
+            full_results = {
+                "title": filename,
+                "chip_info": {
+                    "chip_name": self.chip_name,
+                    "rows": self.rows,
+                    "columns": self.columns
+                },
+                "qubit_index_list": self.qubit_index_list,
+                "qubit_connectivity": self.qubit_connectivity,
+                "respective results": results
+            }
+        elif self.mode == 'simultaneous':
+            full_results = {
+                "title": filename,
+                "chip_info": {
+                    "chip_name": self.chip_name,
+                    "rows": self.rows,
+                    "columns": self.columns
+                },
+                "qubit_index_list": self.qubit_index_list,
+                "qubit_connectivity": self.qubit_connectivity,
+                "simultaneous results": results
+            }
 
         # Save the full results dictionary to a JSON file
         try:
@@ -372,7 +395,7 @@ class Errorgnomarker(chip):
                                          self.vqeqm_selected
                                          )
 
-    def plot_visual_figure(self, filepath='', *args):
+    def plot_visual_figure(self, filepath='', mode='respective', *args):
         """
         Generate figures for the given metrics.
         Automatically uses the latest filepath saved.
@@ -394,7 +417,8 @@ class Errorgnomarker(chip):
                                           self.qvqm_selected,
                                           self.mrbqm_selected,
                                           self.clopsqm_selected,
-                                          self.vqeqm_selected
+                                          self.vqeqm_selected,
+                                          mode=mode
                                           )
 
 

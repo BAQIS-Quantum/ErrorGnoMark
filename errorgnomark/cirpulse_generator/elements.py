@@ -4,9 +4,37 @@ import random  # For generating random numbers
 # Third-party imports
 import numpy as np  # For numerical operations
 from qiskit import QuantumCircuit, transpile  # For creating and transpiling quantum circuits
-from qiskit.circuit.library import CZGate, RXGate, RYGate, RZGate,CXGate  # For specific quantum gates
+from qiskit.circuit.library import CZGate, RXGate, RYGate, RZGate, CXGate  # For specific quantum gates
 from qiskit.circuit import Gate  # For general gate operations
 from qiskit.quantum_info import Operator, random_unitary  # For quantum information utilities
+
+# 单比特 Clifford 群的 24 个标准生成方式
+sequences = [
+    [],  # I
+    ['S'],  # S
+    ['S', 'S'],  # S^2 = Z
+    ['S', 'S', 'S'],  # S^3 = S†
+    ['H'],  # H
+    ['H', 'S'],  # HS
+    ['H', 'S', 'S'],  # HS^2
+    ['H', 'S', 'S', 'S'],  # HS^3 = HS†
+    ['S', 'H'],  # SH
+    ['S', 'H', 'S'],  # SHS
+    ['S', 'H', 'S', 'S'],  # SHS^2
+    ['S', 'H', 'S', 'S', 'S'],  # SHS^3 = SHS†
+    ['S', 'S', 'H'],  # S^2 H
+    ['S', 'S', 'H', 'S'],  # S^2 HS
+    ['S', 'S', 'H', 'S', 'S'],  # S^2 HS^2
+    ['S', 'S', 'H', 'S', 'S', 'S'],  # S^2 HS^3 = S^2 HS†
+    ['S', 'S', 'S', 'H'],  # S^3 H = S† H
+    ['S', 'S', 'S', 'H', 'S'],  # S† HS
+    ['S', 'S', 'S', 'H', 'S', 'S'],  # S† HS^2
+    ['S', 'S', 'S', 'H', 'S', 'S', 'S'],  # S† HS^3 = S† HS†
+    ['H', 'S', 'H'],  # HSH
+    ['H', 'S', 'H', 'S'],  # HSHS
+    ['H', 'S', 'H', 'S', 'S'],  # HSHS^2
+    ['H', 'S', 'H', 'S', 'S', 'S'],  # HSHS†
+]
 
 
 class CliffordGateSet:
@@ -35,36 +63,13 @@ class CliffordGateSet:
         Returns:
             QuantumCircuit: The generated Clifford gates as a QuantumCircuit.
         """
-        sequences = [
-            [],  # I
-            ['S'],  # S
-            ['S', 'S'],  # S^2 = Z
-            ['S', 'S', 'S'],  # S^3 = S†
-            ['H'],  # H
-            ['H', 'S'],  # HS
-            ['H', 'S', 'S'],  # HS^2
-            ['H', 'S', 'S', 'S'],  # HS^3 = HS†
-            ['S', 'H'],  # SH
-            ['S', 'H', 'S'],  # SHS
-            ['S', 'H', 'S', 'S'],  # SHS^2
-            ['S', 'H', 'S', 'S', 'S'],  # SHS^3 = SHS†
-            ['S', 'S', 'H'],  # S^2 H
-            ['S', 'S', 'H', 'S'],  # S^2 HS
-            ['S', 'S', 'H', 'S', 'S'],  # S^2 HS^2
-            ['S', 'S', 'H', 'S', 'S', 'S'],  # S^2 HS^3 = S^2 HS†
-            ['S', 'S', 'S', 'H'],  # S^3 H = S† H
-            ['S', 'S', 'S', 'H', 'S'],  # S† HS
-            ['S', 'S', 'S', 'H', 'S', 'S'],  # S† HS^2
-            ['S', 'S', 'S', 'H', 'S', 'S', 'S'],  # S† HS^3 = S† HS†
-            ['H', 'S', 'H'],  # HSH
-            ['H', 'S', 'H', 'S'],  # HSHS
-            ['H', 'S', 'H', 'S', 'S'],  # HSHS^2
-            ['H', 'S', 'H', 'S', 'S', 'S'],  # HSHS†
-        ]
 
-        qc = QuantumCircuit(max(qubit_indices)+1)
+        # Qiskit没有提供“稀疏qubit编号”的方式。必须从0开始建立，即使前面的不用
+        qc = QuantumCircuit(max(qubit_indices) + 1)  # 创建一个只有量子比特的电路，共 n 个量子比特（qubit），不包含经典比特。
+        # 通常用于只关心量子门序列，不做测量的情况，
+        # 只对qubit_indices进行操作，前面的占位不动
         for i in qubit_indices:
-            sequence = random.choice(sequences)
+            sequence = random.choice(sequences)  # 随机选择一组操作
             for gate in sequence:
                 if gate == 'H':
                     qc.h(i)
@@ -113,7 +118,7 @@ class CliffordGateSet:
         Returns:
             QuantumCircuit: The generated Clifford gates as a QuantumCircuit.
         """
-        qc = QuantumCircuit(max(qubit_indices)+1)
+        qc = QuantumCircuit(max(qubit_indices) + 1)
         for i in qubit_indices:
             single_gates = ['H', 'S', 'S†']
             gate = random.choice(single_gates)
@@ -135,7 +140,7 @@ class CliffordGateSet:
         Returns:
             QuantumCircuit: The generated Pauli gates as a QuantumCircuit.
         """
-        qc = QuantumCircuit(max(qubit_indices)+1)
+        qc = QuantumCircuit(max(qubit_indices) + 1)
         paulis = ['X', 'Y', 'Z']
         for i in qubit_indices:
             pauli = random.choice(paulis)
@@ -149,7 +154,6 @@ class CliffordGateSet:
         return qc
 
 
-
 # Define possible rotation angles (in radians)
 ROTATION_ANGLES = [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
 
@@ -159,6 +163,9 @@ SINGLE_QUBIT_GATES = ['rx', 'ry', 'rz']
 # Define the two-qubit gate (CZGate) instance
 CZ_GATE = CZGate()
 
+# XEB 需要采样自一个单比特的单位酉 2-设计
+# 交叉熵基准（XEB）要求你的单比特门集能在 SU(2) 群上“充分随机”，至少要构成一个单位酉 2-设计（unitary 2-design）。
+# 只从 3 条固定轴、8 个离散角度中选择，并不能覆盖整个 SU(2) 群，也就不是严格的 2-设计。
 def get_random_rotation_gate():
     """
     Randomly select a single-qubit rotation gate and its rotation angle.
@@ -177,6 +184,65 @@ def get_random_rotation_gate():
     else:
         raise ValueError(f"Unsupported gate type: {gate_type}")
     return gate
+
+
+def get_random_clifford_gate(qubit_indices):
+    """
+    生成一个随机单比特Clifford门（基于你给的sequences列表）
+    返回：长度为1的QuantumCircuit，可用作circuit.append(..., [qubit_index])
+    """
+    # Qiskit没有提供“稀疏qubit编号”的方式。必须从0开始建立，即使前面的不用
+    qc = QuantumCircuit(max(qubit_indices) + 1)  # 创建一个只有量子比特的电路，共 n 个量子比特（qubit），不包含经典比特。
+    # 通常用于只关心量子门序列，不做测量的情况，
+    # 只对qubit_indices进行操作，前面的占位不动
+    for i in qubit_indices:
+        sequence = random.choice(sequences)  # 随机选择一组操作
+        for gate in sequence:
+            if gate == 'H':
+                qc.h(i)
+            elif gate == 'S':
+                qc.s(i)
+            elif gate == 'S†':
+                qc.sdg(i)
+    return qc
+
+
+def get_random_haar_gate(qubit_indices):
+    """
+    生成一个近似 Haar 随机的单比特门（酉 2-设计）。
+    返回：一个 Instruction，可以直接 append 到电路上。
+    """
+    qc = QuantumCircuit(max(qubit_indices) + 1)
+
+    for i in qubit_indices:
+        # 1) 随机采样 Euler-Z X Z 角度
+        alpha = random.random() * 2 * np.pi
+        # Beta 分布保证 Haar：cos(beta) 均匀分布
+        u = random.random()
+        beta = np.arccos(1 - 2*u)
+        gamma = random.random() * 2 * np.pi
+
+        # 2) 构造子电路
+        qc.append(RZGate(alpha), [i])
+        qc.append(RXGate(beta),  [i])
+        qc.append(RZGate(gamma), [i])
+    # return qc.to_instruction(label="Random_haar_gate")    # 封装。通过 to_instruction(label="MyGate") 还能给这个子电路门一个名字，方便调试和日志。
+    return qc
+
+def build_xeb_sequence(qubit_index, total_qubits, length):
+    """
+    为单个 qubit_index 构建一条 depth=length 的 XEB 电路，
+    支持电路中总 qubit 数为 total_qubits。
+    """
+    qc = QuantumCircuit(total_qubits, total_qubits)
+    # 随机 Haar 2-design 门序列
+    for _ in range(length):
+        gate = get_random_haar_gate([qubit_index])
+        for gate2, qargs, cargs in gate.data:
+            qc.append(gate2, [qubit_index])
+    # 直接测量 Z 基
+    qc.measure(qubit_index, qubit_index)
+    return qc
 
 
 class csbq1_circuit_generator:
@@ -209,7 +275,8 @@ class csbq1_circuit_generator:
         """
         # Ensure the number of qubits matches the length of qubit_indices
         # num_qubits = len(qubit_indices)
-        qc = QuantumCircuit(qubit_indices[0]+ 1, qubit_indices[0]+ 1)
+        total_qubits = max(qubit_indices) + 1
+        qc = QuantumCircuit(total_qubits, total_qubits)
 
         # Prepare the initial state
         if ini_mode == 'x':
@@ -436,8 +503,6 @@ class Csbq2_cz_circuit_generator:
         return circ_list
 
 
-
-
 class Csbq2_cnot_circuit_generator:
     def __init__(self, theta=np.pi):
         self.theta = theta  # Phase parameter for the controlled-NOT gate
@@ -446,7 +511,7 @@ class Csbq2_cnot_circuit_generator:
             np.array([1, 0, 0, 0]),  # |00> eigenstate
             np.array([0, 0, 0, 1]),  # |11> eigenstate
             1 / np.sqrt(2) * np.array([0, 1, -1, 0]),  # (|01> - |10>) eigenstate
-            1 / np.sqrt(2) * np.array([0, 1, 1, 0])   # (|01> + |10>) eigenstate
+            1 / np.sqrt(2) * np.array([0, 1, 1, 0])  # (|01> + |10>) eigenstate
         ]
 
     def prepare_initial_state(self, qc, mode, qubit_indices=[0, 1]):
@@ -550,20 +615,12 @@ class Csbq2_cnot_circuit_generator:
         return circ_list
 
 
-
-
-
-
-
-
-
 def permute_qubits(num_qubits):
     """
     Generate a random permutation of qubit indices from 0 to num_qubits - 1.
     """
     rng = np.random.default_rng()
     return list(rng.permutation(num_qubits))
-
 
 
 def apply_random_su4_layer(qc, num_qubits):
@@ -581,29 +638,31 @@ def apply_random_su4_layer(qc, num_qubits):
     Returns:
         QuantumCircuit: The modified quantum circuit with SU4 layers applied.
     """
+
     def permute_qubits(num_qubits):
         """
         Generate a random permutation of qubit indices from 0 to num_qubits - 1.
         """
         rng = np.random.default_rng()
         return list(rng.permutation(num_qubits))
-    
+
     # Step 1: Generate a random permutation of qubits
     permuted_qubits = permute_qubits(num_qubits)
-    
+
     # Step 2: Apply random SU4 to each adjacent pair based on the permutation
     for qubit_idx in range(0, num_qubits, 2):
         if qubit_idx < num_qubits - 1:
             # Select the pair of qubits based on the permutation
             q1 = permuted_qubits[qubit_idx]
             q2 = permuted_qubits[qubit_idx + 1]
-            
+
             # Generate a random SU4 unitary matrix (4x4)
-            su4_unitary = random_unitary(4).data  # Qiskit's random_unitary returns a Unitery object; .data gives the matrix
-            
+            su4_unitary = random_unitary(
+                4).data  # Qiskit's random_unitary returns a Unitery object; .data gives the matrix
+
             # Apply the unitary matrix to the selected qubits
             qc.unitary(su4_unitary, [q1, q2], label='SU4')
-    
+
     return qc
 
 
@@ -614,5 +673,3 @@ def qv_circuit_layer(qc, num_qubits):
     permute_qubits(num_qubits)
     apply_random_su4_layer(qc, num_qubits)
     return qc
-
-

@@ -108,6 +108,7 @@ def map_circuit(circuit: QuantumCircuit,
         raise ValueError("State-vector simulators typically support ≤30 qubits.")
 
     # --- build qubit map ---
+    # TODO simultaneous时有很多qubits，映射关系需要修改
     if n_q == 1:
         qmap = {active_qubits[0]: 0}
         new_nq = 1
@@ -119,7 +120,7 @@ def map_circuit(circuit: QuantumCircuit,
         new_nq = n_q
 
     # --- classical bits collapse to 0 ---
-    cmap = {c: 0 for c in active_cbits}
+    cmap = {c: 0 for c in active_cbits}  # TODO 经典bit都映射到0有问题吗
     new_nc = 1
 
     # --- new circuit ---
@@ -155,7 +156,7 @@ def map_circuit(circuit: QuantumCircuit,
 
 
 class QuantumJobRunner:
-    def __init__(self, circuits):
+    def __init__(self, circuits, mode='respective'):
         """
         Initializes the Quantum Job Runner.
 
@@ -164,6 +165,7 @@ class QuantumJobRunner:
                              Each element represents a single circuit execution.
         """
         self.circuits = circuits
+        self.mode = mode
 
     def validate_token(self, token):
         """
@@ -333,8 +335,11 @@ class QuantumJobRunner:
             return sorted(active_qubits), sorted(active_cbits), total_cbits
 
         # Function to remap counts
+        # TODO 真的还原编号了吗
         def remap_counts(remapped_counts, qubit_mapping, cbit_mapping, total_cbits):
+            # 得到原经典比特编号的排序列表
             sorted_original_cbits = sorted(cbit_mapping.keys())
+
             final_counts = {}
             for bitstring, count in remapped_counts.items():
                 bitstring = bitstring[::-1]  # Reverse the bitstring
@@ -345,6 +350,7 @@ class QuantumJobRunner:
             return final_counts
 
         # Build noise model
+        # 用于模拟量子计算中的各种常见噪声（如退极化、振幅阻尼、相位阻尼），并自动添加到所有单比特门上
         if noise_model is True:
             noise_model = build_custom_noise_model()
         elif noise_model is False or noise_model is None:
@@ -355,7 +361,6 @@ class QuantumJobRunner:
         counts, execution_times = [], []
         total_circuits = len(self.circuits)
 
-        # TODO active_qubits始终只有两个，这是2bit间的操作吗
         for idx, circuit in enumerate(self.circuits):
             active_qubits, active_cbits, total_cbits = get_active_qubits_and_cbits(circuit)
             if not active_qubits:
@@ -369,15 +374,25 @@ class QuantumJobRunner:
                 # Prepare the circuit and map qubits and classical bits
                 mapped_circuit, qubit_mapping, cbit_mapping = map_circuit(circuit, active_qubits, active_cbits)
                 if compile:
+                    # 转换成可以在指定量子硬件（或模拟器）上“直接执行”的低层次门序列。
+                    # 转译优化级别，0 表示“无优化”，只做必要的转换，不做深度门优化。
+                    # 1~3：逐步提升优化强度（如合并门、减少门数、优化测量顺序等）。
                     transpiled_circuit = transpile(mapped_circuit, simulator, optimization_level=0)
                 else:
                     transpiled_circuit = mapped_circuit
             else:
-                # For more than 2 qubits, directly execute the circuit without mapping
+                # mapped_circuit, qubit_mapping, cbit_mapping = map_circuit(circuit, active_qubits, active_cbits)
+                # TODO 需要complie吗
+                # if compile:
+                #     transpiled_circuit = transpile(circuit, simulator, optimization_level=0)
+                # else:
+                    # For more than 2 qubits, directly execute the circuit without mapping
                 transpiled_circuit = circuit
 
             try:
                 start_time = time.time()
+                # shots=shots：表示重复执行这个电路多少次。比如 4096 次。
+                # 这样可以得到概率统计（比如测量出 0 和 1 的相对比例），模拟实际量子测量的“重复实验”效果。
                 job = simulator.run(transpiled_circuit, shots=shots)
                 result = job.result()
 
@@ -390,14 +405,29 @@ class QuantumJobRunner:
                 elapsed = time.time() - start_time
                 counts_mapped = result.get_counts(transpiled_circuit)
 
-                if counts_mapped is None or len(counts_mapped) == 0:
-                    print(f"Warning: No counts returned for circuit {idx + 1}")
-                    counts.append({})
-                else:
-                    remapped_counts = remap_counts(counts_mapped, qubit_mapping, cbit_mapping, total_cbits) if len(active_qubits) <= 2 else counts_mapped
-                    counts.append(remapped_counts)
+                if self.mode == 'respective':
+                    if counts_mapped is None or len(counts_mapped) == 0:
+                        print(f"Warning: No counts returned for circuit {idx + 1}")
+                        counts.append({})
+                    else:
+                        if len(active_qubits) <= 2:
+                            remapped_counts = remap_counts(counts_mapped, qubit_mapping, cbit_mapping, total_cbits) if len(active_qubits) <= 2 else counts_mapped
+                            counts.append(remapped_counts)
+                        else:
+                            counts.append(counts_mapped)
 
-                execution_times.append(elapsed)
+                    execution_times.append(elapsed)
+                elif self.mode == 'simultaneous':
+                    target_qubits = active_qubits  # 原电路中经典比特编号的升序列表
+                    filtered_counts = {}
+                    for bitstring, count in counts_mapped.items():
+                        # 反转bitstring，使得bitstring[0]对应cbit 0
+                        reversed_bitstring = bitstring[::-1]
+                        # 取出目标qubit对应的位（如47、48、49、50）,'0001' = 47:0, 48:0, 49:0, 50:1
+                        reduced_bits = ''.join([reversed_bitstring[q] for q in target_qubits])
+                        # 统计
+                        filtered_counts[reduced_bits] = filtered_counts.get(reduced_bits, 0) + count
+                    counts.append(filtered_counts)
 
             except Exception as e:
                 print(f"Error running circuit {idx + 1}: {e}")

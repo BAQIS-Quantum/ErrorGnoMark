@@ -28,7 +28,10 @@ from errorgnomark.cirpulse_generator.elements import (
     permute_qubits,
     apply_random_su4_layer,
     qv_circuit_layer,
-    CliffordGateSet  # For Clifford gate operations
+    CliffordGateSet,  # For Clifford gate operations
+    build_xeb_sequence,
+    get_random_haar_gate,
+    get_random_clifford_gate
 )
 
 
@@ -67,7 +70,7 @@ class CircuitGenerator:
     could be used in principle.
     """
 
-    def __init__(self, qubit_select, qubit_connectivity, length_max=40, step_size=4):
+    def __init__(self, qubit_select, qubit_connectivity, length_max=40, step_size=4, mode='respective'):
         """
         Initializes the Circuit Generator.
 
@@ -82,6 +85,7 @@ class CircuitGenerator:
         self.length_max = length_max
         self.step_size = step_size
         self.clifford_set = CliffordGateSet(backend='quarkstudio', compile=False)
+        self.mode = mode
 
     def rbq1_circuit(self, ncr=1):
         """
@@ -89,50 +93,86 @@ class CircuitGenerator:
 
         Parameters:
             ncr (int): Number of circuits generated for each length.
-
+            mode: 'respective' or 'simultaneous'
         Returns:
             list: A nested list with circuits generated for each qubit and length.
                   Structure: circuits_rbq1[qubit_index][length][ncr].
         """
-        circuits_rbq1 = []
+        circuits_rbq1 = []    # 存放所有qubit的所有线路的列表。
         total_qubits = max(self.qubit_select) + 1  # Determine the total number of qubits
 
-        # Generate circuits for each qubit index
-        for qubit_index in self.qubit_select:
-            length_list = range(2, self.length_max + 1, self.step_size)  # Generate lengths from 2 to length_max
-            length_circuits = []
+        length_list = range(2, self.length_max + 1, self.step_size)
+        if self.mode == 'respective':
+            # Generate circuits for each qubit index
+            for qubit_index in self.qubit_select:
+                length_list = range(2, self.length_max + 1, self.step_size)  # Generate lengths from 2 to length_max
+                length_circuits = []
 
-            # Generate circuits for each length
+                # Generate circuits for each length
+                for length in length_list:
+                    length_circuits_ncr = []
+
+                    # Generate ncr circuits for the current length
+                    for _ in range(ncr):
+                        # Generate a random 1-qubit Clifford gate for the current qubit
+                        random_clifford = self.clifford_set.random_1qubit_clifford([qubit_index])
+                        # 创建一个电路，共 最大个数 量子比特，最大个数 个经典比特（cbit）。经典比特主要用于测量操作的结果存储。
+                        circuit = QuantumCircuit(total_qubits, total_qubits)
+
+                        # Apply Clifford gates in steps based on the circuit length
+                        num_steps = max(1, length // self.step_size)
+                        for _ in range(num_steps):
+                            # random_clifford.data 是一个列表，每个元素代表该门分解成的“底层指令”。
+                            # gate：当前这一步要作用的量子门对象（比如 H、S、CNOT等 Qiskit gate 对象）
+                            # qargs：这个门要作用的量子比特位置（如 [0]、[1]、[0,1]），是 qubit 的索引列表
+                            # cargs：这个门要作用的经典比特位置（如果有，比如测量门，否则是空列表）
+                            for gate, qargs, cargs in random_clifford.data:
+                                # Apply the random 1-qubit Clifford gates to the specified qubit
+                                circuit.append(gate, [qubit_index])
+
+                        # Apply the inverse operation
+                        # 递归地复制一个对象及其所有子对象，创建一个和原对象内容一模一样、但内存完全独立的新对象。
+                        circuit_copy = deepcopy(circuit)
+                        # 生成某个电路的“反演电路”（inverse），但又要保留原电路不变，就需要先深拷贝。
+                        circuit_inverse = circuit_copy.inverse()
+                        # append 只接受“单个门”或者Instruction对象，不接受整个电路。
+                        # 使用compose把“另一个整个QuantumCircuit电路”接到本电路后面，实现电路“级联”。
+                        circuit = circuit.compose(circuit_inverse)
+
+                        # Measure the qubit
+                        # 对指定量子比特进行测量，并把结果存入对应的经典比特。
+                        circuit.measure(qubit_index, qubit_index)
+
+                        length_circuits_ncr.append(circuit)
+
+                    length_circuits.append(length_circuits_ncr)
+                circuits_rbq1.append(length_circuits)
+            return circuits_rbq1
+        elif self.mode == 'simultaneous':
+            # 同时RB：一条电路上所有目标qubit都走自己的随机Clifford和逆门，并各自测量
+            length_circuits_all = []
             for length in length_list:
                 length_circuits_ncr = []
-                
-                # Generate ncr circuits for the current length
                 for _ in range(ncr):
-                    # Generate a random 1-qubit Clifford gate for the current qubit
-                    random_clifford = self.clifford_set.random_1qubit_clifford([qubit_index])
                     circuit = QuantumCircuit(total_qubits, total_qubits)
-
-                    # Apply Clifford gates in steps based on the circuit length
-                    num_steps = max(1, length // self.step_size)
-                    for _ in range(num_steps):
+                    # 对每个qubit都生成一套自己的随机Clifford序列
+                    for qubit_index in self.qubit_select:
+                        # for _ in range(length):
+                        random_clifford = self.clifford_set.random_1qubit_clifford([qubit_index])
                         for gate, qargs, cargs in random_clifford.data:
-                            # Apply the random 1-qubit Clifford gates to the specified qubit
                             circuit.append(gate, [qubit_index])
-
-                    # Apply the inverse operation
+                    # 对每个qubit都加自己的逆门
                     circuit_copy = deepcopy(circuit)
                     circuit_inverse = circuit_copy.inverse()
                     circuit = circuit.compose(circuit_inverse)
-
-                    # Measure the qubit
-                    circuit.measure(qubit_index, qubit_index)
-
+                    # 对所有qubit测量
+                    for qubit_index in self.qubit_select:
+                        circuit.measure(qubit_index, qubit_index)
                     length_circuits_ncr.append(circuit)
-                
-                length_circuits.append(length_circuits_ncr)
-            circuits_rbq1.append(length_circuits)
+                length_circuits_all.append(length_circuits_ncr)
+            # 保持返回结构兼容
+            return [length_circuits_all]
 
-        return circuits_rbq1
 
     def rbq2_circuit(self, ncr=1):
         """
@@ -185,7 +225,7 @@ class CircuitGenerator:
 
 
 
-    def xebq1_circuit(self, ncr=30):
+    def xebq1_circuit(self, ncr=30, Lightweighting=True):
         """
         Generate random 1-qubit XEB gate circuits.
 
@@ -198,10 +238,53 @@ class CircuitGenerator:
         circuits_xebq1 = []
         total_qubits = max(self.qubit_select) + 1  # Determine the total number of qubits
 
-        # Iterate over selected qubits
-        for qubit_index in self.qubit_select:
+        if self.mode == 'respective':
+            # Iterate over selected qubits
+            for qubit_index in self.qubit_select:
+                # Generate lengths from 1 to length_max in steps of step_size
+                length_list = range(1, self.length_max + 1, self.step_size)
+                length_circuits = []
+
+                # Iterate over each circuit length
+                for length in length_list:
+                    length_circuits_ncr = []
+
+                    # Generate ncr circuits for each length
+                    for _ in range(ncr):
+                        if Lightweighting:
+                            # Initialize the main circuit for the current qubit
+                            circuit = QuantumCircuit(total_qubits, total_qubits)
+
+                            # Apply 'length' number of random rotation gates
+                            for _ in range(length):
+                                gate = get_random_rotation_gate()  # Random gate generator
+                                circuit.append(gate, [qubit_index])  # Apply gate to the selected qubit
+
+                            # 打乱测量基底，平摊SPAM偏差
+                            # Add one final random rotation gate at the end
+                            final_gate = get_random_rotation_gate()  # Random gate for final layer
+                            circuit.append(final_gate, [qubit_index])
+
+                            # Measure the qubit
+                            circuit.measure(qubit_index, qubit_index)
+                            length_circuits_ncr.append(circuit)  # Store the generated circuit for this length
+                        # *******************************************************************
+                        else:
+                            # TODO 随机 Random_haar_gate
+                            circuit = build_xeb_sequence(qubit_index, total_qubits, length)
+                            length_circuits_ncr.append(circuit)
+
+                    length_circuits.append(length_circuits_ncr)  # Store circuits for all lengths
+
+                circuits_xebq1.append(length_circuits)  # Store circuits for all qubits
+
+            return circuits_xebq1
+
+        elif self.mode == 'simultaneous':
+            length_circuits_all = []
+
             # Generate lengths from 1 to length_max in steps of step_size
-            length_list = range(1, self.length_max + 1, self.step_size) 
+            length_list = range(1, self.length_max + 1, self.step_size)
             length_circuits = []
 
             # Iterate over each circuit length
@@ -213,25 +296,46 @@ class CircuitGenerator:
                     # Initialize the main circuit for the current qubit
                     circuit = QuantumCircuit(total_qubits, total_qubits)
 
-                    # Apply 'length' number of random rotation gates
-                    for _ in range(length):
-                        gate = get_random_rotation_gate()  # Random gate generator
-                        circuit.append(gate, [qubit_index])  # Apply gate to the selected qubit
-                    
-                    # Add one final random rotation gate at the end
-                    final_gate = get_random_rotation_gate()  # Random gate for final layer
-                    circuit.append(final_gate, [qubit_index])
+                    # 对每个qubit都生成一套自己的随机门序列
+                    # 在circuit中，每增加一个门和测量就会使circuit的长度加1
+                    for qubit_index in self.qubit_select:
+                        if Lightweighting:
+                            # Apply 'length' number of random rotation gates
+                            for _ in range(length):   # get_random_rotation_gate
+                                gate = get_random_rotation_gate()  # Random gate generator
+                                circuit.append(gate, [qubit_index])  # Apply gate to the selected qubit
 
-                    # Measure the qubit
-                    circuit.measure(qubit_index, qubit_index)
+                            # 打乱测量基底，平摊SPAM偏差
+                            # Add one final random rotation gate at the end
+                            final_gate = get_random_rotation_gate()  # Random gate for final layer
+                            circuit.append(final_gate, [qubit_index])
+
+                        # *******************************************************************
+                        else:
+                            # TODO 随机 Random_haar_gate
+                            for _ in range(length):
+                                gate = get_random_haar_gate([qubit_index])  # 或get_random_clifford_gate()  get_random_haar_gate
+                                for gate2, qargs, cargs in gate.data:
+                                    circuit.append(gate2, [qubit_index])
+                            # 只需直接测量Z基，不加打乱
+                            circuit.measure(qubit_index, qubit_index)
+                        # *******************************************************************
+                    if Lightweighting:
+                        # *******************************************************************
+                        # 对所有qubit测量
+                        for qubit_index in self.qubit_select:
+                            circuit.measure(qubit_index, qubit_index)
+                    # *******************************************************************
 
                     length_circuits_ncr.append(circuit)  # Store the generated circuit for this length
 
                 length_circuits.append(length_circuits_ncr)  # Store circuits for all lengths
 
-            circuits_xebq1.append(length_circuits)  # Store circuits for all qubits
+            length_circuits_all.append(length_circuits)  # Store circuits for all qubits
 
-        return circuits_xebq1
+            return [length_circuits]
+        else:
+            pass
 
     def xebq2_circuit(self, ncr=30):
         """
@@ -311,25 +415,44 @@ class CircuitGenerator:
         Returns:
             list: A nested list containing CSB circuits for each qubit.
         """
-        circuits_grouped = []
+        if self.mode == 'respective':
+            circuits_grouped = []
 
-        # Iterate over the selected qubits
-        qubit_qubit_select_new = len(self.qubit_select) * [0]
-        for qubit in qubit_qubit_select_new:
+            # *[0]是什么
+            # Iterate over the selected qubits
+            # qubit_qubit_select_new = len(self.qubit_select) * [0]
+            for qubit in self.qubit_select:
+                csb_gen = csbq1_circuit_generator(rot_axis='x', rot_angle=np.pi/2, rep=rep)  # Create generator
+                qubit_circuits = []
+
+                # Iterate over different initial modes (e.g., ['x', 'z'])
+                for ini_mode in ini_modes:
+                    # Generate circuits for different lengths (from 0 to max length)
+                    for lc in range(self.length_max + 1):
+                        # TODO 是否添加generate_csbcircuit_for_gate的选项
+                        # Generate the circuit for the current length and initial mode
+                        qc = csb_gen.x_direction_csbcircuit_pi_over_2(lc, ini_mode, qubit_indices=[qubit])
+                        qubit_circuits.append(qc)
+
+                circuits_grouped.append(qubit_circuits)  # Append the circuits for this qubit
+            return circuits_grouped
+        elif self.mode == 'simultaneous':
+            circuits_grouped = []
             csb_gen = csbq1_circuit_generator(rot_axis='x', rot_angle=np.pi/2, rep=rep)  # Create generator
             qubit_circuits = []
-            
+
             # Iterate over different initial modes (e.g., ['x', 'z'])
             for ini_mode in ini_modes:
                 # Generate circuits for different lengths (from 0 to max length)
                 for lc in range(self.length_max + 1):
                     # Generate the circuit for the current length and initial mode
-                    qc = csb_gen.x_direction_csbcircuit_pi_over_2(lc, ini_mode, qubit_indices=[qubit])
+                    qc = csb_gen.x_direction_csbcircuit_pi_over_2(lc, ini_mode, qubit_indices=self.qubit_select)
                     qubit_circuits.append(qc)
-            
-            circuits_grouped.append(qubit_circuits)  # Append the circuits for this qubit
 
-        return circuits_grouped
+            circuits_grouped.append(qubit_circuits)  # Append the circuits for this qubit
+            return circuits_grouped
+        else:
+            pass
 
 
 

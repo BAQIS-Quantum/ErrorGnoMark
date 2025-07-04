@@ -34,7 +34,7 @@ class QualityQ1Gate:
         self.qubit_index_list = qubit_index_list
         self.result_get = result_get
 
-    def q1rb(self, length_max=20, step_size=4, use_fake_data=None):
+    def q1rb(self, length_max=20, step_size=4, use_fake_data=None, mode='respective'):
         """
         Generates and runs 1-qubit random benchmarking circuits, and calculates error rates.
 
@@ -42,7 +42,7 @@ class QualityQ1Gate:
             length_max (int): Maximum length of the circuits.
             step_size (int): Step size for the lengths of the circuits.
             use_fake_data (str or bool): Whether to generate fake data instead of executing on real hardware.
-
+            mode: 'respective' or 'simultaneous'
         Returns:
             dict: A dictionary containing qubit indices and their corresponding error rates.
                 Format:
@@ -57,8 +57,10 @@ class QualityQ1Gate:
             qubit_select=self.qubit_index_list,
             qubit_connectivity=[],  # Not used for 1-qubit circuits
             length_max=length_max,
-            step_size=step_size
+            step_size=step_size,
+            mode=mode
         )
+        # TODO 电路太长怎么办，如何限制长度
         circuits = circuit_gen.rbq1_circuit(ncr=20)
 
         # Step 2: Execute circuits and collect results
@@ -75,7 +77,7 @@ class QualityQ1Gate:
             for qubit_circuit in tqdm(circuits, desc="Running Q1RB Tasks", unit="qubit"):
                 length_results = []
                 for length_circuits in qubit_circuit:
-                    job_runner = QuantumJobRunner(length_circuits)
+                    job_runner = QuantumJobRunner(length_circuits, mode=mode)
                     if self.result_get == 'hardware':
                         results = job_runner.quarkstudio_run(compile=False)
                     elif self.result_get == 'noisysimulation':
@@ -92,7 +94,8 @@ class QualityQ1Gate:
         })
 
         # Compute the error rates for each qubit
-        error_rates = metric.rbq1(length_max, step_size)
+        error_rates = metric.rbq1(length_max, step_size, active_qubits=self.qubit_index_list,
+                                  mode=mode)
         
         # Step 4: Clean error rates, convert to float, and remove NaNs
         cleaned_error_rates = {}
@@ -106,7 +109,7 @@ class QualityQ1Gate:
 
         
 
-    def q1xeb(self, length_max=32, step_size=4, use_fake_data=None):
+    def q1xeb(self, length_max=32, step_size=4, use_fake_data=None, mode='respective', Lightweighting=True):
         """
         Generates and runs 1-qubit XEB circuits, including both hardware/fake data execution
         and ideal simulation, and calculates error rates.
@@ -122,9 +125,10 @@ class QualityQ1Gate:
             qubit_select=self.qubit_index_list, 
             qubit_connectivity=[],  # Not used for 1-qubit
             length_max=length_max,
-            step_size=step_size
+            step_size=step_size,
+            mode=mode
         )
-        circuits_xeb1 = circuit_gen.xebq1_circuit(ncr=30)  # Returns [qubit][length][ncr circuits]
+        circuits_xeb1 = circuit_gen.xebq1_circuit(ncr=30, Lightweighting=True)  # Returns [qubit][length][ncr circuits]
 
         # Step 2: Execute circuits and collect results
         total_steps = len(circuits_xeb1)  # Total number of qubits
@@ -134,7 +138,7 @@ class QualityQ1Gate:
 
         with tqdm(total=total_steps, desc="Running Q1XEB Tasks", unit="qubit") as pbar:  # Progress bar
             if use_fake_data == 'fake_dataq1':  # If using fake data
-                job_runner = QuantumJobRunner(circuits_xeb1)  # Pass the circuits directly without looping
+                job_runner = QuantumJobRunner(circuits_xeb1, mode=mode)  # Pass the circuits directly without looping
                 results = job_runner.quarkstudio_run()  # Execute the circuits and get results
                 all_results_hardware = results  # Store the results for hardware execution
                 pbar.update(total_steps)  # Complete progress bar since fake data runs as a single task
@@ -145,13 +149,16 @@ class QualityQ1Gate:
                     qubit_hardware_results = []  # Store hardware results for this qubit
 
                     for length_circuits in qubit_circuits:
+                        # 随机生成（通常是非Clifford）量子电路，并运行在真实量子芯片上，获得测量比特串的统计分布P_exp
+                        # 理论上模拟同一电路，获得理想输出概率P_ideal
+                        # 计算交叉熵
                         # Run simulation for ncr circuits at this qubit and length
-                        job_runner_simulation = QuantumJobRunner(length_circuits)
-                        simulation_results = job_runner_simulation.simulation_ideal_qiskit()  # Ideal simulation results
+                        job_runner_simulation = QuantumJobRunner(length_circuits, mode=mode)
+                        simulation_results = job_runner_simulation.simulation_ideal_qiskit(noise_model=False)  # Ideal simulation results
                         qubit_sim_results.append(simulation_results)
 
                         # Run hardware or noisy simulation
-                        job_runner_hardware = QuantumJobRunner(length_circuits)
+                        job_runner_hardware = QuantumJobRunner(length_circuits, mode=mode)
                         if self.result_get == 'hardware':
                             hardware_results = job_runner_hardware.quarkstudio_run(compile=False)  # Execute on hardware
                         elif self.result_get == 'noisysimulation':
@@ -168,7 +175,7 @@ class QualityQ1Gate:
             'hardware': all_results_hardware,
             'simulation': all_results_simulation
         })
-        error_rates = metric.xebq1(length_max, step_size)  # Calculate error rates from the results
+        error_rates = metric.xebq1(length_max, step_size, active_qubits=self.qubit_index_list, mode=mode)  # Calculate error rates from the results
 
         # Clean error rates: convert to float and remove NaNs
         clean_error_rates = [float(rate) if not np.isnan(rate) else None for rate in error_rates]
@@ -181,7 +188,7 @@ class QualityQ1Gate:
 
 
 
-    def q1csb_pi_over_2_x(self, csb_avg=True):
+    def q1csb_pi_over_2_x(self, csb_avg=True, mode='respective'):
         """
         Generate and execute π/2-x direction CSB circuits, then calculate and return the error rates.
         """
@@ -190,7 +197,8 @@ class QualityQ1Gate:
             qubit_select=self.qubit_index_list,
             qubit_connectivity=[],
             length_max=40,
-            step_size=4  # Not used for 1-qubit circuits
+            step_size=4,  # Not used for 1-qubit circuits
+            mode=mode
         )
         pi_over_2_x_circuits = circuit_gen.generate_pi_over_2_x_csb_circuits()
 
@@ -216,7 +224,7 @@ class QualityQ1Gate:
                     continue
 
                 # Run the job for this qubit's circuits
-                job_runner = QuantumJobRunner(qubit_circuits)
+                job_runner = QuantumJobRunner(qubit_circuits, mode=mode)
                 try:
                     if self.result_get == 'hardware':
                         results = job_runner.quarkstudio_run(compile=False)
@@ -242,7 +250,7 @@ class QualityQ1Gate:
         }
 
         metric_quality = MetricQuality(all_results)
-        csb_errors = metric_quality.csbq1(csb_avg=csb_avg)
+        csb_errors = metric_quality.csbq1(csb_avg=csb_avg, active_qubits=self.qubit_index_list, mode=mode)
 
         # Compute average error rates if csb_avg=True
         if csb_avg:

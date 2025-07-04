@@ -2,6 +2,7 @@ import networkx as nx
 from matplotlib import rcParams
 import pandas as pd
 import matplotlib.pyplot as plt
+import math
 
 def build_chessboard_graph(chip_row, chip_col, file_path=r"", run_all=False):
     """
@@ -100,7 +101,8 @@ def build_chessboard_graph(chip_row, chip_col, file_path=r"", run_all=False):
 
     return G, available_nodes
 
-def visualize_chessboard(G, available_nodes):
+
+def visualize_chessboard(G, available_nodes, save_path=None):
     """
     Visualize the grid quantum chip connectivity graph.
 
@@ -125,31 +127,58 @@ def visualize_chessboard(G, available_nodes):
         print("Warning: input graph is None")
         return
 
-    plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'WenQuanYi Zen Hei']
-    plt.rcParams['axes.unicode_minus'] = False
+    # plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'WenQuanYi Zen Hei']
+    # plt.rcParams['axes.unicode_minus'] = False
 
     pos = nx.get_node_attributes(G, 'pos')
     available = [node for node in G.nodes if node in available_nodes]
     unavailable = [node for node in G.nodes if node not in available_nodes]
 
     plt.figure(figsize=(10, 8))
-    nx.draw_networkx_nodes(G, pos, nodelist=available,
-                           node_color='lightblue',
-                           node_size=300,
-                           edgecolors='black',
-                           linewidths=0.5)
-    nx.draw_networkx_nodes(G, pos, nodelist=unavailable,
-                           node_color='black',
-                           node_size=300,
-                           alpha=0.7)
-    nx.draw_networkx_edges(G, pos, edge_color='gray', width=1.5, alpha=0.5)
-    labels = {node: node for node in available}
-    nx.draw_networkx_labels(G, pos, labels, font_size=8, font_color='black')
+    # ====== 可视化参数 ======
+    node_size = 800  # 原来直接写死的节点 size
+    node_edge_color = 'navy'  # 深蓝色边缘
+    node_face_color = 'lightblue'  # 浅蓝色填充
+    # 通过 node_size 计算直径（approx.）
+    node_diameter = math.sqrt(node_size)
+    edge_width = node_diameter * 0.5  # 边宽 = 节点直径 × 0.5
+    edge_color = 'skyblue'  # 天蓝色
 
-    plt.title("Quantum chip connectivity\n(Blue: available nodes, Black: unavailable nodes)", pad=20)
+    nx.draw_networkx_nodes(G, pos, nodelist=available,
+                           node_color=node_face_color,
+                           node_size=node_size,
+                           edgecolors=node_edge_color,
+                           linewidths=1.5)
+    nx.draw_networkx_nodes(G, pos, nodelist=unavailable,
+                           node_color='gray',
+                           node_size=node_size,
+                           edgecolors=node_edge_color,
+                           linewidths=1.0,
+                           alpha=0.7)
+
+    # ====== 绘制连边 ======
+    nx.draw_networkx_edges(
+        G, pos,
+        edge_color=edge_color,
+        width=edge_width,
+        alpha=0.8
+    )
+    labels = {node: node for node in available}
+    nx.draw_networkx_labels(G, pos, labels, font_size=12, font_color='black')
+
+    plt.title("Quantum chip connectivity\n(Blue: available nodes, Black: unavailable nodes)", pad=-5)
     plt.axis('off')
     plt.tight_layout()
-    plt.show()
+
+
+    # 不再 plt.show()
+    if save_path:
+        plt.title("")
+        plt.tight_layout()
+        plt.savefig(save_path, format='png', dpi=300)
+    else:
+        plt.show()
+    plt.close()
 
 def select_connected_nodes(chessboard_graph, available_nodes, X, df, initial_qubit,
                            weights=None):

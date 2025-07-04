@@ -955,6 +955,7 @@ class EGMReportManager:
                            mrbqm_selected=False,
                            clopsqm_selected=False,
                            vqeqm_selected=False,
+                           mode='respective'
                            ):
         """
         Generate visualizations for metrics and save them as images based on selected options.
@@ -976,19 +977,19 @@ class EGMReportManager:
 
         # Generate and save the plots based on the selected options
         if rbq1_selected:
-            visualizer.plot_rbq1(grid_size=(12, 13))
-            plt.savefig(rbq1_path)
-            plt.close()
+            visualizer.plot_rbq1(grid_size=(12, 13), mode=mode, path=rbq1_path)
+            # plt.savefig(rbq1_path)
+            # plt.close()
 
         if xebq1_selected:
-            visualizer.plot_xebq1(grid_size=(12, 13))
-            plt.savefig(xebq1_path)
-            plt.close()
+            visualizer.plot_xebq1(grid_size=(12, 13), mode=mode, path=xebq1_path)
+            # plt.savefig(xebq1_path)
+            # plt.close()
 
         if csbq1_selected:
-            visualizer.plot_csbq1(grid_size=(12, 13))
-            plt.savefig(csbq1_path)
-            plt.close()
+            visualizer.plot_csbq1(grid_size=(12, 13), mode=mode, path=xebq1_path)
+            # plt.savefig(csbq1_path)
+            # plt.close()
 
         if rbq2_selected:
             visualizer.plot_rbq2()

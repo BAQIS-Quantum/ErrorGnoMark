@@ -12,6 +12,7 @@ from matplotlib import cm, colors as mcolors
 import matplotlib.patches as patches
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 class VisualPlot:
     def __init__(self, file_path):
         """
@@ -31,7 +32,7 @@ class VisualPlot:
         with open(self.file_path, "r") as f:
             return json.load(f)
 
-    def plot_heatmap_with_spacing(self, grid, title, colorbar_label, cmap='viridis', save_path=None):
+    def plot_heatmap_with_spacing(self, grid, title, colorbar_label, cmap='PuBu', save_path=None):
         """
         Create a heatmap with grid spacing to visualize benchmarking data, with cell values displayed.
         Parameters:
@@ -41,6 +42,7 @@ class VisualPlot:
             cmap (str): Colormap for the heatmap (default: 'viridis').
             save_path (str, optional): Path to save the figure as a PNG file. If None, the figure is not saved.
         """
+        plt.rcParams['font.family'] = 'Times New Roman'
         fig, ax = plt.subplots(figsize=(16, 10))
 
         # Mask the grid where there is no data (np.nan)
@@ -65,45 +67,68 @@ class VisualPlot:
         # Remove the ticks and labels for the empty regions
         ax.set_xticks(np.where(valid_cols)[0])
         ax.set_yticks(np.where(valid_rows)[0])
-
+        # 从左上角开始
+        ax.invert_yaxis()  # 反转 y 轴，使原点在左上角
         # Update the labels to reflect the valid data range
-        ax.set_xticklabels(np.arange(np.sum(valid_cols)))
-        ax.set_yticklabels(np.arange(np.sum(valid_rows)))
+        ax.set_xticklabels(np.arange(np.sum(valid_cols)), fontsize=30)
+        ax.set_yticklabels(np.arange(np.sum(valid_rows)), fontsize=30)
 
-        ax.set_title(title)
-        ax.set_xlabel("Column")
-        ax.set_ylabel("Row")
+        ax.set_title(title, fontsize=30, pad=20)
+        ax.set_xlabel("Column", fontsize=30)
+        ax.set_ylabel("Row", fontsize=30)
 
         # Display the values in each grid cell with 3 decimal places
         for row in range(grid.shape[0]):
             for col in range(grid.shape[1]):
-                if not np.isnan(grid[row, col]):  # Skip NaN values
-                    ax.text(col, row, f'{grid[row, col]:.3f}', ha='center', va='center', color='white', fontsize=10)
-
+                if not np.isnan(grid[row, col]):
+                    ax.text(
+                        col, row,
+                        f'{grid[row, col] * 1e0:.4f}',
+                        ha='center', va='center',
+                        color='black',
+                        fontsize=18
+                    )
         # Create the colorbar to match the figure height
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.1)
 
         # Set color bar based on the grid values
-        sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=np.nanmin(grid), vmax=np.nanmax(grid)))
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=np.nanmin(grid) * 1e0,
+                                                                 vmax=np.nanmax(grid) * 1e0))
+
         sm.set_array([])  # Create an empty array for the ScalarMappable
         cbar = fig.colorbar(sm, cax=cax)
-        cbar.set_label(colorbar_label, rotation=270, labelpad=20)
+        cbar.set_label(f"{colorbar_label}", rotation=270, labelpad=30, fontsize=30)
+        cbar.ax.tick_params(labelsize=30)
 
         # Adjust the layout to ensure the color bar fits correctly and maintains its height
         plt.tight_layout()
 
         # Save the figure if save_path is provided
         if save_path:
-            plt.savefig(save_path, dpi=300)  # Save with high resolution
-            print(f"Figure saved as {save_path}")
+            import os
+            base, _ = os.path.splitext(save_path)
+            png_path = base + '.png'
+            plt.savefig(png_path, dpi=300, format='png')  # Save with high resolution
+            print(f"Figure saved as {png_path}")
+            # EPS
+            # base, _ = os.path.splitext(save_path)
+            eps_path = base + '.eps'
+            plt.savefig(eps_path, dpi=300, format='eps')
+            print(f"Figure saved as {eps_path}")
+            # SVG
+            svg_path = base + '.svg'
+            plt.savefig(svg_path, dpi=300, format='svg')
+            print(f"Figure saved as {svg_path}")
+            # PDF
+            pdf_path = base + '.pdf'
+            plt.savefig(pdf_path, dpi=300, format='pdf')
+            print(f"Figure saved as {pdf_path}")
 
         # Show the plot
         # plt.show()
 
-
-
-    def plot_rbq1(self, grid_size=(12, 13)):
+    def plot_rbq1(self, grid_size=(12, 13), mode='respective', path=None):
         """
         Generate a heatmap for single-qubit Randomized Benchmarking (RB) error rates.
         Parameters:
@@ -112,14 +137,24 @@ class VisualPlot:
         rows, cols = grid_size
 
         # Create the grid dynamically based on the number of qubits
-        num_qubits = len(self.data["results"]["res_egmq1_rb"])  # Get number of qubits
-        grid_rows = (num_qubits // cols) + (1 if num_qubits % cols else 0)  # Calculate grid rows dynamically
+        if mode == 'respective':
+            num_qubits = len(self.data["respective results"]["res_egmq1_rb"])  # Get number of qubits
+            grid_rows = (num_qubits // cols) + (1 if num_qubits % cols else 0)  # Calculate grid rows dynamically
 
-        # Create an empty grid to store the error rates, initialized to NaN
-        grid = np.full((rows, cols), np.nan)  # Using np.nan to indicate empty/unused slots
+            # Create an empty grid to store the error rates, initialized to NaN
+            grid = np.full((rows, cols), np.nan)  # Using np.nan to indicate empty/unused slots
 
-        # Loop through the qubits and fill the grid with their error rates
-        rb_data = self.data["results"]["res_egmq1_rb"]
+            # Loop through the qubits and fill the grid with their error rates
+            rb_data = self.data["respective results"]["res_egmq1_rb"]
+        elif mode == 'simultaneous':
+            num_qubits = len(self.data["simultaneous results"]["res_egmq1_rb"])  # Get number of qubits
+            grid_rows = (num_qubits // cols) + (1 if num_qubits % cols else 0)  # Calculate grid rows dynamically
+
+            # Create an empty grid to store the error rates, initialized to NaN
+            grid = np.full((rows, cols), np.nan)  # Using np.nan to indicate empty/unused slots
+
+            # Loop through the qubits and fill the grid with their error rates
+            rb_data = self.data["simultaneous results"]["res_egmq1_rb"]
 
         for qubit_index, values in rb_data.items():
             qubit_index = int(qubit_index.split('_')[-1])  # Get the qubit index from the string
@@ -135,9 +170,9 @@ class VisualPlot:
                 print(f"Warning: Qubit {qubit_index} exceeds grid size, skipping.")
 
         # Plot the heatmap
-        self.plot_heatmap_with_spacing(grid, "Rbq1 Heatmap", "Error Rate", cmap='viridis')
+        self.plot_heatmap_with_spacing(grid, "Rbq1 Heatmap", "Error Rate", cmap='PuBu', save_path=path)
 
-    def plot_xebq1(self, grid_size=(12, 13)):
+    def plot_xebq1(self, grid_size=(12, 13), mode='respective', path=None):
         """
         Generate a heatmap for single-qubit Cross-Entropy Benchmarking (XEB) error rates.
         Parameters:
@@ -148,25 +183,39 @@ class VisualPlot:
         # Create an empty grid to store the error rates, initialized to NaN
         grid = np.full((rows, cols), np.nan)  # Using np.nan to indicate empty/unused slots
 
-        # Get XEB data, handle case where data might be missing
-        xeb_data = self.data["results"].get("res_egmq1_xeb", {}).get("hardware", [])
+        if mode == 'respective':
+            # Get XEB data, handle case where data might be missing
+            xeb_data = self.data["respective results"].get("res_egmq1_xeb", {}).get("hardware", [])
 
-        for qubit_index, xeb_value in enumerate(xeb_data):
-            # Calculate the row and column for this qubit (fit within a 12x13 grid)
-            row = qubit_index // cols  # Row is based on index divided by the number of columns
-            col = qubit_index % cols  # Column is the remainder
+            for qubit_index, xeb_value in enumerate(xeb_data):
+                # Calculate the row and column for this qubit (fit within a 12x13 grid)
+                row = qubit_index // cols  # Row is based on index divided by the number of columns
+                col = qubit_index % cols  # Column is the remainder
 
-            # Ensure we don't try to write outside the grid (shouldn't happen with the fixed 12x13 grid)
-            if row < rows and col < cols:
-                grid[row, col] = xeb_value
-            else:
-                print(f"Warning: Qubit {qubit_index} exceeds grid size, skipping.")
+                # Ensure we don't try to write outside the grid (shouldn't happen with the fixed 12x13 grid)
+                if row < rows and col < cols:
+                    grid[row, col] = xeb_value
+                else:
+                    print(f"Warning: Qubit {qubit_index} exceeds grid size, skipping.")
+        elif mode == 'simultaneous':
+            # Get XEB data, handle case where data might be missing
+            xeb_data = self.data["simultaneous results"].get("res_egmq1_xeb", {}).get("hardware", [])
+
+            for qubit_index, xeb_value in enumerate(xeb_data):
+                # Calculate the row and column for this qubit (fit within a 12x13 grid)
+                row = qubit_index // cols  # Row is based on index divided by the number of columns
+                col = qubit_index % cols  # Column is the remainder
+
+                # Ensure we don't try to write outside the grid (shouldn't happen with the fixed 12x13 grid)
+                if row < rows and col < cols:
+                    grid[row, col] = xeb_value
+                else:
+                    print(f"Warning: Qubit {qubit_index} exceeds grid size, skipping.")
 
         # Plot the heatmap
-        self.plot_heatmap_with_spacing(grid, "Xebq1 Heatmap", "XEB Value", cmap='viridis')
+        self.plot_heatmap_with_spacing(grid, "Xebq1 Heatmap", "XEB Value", cmap='PuBu', save_path=path)
 
-
-    def plot_csbq1(self, grid_size=(12, 13)):
+    def plot_csbq1(self, grid_size=(12, 13), mode=None, path=None):
         """
         Generate heatmaps for single-qubit CSB metrics, including process infidelities, 
         stochastic infidelities, and angle errors.
@@ -174,27 +223,49 @@ class VisualPlot:
             grid_size (tuple): Fixed dimensions of the grid (default: (12, 13)).
         """
         rows, cols = grid_size
-        csb_data = self.data["results"]["res_egmq1_csbp2x"]
-        process_infidelities = csb_data["process_infidelities"]
-        stochastic_infidelities = csb_data["stochastic_infidelities"]
-        angle_errors = csb_data["angle_errors"]
+        if mode == 'respective':
+            csb_data = self.data["respective results"]["res_egmq1_csbp2x"]
+            process_infidelities = csb_data["process_infidelities"]
+            stochastic_infidelities = csb_data["stochastic_infidelities"]
+            angle_errors = csb_data["angle_errors"]
 
-        # Create empty grids for the different metrics, initialized to NaN
-        process_grid = np.full((rows, cols), np.nan)
-        stochastic_grid = np.full((rows, cols), np.nan)
-        angle_grid = np.full((rows, cols), np.nan)
+            # Create empty grids for the different metrics, initialized to NaN
+            process_grid = np.full((rows, cols), np.nan)
+            stochastic_grid = np.full((rows, cols), np.nan)
+            angle_grid = np.full((rows, cols), np.nan)
 
-        for i, (p_val, s_val, a_val) in enumerate(zip(process_infidelities, stochastic_infidelities, angle_errors)):
-            row = i // cols
-            col = i % cols
-            process_grid[row, col] = p_val
-            stochastic_grid[row, col] = s_val
-            angle_grid[row, col] = a_val
+            for i, (p_val, s_val, a_val) in enumerate(zip(process_infidelities, stochastic_infidelities, angle_errors)):
+                row = i // cols
+                col = i % cols
+                process_grid[row, col] = p_val
+                stochastic_grid[row, col] = s_val
+                angle_grid[row, col] = a_val
+        elif mode == 'simultaneous':
+            csb_data = self.data["simultaneous results"]["res_egmq1_csbp2x"]
+            process_infidelities = csb_data["process_infidelities"]
+            stochastic_infidelities = csb_data["stochastic_infidelities"]
+            angle_errors = csb_data["angle_errors"]
+
+            # Create empty grids for the different metrics, initialized to NaN
+            process_grid = np.full((rows, cols), np.nan)
+            stochastic_grid = np.full((rows, cols), np.nan)
+            angle_grid = np.full((rows, cols), np.nan)
+
+            for i, (p_val, s_val, a_val) in enumerate(zip(process_infidelities, stochastic_infidelities, angle_errors)):
+                row = i // cols
+                col = i % cols
+                process_grid[row, col] = p_val
+                stochastic_grid[row, col] = s_val
+                angle_grid[row, col] = a_val
 
         # Plot the heatmaps for each metric
-        self.plot_heatmap_with_spacing(process_grid, "Csbq1 Process Infidelities Heatmap", "Process Infidelity", cmap='viridis')
-        self.plot_heatmap_with_spacing(stochastic_grid, "Csbq1 Stochastic Infidelities Heatmap", "Stochastic Infidelity", cmap='viridis')
-        self.plot_heatmap_with_spacing(angle_grid, "Csbq1 Angle Errors Heatmap", "Angle Error", cmap='viridis')
+        self.plot_heatmap_with_spacing(process_grid, "Csbq1 Process Infidelities Heatmap", "Process Infidelity",
+                                       save_path='./figures/Csbq1 Process Infidelities Heatmap')
+        self.plot_heatmap_with_spacing(stochastic_grid, "Csbq1 Stochastic Infidelities Heatmap",
+                                       "Stochastic Infidelity",
+                                       save_path='./figures/Csbq1 Stochastic Infidelities Heatmap')
+        self.plot_heatmap_with_spacing(angle_grid, "Csbq1 Angle Errors Heatmap", "Angle Error",
+                                       save_path='./figures/Csbq1 Angle Errors Heatmap')
 
 
     def plot_rbq2(self):
@@ -272,7 +343,6 @@ class VisualPlot:
         plt.tight_layout()
         # plt.show()
 
-
     def plot_xebq2(self):
         """
         Generate a heatmap for two-qubit Cross-Entropy Benchmarking (XEB) error rates.
@@ -281,8 +351,24 @@ class VisualPlot:
         qubit_pairs = self.data["qubit_connectivity"]
         xeb_data = self.data["results"]["res_egmq2_xeb"]["hardware"]
 
+        # 手动排除不需要的点
+        pairs_to_remove = [[0, 1], [4, 5], [5, 6], [11, 12], [18, 19], [26, 27], [27, 28],
+                           [31, 32], [35, 36], [36, 37], [36, 49], [45, 46],
+                           [49, 50], [51, 64], [63, 64], [65, 66], [66, 67],
+                           [68, 69], [73, 86], [84, 97], [89, 90], [100, 101], [110, 111], [111, 112],
+                           [112, 113], [113, 114], [121, 134], [125, 126], [131, 132], [132, 145], [132, 133],
+                           [135, 136], [136, 137], [137, 138],
+                           [140, 153], [140, 141], [146, 147],
+                           ]
+        for i, pair in enumerate(qubit_pairs):
+            if pair in pairs_to_remove or tuple(reversed(pair)) in pairs_to_remove:
+                xeb_data[i] = None
+        # 手动排除结束
+
         # Filter out any null or None data
-        filtered = [(pair, val) for pair, val in zip(qubit_pairs, xeb_data) if val is not None]
+        # filtered = [(pair, val) for pair, val in zip(qubit_pairs, xeb_data) if val is not None]
+        # Retain any null or None data
+        filtered = list(zip(qubit_pairs, xeb_data))
 
         rows, cols = 12, 13  # Fixed grid layout for the chip (12x13)
 
@@ -295,17 +381,18 @@ class VisualPlot:
         min_col, max_col = max(min(used_cols) - 1, 0), min(max(used_cols) + 1, cols - 1)
 
         # Define colormap and normalization
-        norm = mcolors.Normalize(vmin=0, vmax=1)  # Adjust the range as needed based on the data
-        cmap = cm.get_cmap("viridis")  # Use a perceptually uniform colormap
+        norm = mcolors.Normalize(vmin=0, vmax=0.16)  # Adjust the range as needed based on the data
+        cmap = cm.get_cmap("PuBu")  # Use a perceptually uniform colormap
 
+        plt.rcParams['font.family'] = 'Times New Roman'
         fig, ax = plt.subplots(figsize=(16, 10))
         ax.set_aspect('equal')
 
         # Set the axis ticks and labels based on the fixed grid size
         ax.set_xticks(np.arange(0, cols, 1))
         ax.set_yticks(np.arange(0, rows, 1))
-        ax.set_xticklabels(np.arange(0, cols, 1))
-        ax.set_yticklabels(np.arange(0, rows, 1))
+        ax.set_xticklabels(np.arange(0, cols, 1), fontsize=30)
+        ax.set_yticklabels(np.arange(0, rows, 1), fontsize=30)
         ax.set_xticks(np.arange(0, cols, 1) - 0.5, minor=True)
         ax.set_yticks(np.arange(0, rows, 1) - 0.5, minor=True)
         ax.grid(which='minor', color='black', linestyle='-', linewidth=0.5)
@@ -315,7 +402,8 @@ class VisualPlot:
         for (qubit_1, qubit_2), value in filtered:
             try:
                 # Ensure value is a float (if it's not, convert it)
-                process_infidelity = float(value)  # Ensure correct extraction of the value
+                # process_infidelity = float(value)  # Ensure correct extraction of the value
+                process_infidelity = float(value) if value is not None else None
             except (TypeError, ValueError):
                 # Skip if the value is not a valid number
                 continue
@@ -331,19 +419,28 @@ class VisualPlot:
                 numVertices=6,
                 radius=hex_width,
                 orientation=np.pi / 6,
-                facecolor=cmap(norm(process_infidelity)),  # 仅设置填充色
+                # facecolor=cmap(norm(process_infidelity)),  # 仅设置填充色，仅适用图中没有NA的情况
+                facecolor=cmap(norm(process_infidelity)) if process_infidelity is not None else 'lightgray',  # 适用图中有NA的情况
                 edgecolor='black',  # 单独设置边框
                 lw=2
             )
             ax.add_patch(hexagon)
-            ax.text(x_center, y_center, f'{process_infidelity:.3f}',
-                    color='white', ha='center', va='center', fontsize=7)
+            # ax.text(x_center, y_center, f'{process_infidelity:.3f}',
+            # 适用图中有NA的情况
+            ax.text(
+                x_center, y_center,
+                # 值为 None 则显示 "NA"
+                f'{process_infidelity*1e2:.2f}' if process_infidelity is not None else 'NA',
+                color='Black' if process_infidelity is None else 'Black',
+                ha='center', va='center', fontsize=14)
 
         ax.set_xlim(-0.5, cols - 0.5)
         ax.set_ylim(-0.5, rows - 0.5)
-        ax.set_title("XEB Error Rates", fontsize=16)
-        ax.set_xlabel("Column", fontsize=14)
-        ax.set_ylabel("Row", fontsize=14)
+        # 从左上角开始
+        ax.invert_yaxis()  # 反转 y 轴，使原点在左上角
+        ax.set_title("XEB Error Rates", fontsize=30, pad=20)
+        ax.set_xlabel("Column", fontsize=30)
+        ax.set_ylabel("Row", fontsize=30)
 
         # Use make_axes_locatable to ensure colorbar height matches the figure height
         divider = make_axes_locatable(ax)
@@ -351,13 +448,16 @@ class VisualPlot:
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
         sm.set_array([])
         cbar = fig.colorbar(sm, cax=cax)
-        cbar.set_label("Error Rate", rotation=270, labelpad=20)
+        cbar.set_label(f"Error Rate (×1e-2)", rotation=270, labelpad=25, fontsize=30)
+        cbar.ax.tick_params(labelsize=30)
 
         plt.tight_layout()
+        plt.savefig('XEBq2_Heatmap.eps', format='eps', dpi=300)
+        # SVG
+        plt.savefig('XEBq2_Heatmap.svg', dpi=300, format='svg')
+        # PDF
+        plt.savefig('XEBq2_Heatmap.pdf', dpi=300, format='pdf')
         # plt.show()
-
-
-
 
     def plot_csbq2_cz(self):
         """
@@ -453,8 +553,24 @@ class VisualPlot:
         qubit_pairs = self.data["qubit_connectivity"]
         csb_data = self.data["results"]["res_egmq2_csb_cnot"]["qubit_pairs_results"]  # CSB data for CNOT gate
 
+        # 手动排除一些qubits
+        pairs_to_remove = [[0, 1], [4, 5], [5, 6], [11, 12], [18, 19], [26, 27], [27, 28],
+                           [31, 32], [35, 36], [36, 37], [36, 49], [45, 46],
+                           [49, 50], [51, 64], [63, 64], [65, 66], [66, 67],
+                           [68, 69], [73, 86], [84, 97], [89, 90], [100, 101], [110, 111], [111, 112],
+                           [112, 113], [113, 114], [121, 134], [125, 126], [131, 132], [132, 145], [132, 133],
+                           [135, 136], [136, 137], [137, 138],
+                           [140, 153], [140, 141], [146, 147],
+                           ]
+        for i, pair in enumerate(qubit_pairs):
+            if pair in pairs_to_remove or tuple(reversed(pair)) in pairs_to_remove:
+                csb_data[i] = None
+        # 手动排除结束
+
         # Filter out any null or None data
-        filtered = [(pair, val) for pair, val in zip(qubit_pairs, csb_data) if val is not None]
+        # filtered = [(pair, val) for pair, val in zip(qubit_pairs, csb_data) if val is not None]
+        # Retain any null or None data
+        filtered = list(zip(qubit_pairs, csb_data))
 
         # Find the actual used coordinates (rows, cols)
         used_rows = [q // cols for pair, _ in filtered for q in pair]
@@ -464,17 +580,18 @@ class VisualPlot:
         min_row, max_row = max(min(used_rows) - 1, 0), min(max(used_rows) + 1, rows - 1)
         min_col, max_col = max(min(used_cols) - 1, 0), min(max(used_cols) + 1, cols - 1)
 
-        norm = mcolors.Normalize(vmin=0, vmax=1)  # Normalize the data values for color mapping
+        norm = mcolors.Normalize(vmin=0, vmax=0.16)  # Normalize the data values for color mapping
         cmap = cm.get_cmap("viridis")  # Use a perceptually uniform colormap
 
+        plt.rcParams['font.family'] = 'Times New Roman'
         fig, ax = plt.subplots(figsize=(16, 10))
         ax.set_aspect('equal')
 
         # Set the axis ticks and labels based on the valid rows and columns
         ax.set_xticks(np.arange(min_col, max_col + 1))
         ax.set_yticks(np.arange(min_row, max_row + 1))
-        ax.set_xticklabels(np.arange(min_col, max_col + 1))
-        ax.set_yticklabels(np.arange(min_row, max_row + 1))
+        ax.set_xticklabels(np.arange(min_col, max_col + 1), fontsize=30)
+        ax.set_yticklabels(np.arange(min_row, max_row + 1), fontsize=30)
         ax.set_xticks(np.arange(min_col, max_col + 1) - 0.5, minor=True)
         ax.set_yticks(np.arange(min_row, max_row + 1) - 0.5, minor=True)
         ax.grid(which='minor', color='black', linestyle='-', linewidth=0.5)
@@ -484,7 +601,8 @@ class VisualPlot:
         for (qubit_1, qubit_2), value in filtered:
             try:
                 # Ensure value is a float (if it's not, convert it)
-                process_infidelity = float(value["process_infidelity"])  # Ensure correct extraction of the value
+                # process_infidelity = float(value["process_infidelity"])  # Ensure correct extraction of the value
+                process_infidelity = float(value["process_infidelity"]) if value is not None else None
             except (TypeError, ValueError):
                 # Skip if the value is not a valid number
                 continue
@@ -500,19 +618,28 @@ class VisualPlot:
                 numVertices=6,
                 radius=hex_width,
                 orientation=np.pi / 6,
-                facecolor=cmap(norm(process_infidelity)),  # 仅设置填充色
+                facecolor=cmap(norm(process_infidelity)) if process_infidelity is not None else 'lightgray',  # 适用图中有NA的情况
                 edgecolor='black',  # 单独设置边框
                 lw=2
             )
             ax.add_patch(hexagon)
-            ax.text(x_center, y_center, f'{process_infidelity:.3f}',
-                    color='white', ha='center', va='center', fontsize=7)
+            # ax.text(x_center, y_center, f'{process_infidelity:.3f}',
+            #         color='white', ha='center', va='center', fontsize=7)
+            # 适用图中有NA的情况
+            ax.text(
+                x_center, y_center,
+                # 值为 None 则显示 "NA"
+                f'{process_infidelity*1e2:.2f}' if process_infidelity is not None else 'NA',
+                color='Black' if process_infidelity is None else 'Black',
+                ha='center', va='center', fontsize=14)
 
         ax.set_xlim(min_col - 0.5, max_col + 0.5)
         ax.set_ylim(min_row - 0.5, max_row + 0.5)
-        ax.set_title("CNOT Gate Error Rates (CSB)", fontsize=16)
-        ax.set_xlabel("Column", fontsize=14)
-        ax.set_ylabel("Row", fontsize=14)
+        # 从左上角开始
+        ax.invert_yaxis()  # 反转 y 轴，使原点在左上角
+        ax.set_title("CNOT Gate Error Rates (CSB)", fontsize=30, pad=20)
+        ax.set_xlabel("Column", fontsize=30)
+        ax.set_ylabel("Row", fontsize=30)
 
         # Use make_axes_locatable to ensure colorbar height matches the figure height
         divider = make_axes_locatable(ax)
@@ -520,10 +647,18 @@ class VisualPlot:
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
         sm.set_array([])
         cbar = fig.colorbar(sm, cax=cax)
-        cbar.set_label("Error Rate", rotation=270, labelpad=20)
+        cbar.set_label("Error Rate (×1e-2)", rotation=270, labelpad=25, fontsize=30)
+        cbar.ax.tick_params(labelsize=30)
 
         plt.tight_layout()
-        # plt.show()
+        # PNG
+        plt.savefig('CSBQ2_CNOT_Heatmap.png', format='png', dpi=300)
+        # EPS
+        plt.savefig('CSBQ2_CNOT_Heatmap.eps', format='eps', dpi=300)
+        # SVG
+        plt.savefig('CSBQ2_CNOT_Heatmap.svg', dpi=300, format='svg')
+        # PDF
+        plt.savefig('CSBQ2_CNOT_Heatmap.pdf', dpi=300, format='pdf')
 
     def plot_ghzqm_fidelity(self):
         """
@@ -532,7 +667,7 @@ class VisualPlot:
         # Extract fidelity data from the 'res_egmqm_ghz' key
         ghz_fidelity = self.data['results']['res_egmqm_ghz']['fidelity']
         qubit_indices = self.data['results']['res_egmqm_ghz']['qubit_index']
-        
+
         # Quibit counts we're interested in
         qubit_counts = [3, 4, 5, 6, 7, 8]
 
@@ -563,7 +698,7 @@ class VisualPlot:
         # Display the plot
         plt.tight_layout()
         # plt.show()
-        
+
     def plot_mrbqm(self):
         """
         Generate a heatmap for the MRB (polarization) values.
