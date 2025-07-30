@@ -34,16 +34,15 @@ warnings.filterwarnings(
 import random
 
 
-
 def build_custom_noise_model():
     """
     Constructs a simplified custom noise model including depolarizing, amplitude damping, and phase damping errors
     applied to all single-qubit gates.
     """
     noise_model = NoiseModel()
-    
+
     # Define error probabilities (adjusted for target error rates)
-    p_amp_1q = 0.1   # Amplitude damping probability for 1-qubit gates
+    p_amp_1q = 0.001  # Amplitude damping probability for 1-qubit gates
     p_phase_1q = 0.005  # Phase damping probability for 1-qubit gates
     p_identity_1q = 1.0 - p_amp_1q - p_phase_1q  # No-error probability for 1-qubit gates
     p_depol_1q = 0.01  # Depolarizing error probability for 1-qubit gates
@@ -51,26 +50,64 @@ def build_custom_noise_model():
     # Validate probabilities
     if p_identity_1q < 0:
         raise ValueError("The sum of p_amp and p_phase should be <= 1 for 1-qubit gates.")
-    
+
     # Define single-qubit gates
     single_qubit_gates = ["h", "x", "y", "z", "rx", "ry", "rz"]
 
     # List of possible errors to apply
     error_types = [
         lambda: amplitude_damping_error(p_amp_1q),  # Amplitude damping
-        lambda: phase_damping_error(p_phase_1q),    # Phase damping
-        lambda: depolarizing_error(p_depol_1q, 1)    # Depolarizing error
+        lambda: phase_damping_error(p_phase_1q),  # Phase damping
+        lambda: depolarizing_error(p_depol_1q, 1)  # Depolarizing error
     ]
 
     # Apply noise to 1-qubit gates (for arbitrary qubit indices)
     for gate in single_qubit_gates:
         # Randomly choose the error type
         error_type = random.choice(error_types)()  # Choose and call the error type
-        
+
         # Add the selected error to the noise model for all qubits for the current gate
         noise_model.add_all_qubit_quantum_error(error_type, gate)
-    
+
     return noise_model
+
+
+# def build_custom_noise_model():
+#     """
+#     Constructs a simplified custom noise model including depolarizing, amplitude damping, and phase damping errors
+#     applied to all single-qubit gates.
+#     """
+#     noise_model = NoiseModel()
+#
+#     # Define error probabilities (adjusted for target error rates)
+#     p_amp_1q = 0.1   # Amplitude damping probability for 1-qubit gates
+#     p_phase_1q = 0.005  # Phase damping probability for 1-qubit gates
+#     p_identity_1q = 1.0 - p_amp_1q - p_phase_1q  # No-error probability for 1-qubit gates
+#     p_depol_1q = 0.01  # Depolarizing error probability for 1-qubit gates
+#
+#     # Validate probabilities
+#     if p_identity_1q < 0:
+#         raise ValueError("The sum of p_amp and p_phase should be <= 1 for 1-qubit gates.")
+#
+#     # Define single-qubit gates
+#     single_qubit_gates = ["h", "x", "y", "z", "rx", "ry", "rz"]
+#
+#     # List of possible errors to apply
+#     error_types = [
+#         lambda: amplitude_damping_error(p_amp_1q),  # Amplitude damping
+#         lambda: phase_damping_error(p_phase_1q),    # Phase damping
+#         lambda: depolarizing_error(p_depol_1q, 1)    # Depolarizing error
+#     ]
+#
+#     # Apply noise to 1-qubit gates (for arbitrary qubit indices)
+#     for gate in single_qubit_gates:
+#         # Randomly choose the error type
+#         error_type = random.choice(error_types)()  # Choose and call the error type
+#
+#         # Add the selected error to the noise model for all qubits for the current gate
+#         noise_model.add_all_qubit_quantum_error(error_type, gate)
+#
+#     return noise_model
 
 
 def map_circuit(circuit: QuantumCircuit,
@@ -369,7 +406,7 @@ class QuantumJobRunner:
                 continue
 
             # If there is 1 or 2 qubits, we map the circuit
-            if len(active_qubits) <= 2:
+            if len(active_qubits) <= 1:   #TODO # 只对单比特mapping到[0]。若写成<=2，会导致两比特respective模式下bitstring出现异常（如只出现00/11）。
                 # Prepare the circuit and map qubits and classical bits
                 mapped_circuit, qubit_mapping, cbit_mapping = map_circuit(circuit, active_qubits, active_cbits)
                 if compile:
@@ -404,7 +441,7 @@ class QuantumJobRunner:
                 elapsed = time.time() - start_time
                 counts_mapped = result.get_counts(transpiled_circuit)
 
-                if self.mode == 'respective':
+                if self.mode == 'respective' and len(active_qubits) <= 1:
                     if counts_mapped is None or len(counts_mapped) == 0:
                         print(f"Warning: No counts returned for circuit {idx + 1}")
                         counts.append({})
@@ -416,7 +453,7 @@ class QuantumJobRunner:
                             counts.append(counts_mapped)
 
                     execution_times.append(elapsed)
-                elif self.mode == 'simultaneous':
+                elif self.mode == 'simultaneous' or len(active_qubits) > 1:
                     target_qubits = active_qubits  # 原电路中经典比特编号的升序列表
                     filtered_counts = {}
                     for bitstring, count in counts_mapped.items():

@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit  # For fitting functions to data
 
 # Standard library imports
 import itertools  # For efficient looping and combinatorics
-
+import traceback
 
 class MetricQuality:
 
@@ -25,7 +25,7 @@ class MetricQuality:
         - Compatible with flexible circuit generation tools.
     """
 
-    def __init__(self, all_results):
+    def __init__(self, all_results, ini_modes=['x', 'z']):
         """
         Initializes the MetricQuality class.
 
@@ -36,6 +36,7 @@ class MetricQuality:
         """
         self.hardware_results = all_results.get('hardware', [])
         self.simulation_results = all_results.get('simulation', [])
+        self.ini_modes = ini_modes
 
     @staticmethod
     def fit_rb(lengths, survival_probs, nqubit = 1):
@@ -49,7 +50,7 @@ class MetricQuality:
             A, p = popt
             error_rate = (2**nqubit - 1) * (1-p)/(2**nqubit)
         except Exception as e:
-            print(f"Fitting failed for {qubit_type} with error: {e}")
+            print(f"Fitting failed with error: {e}")
             error_rate = np.nan
 
         return error_rate
@@ -60,7 +61,8 @@ class MetricQuality:
         def decay_func(l, A, p):
             return A *  p ** l
 
-        initial_guess = [1.0, 0.01]
+        # initial_guess = [1.0, 0.01]
+        initial_guess = [0.5, 0.01]
 
         try:
             popt, pcov = curve_fit(decay_func, lengths, survival_probs, p0=initial_guess)
@@ -168,6 +170,7 @@ class MetricQuality:
             list: List of error rates for each qubit.
         """
         qubit_error_rates = []
+        qubit_purities = []
 
         # Ensure hardware and simulation results have the same number of qubits
         if len(self.hardware_results) != len(self.simulation_results):
@@ -178,10 +181,12 @@ class MetricQuality:
             for qubit_idx in range(len(self.hardware_results)):
                 qubit_real = self.hardware_results[qubit_idx]
                 survival_probabilities = []
+                purity_probabilities = []  # 新增
 
                 # Iterate over the different lengths for the current qubit
                 for length_idx, length_real in enumerate(qubit_real):
                     survival_probabilities_ncr = []
+                    purity_ncr = []  # 新增
 
                     # Iterate over the results for each circuit count (ncr)
                     for ncr_idx, circuit_counts in enumerate(length_real):
@@ -192,20 +197,28 @@ class MetricQuality:
                                 count_1 = result.get("1", 0)
                                 total_shots = count_0 + count_1
                                 survival_probability = count_0 / total_shots if total_shots > 0 else 0
+                                purity = (count_0 / total_shots) ** 2 + (
+                                            count_1 / total_shots) ** 2 if total_shots > 0 else np.nan
                                 survival_probabilities_ncr.append(survival_probability)
+                                purity_ncr.append(purity)
                         elif isinstance(circuit_counts, dict):
                             # If circuit counts is a dictionary, extract the counts directly
                             count_0 = circuit_counts.get("0", 0)
                             count_1 = circuit_counts.get("1", 0)
                             total_shots = count_0 + count_1
                             survival_probability = count_0 / total_shots if total_shots > 0 else 0
+                            purity = (count_0 / total_shots) ** 2 + (
+                                        count_1 / total_shots) ** 2 if total_shots > 0 else np.nan
                             survival_probabilities_ncr.append(survival_probability)
+                            purity_ncr.append(purity)
                         else:
                             raise ValueError(f"Unexpected data format: {type(circuit_counts)}")
 
                     # Calculate the average survival probability for this length
                     avg_survival_prob = np.mean(survival_probabilities_ncr) if survival_probabilities_ncr else np.nan
+                    avg_purity = np.mean(purity_ncr) if purity_ncr else np.nan  # 新增
                     survival_probabilities.append(avg_survival_prob)
+                    purity_probabilities.append(avg_purity)  # 新增
 
                 # Generate the length list and calculate the error rate
                 length_list = range(2, length_max + 1, step_size)
@@ -214,13 +227,12 @@ class MetricQuality:
                 if len(survival_probabilities) < 3:
                     error_rate = np.nan
                 else:
-                    # TODO nqubit选择问题，整体多qubit RB（只看'0000'），nqubit=4
-                    # TODO 分别提取每个qubit的误差率，每次nqubit=1
                     # Fit the random benchmarking data to get the error rate
                     error_rate = self.fit_rb(length_list, survival_probabilities, nqubit=1)
                 # Append the error rate for this qubit
                 qubit_error_rates.append(float(error_rate) if not np.isnan(error_rate) else np.nan)
-            return qubit_error_rates
+                qubit_purities.append(np.mean(purity_probabilities))
+            return qubit_error_rates, qubit_purities
 
         elif mode == 'simultaneous':
             # simultaneous相比于respective，没有qubit序号，只有一个list，故不需要最外层for循环
@@ -231,42 +243,60 @@ class MetricQuality:
             # 针对每个qubit，都要统计它为'0'的概率
             num_qubits = len(target_qubits)
             all_survival_curves = [[] for _ in range(num_qubits)]  # 放到length_idx外面，只初始化一次
+            purity_curves = [[] for _ in range(len(active_qubits))]
 
             # Iterate over the different lengths for the current qubit
             for length_idx, length_real in enumerate(qubit_real):
                 # 每个qubit各自的survival_probabilities_ncr
                 survival_probabilities_ncr = [[] for _ in range(num_qubits)]  # 4个空list
+                purity_ncr = [[] for _ in range(num_qubits)]
                 # Iterate over the results for each circuit count (ncr)
                 for ncr_idx, circuit_counts in enumerate(length_real):
                     total_shots = sum(circuit_counts.values())  # 随便选择一个dict计算总shots
                     for idx in range(num_qubits):  # idx为0~3，对应四个目标qubit
                         count_zero = 0
+                        count_one = 0
                         for bitstring, count in circuit_counts.items():
                             if bitstring[idx] == '0':  # 如果该位是0
                                 count_zero += count
-                        survival_probability = count_zero / total_shots if total_shots > 0 else 0
-                        survival_probabilities_ncr[idx].append(survival_probability)
+                            elif bitstring[idx] == '1':
+                                count_one += count
+                        p0 = count_zero / total_shots if total_shots > 0 else 0
+                        p1 = count_one / total_shots if total_shots > 0 else 0
+                        survival_probabilities_ncr[idx].append(p0)
+                        purity_ncr[idx].append(p0 ** 2 + p1 ** 2 if total_shots > 0 else np.nan)
+
                 # ---- 统计平均值 ----
                 avg_survival_prob_ncr = [
                     np.mean(survival_probabilities_ncr[idx]) if survival_probabilities_ncr[idx] else np.nan
                     for idx in range(num_qubits)
                 ]
+                avg_purity_ncr = [
+                    np.mean(purity_ncr[idx]) if purity_ncr[idx] else np.nan
+                    for idx in range(num_qubits)
+                ]
                 # 这里追加到每个qubit的“曲线”里
                 for idx in range(num_qubits):
                     all_survival_curves[idx].append(avg_survival_prob_ncr[idx])
-            # 将每个qubit的所有length_idx求平均值
-            final_avg = []
+                    purity_curves[idx].append(avg_purity_ncr[idx])
+            # 这里与 respective 完全对齐，分别拟合error rate和purity
+            length_list = range(2, length_max + 1, step_size)
+            qubit_error_rates = []
+            qubit_purities = []
             for idx in range(num_qubits):
                 curve = all_survival_curves[idx]
-                avg_prob = np.mean(curve) if curve else np.nan
-                final_avg.append(avg_prob)
-            return final_avg
+                # error rate用fit_rb拟合
+                if len(curve) < 3:
+                    error_rate = np.nan
+                else:
+                    error_rate = self.fit_rb(length_list, curve, nqubit=1)
+                qubit_error_rates.append(float(error_rate) if not np.isnan(error_rate) else np.nan)
+                # purity直接均值
+                purity = np.mean(purity_curves[idx]) if purity_curves[idx] else np.nan
+                qubit_purities.append(purity)
+            return qubit_error_rates, qubit_purities
 
-
-
-
-
-    def rbq2(self, length_max, step_size):
+    def rbq2(self, length_max, step_size, qubit_connectivity=None, mode=None):
         """
         Calculates the average error rate for 2-qubit random benchmarking.
 
@@ -278,60 +308,107 @@ class MetricQuality:
             list: A list of average error rates for each qubit pair.
         """
         qubit_pair_error_rates = []
+        if mode == 'respective':
+            # Ensure that hardware and simulation results have the same number of qubit pairs
+            if len(self.hardware_results) != len(self.simulation_results):
+                raise ValueError("Hardware and simulation results have different number of qubit pairs.")
 
-        # Ensure that hardware and simulation results have the same number of qubit pairs
-        if len(self.hardware_results) != len(self.simulation_results):
-            raise ValueError("Hardware and simulation results have different number of qubit pairs.")
+            # Iterate through each qubit pair
+            for pair_idx in range(len(self.hardware_results)):
+                qubit_pair_real = self.hardware_results[pair_idx]
+                # Assuming we are not using simulation results for this function
+                survival_probabilities = []
 
-        # Iterate through each qubit pair
-        for pair_idx in range(len(self.hardware_results)):
-            qubit_pair_real = self.hardware_results[pair_idx]
-            # Assuming we are not using simulation results for this function
-            survival_probabilities = []
+                # Iterate through each length for this qubit pair
+                for length_idx, length_real in enumerate(qubit_pair_real):
+                    survival_probabilities_ncr = []
 
-            # Iterate through each length for this qubit pair
-            for length_idx, length_real in enumerate(qubit_pair_real):
-                survival_probabilities_ncr = []
-
-                # Iterate over the number of circuits (ncr) for this particular length
-                for ncr_idx, circuit_counts in enumerate(length_real):
-                    # Handle both list and dict formats for the results
-                    if isinstance(circuit_counts, list):
-                        # Iterate over each result in the list
-                        for result in circuit_counts:
-                            count_00 = result.get("00", 0)
-                            count_11 = result.get("11", 0)
-                            total_shots = count_00 + count_11
+                    # Iterate over the number of circuits (ncr) for this particular length
+                    for ncr_idx, circuit_counts in enumerate(length_real):
+                        # Handle both list and dict formats for the results
+                        if isinstance(circuit_counts, list):
+                            # Iterate over each result in the list
+                            for result in circuit_counts:
+                                count_00 = result.get("00", 0)
+                                # count_11 = result.get("11", 0)
+                                # total_shots = count_00 + count_11   # TODO 00和11不是完全的shots
+                                total_shots = sum(result.values())  # sum over all '00','01','10','11'
+                                survival_probability = count_00 / total_shots if total_shots > 0 else 0
+                                survival_probabilities_ncr.append(survival_probability)
+                        elif isinstance(circuit_counts, dict):
+                            # Directly use the counts from the dictionary
+                            count_00 = circuit_counts.get("00", 0)
+                            # count_11 = circuit_counts.get("11", 0)
+                            # total_shots = count_00 + count_11
+                            total_shots = sum(circuit_counts.values())  # sum over all '00','01','10','11'
                             survival_probability = count_00 / total_shots if total_shots > 0 else 0
                             survival_probabilities_ncr.append(survival_probability)
-                    elif isinstance(circuit_counts, dict):
-                        # Directly use the counts from the dictionary
-                        count_00 = circuit_counts.get("00", 0)
-                        count_11 = circuit_counts.get("11", 0)
-                        total_shots = count_00 + count_11
-                        survival_probability = count_00 / total_shots if total_shots > 0 else 0
+                        else:
+                            raise ValueError(f"Unexpected data format: {type(circuit_counts)}")
+
+                    # Calculate the average survival probability for this length
+                    avg_survival_prob = np.mean(survival_probabilities_ncr) if survival_probabilities_ncr else np.nan
+                    survival_probabilities.append(avg_survival_prob)
+
+                # Generate a list of circuit lengths
+                length_list = range(2, length_max + 1, step_size)
+
+                # If there are fewer than 3 survival probabilities, return NaN for error rate
+                if len(survival_probabilities) < 3:
+                    error_rate = np.nan
+                else:
+                    # Fit the survival probabilities to extract the error rate
+                    error_rate = self.fit_rb(length_list, survival_probabilities, nqubit=2)
+
+                # Append the error rate (or NaN if invalid) for this qubit pair
+                qubit_pair_error_rates.append(float(error_rate) if not np.isnan(error_rate) else np.nan)
+
+            return qubit_pair_error_rates
+
+        elif mode == 'simultaneous':
+            # Ensure that hardware and simulation results have the same number of qubit pairs
+            if len(self.hardware_results) != len(self.simulation_results):
+                raise ValueError("Hardware and simulation results have different number of qubit pairs.")
+
+            all_qubits = sorted(set().union(*qubit_connectivity))  # e.g. [10, 21, 22, 23, 34]
+            qubit_index_map = {q: idx for idx, q in enumerate(all_qubits)}  # e.g. {10:0, 21:1, 22:2, 23:3, 34:4}
+
+            for pair_idx, qubit_pair in enumerate(qubit_connectivity):
+                survival_probabilities = []
+                # Iterate through each qubit pair
+                for length_idx, length_real in enumerate(self.hardware_results[0]):
+                    survival_probabilities_ncr = []
+                    # 遍历不同depth
+                    for ncr_idx, circuit_counts in enumerate(length_real):
+                        # 统计两比特的bitstring
+                        pair_idx_0 = qubit_index_map[qubit_pair[0]]
+                        pair_idx_1 = qubit_index_map[qubit_pair[1]]
+                        counts_2bit = {'00': 0, '01': 0, '10': 0, '11': 0}
+                        total_shots = 0
+                        for bitstring, count in circuit_counts.items():
+                            b0 = bitstring[-(pair_idx_0 + 1)]  # 注意Qiskit输出低位在右，取倒数第几个
+                            b1 = bitstring[-(pair_idx_1 + 1)]
+                            key = b0 + b1
+                            counts_2bit[key] += count
+                            total_shots += count
+                        survival_probability = counts_2bit['00'] / total_shots if total_shots > 0 else 0
                         survival_probabilities_ncr.append(survival_probability)
-                    else:
-                        raise ValueError(f"Unexpected data format: {type(circuit_counts)}")
 
-                # Calculate the average survival probability for this length
-                avg_survival_prob = np.mean(survival_probabilities_ncr) if survival_probabilities_ncr else np.nan
-                survival_probabilities.append(avg_survival_prob)
+                    avg_survival_prob = np.mean(
+                        survival_probabilities_ncr) if survival_probabilities_ncr else np.nan
+                    survival_probabilities.append(avg_survival_prob)
+                length_list = range(2, length_max + 1, step_size)
 
-            # Generate a list of circuit lengths
-            length_list = range(2, length_max + 1, step_size)
+                # If there are fewer than 3 survival probabilities, return NaN for error rate
+                if len(survival_probabilities) < 3:
+                    error_rate = np.nan
+                else:
+                    # Fit the survival probabilities to extract the error rate
+                    error_rate = self.fit_rb(length_list, survival_probabilities, nqubit=2)
 
-            # If there are fewer than 3 survival probabilities, return NaN for error rate
-            if len(survival_probabilities) < 3:
-                error_rate = np.nan
-            else:
-                # Fit the survival probabilities to extract the error rate
-                error_rate = self.fit_rb(length_list, survival_probabilities, nqubit=2)
-
-            # Append the error rate (or NaN if invalid) for this qubit pair
-            qubit_pair_error_rates.append(float(error_rate) if not np.isnan(error_rate) else np.nan)
-
-        return qubit_pair_error_rates
+                # Append the error rate (or NaN if invalid) for this qubit pair
+                qubit_pair_error_rates.append(float(error_rate) if not np.isnan(error_rate) else np.nan)
+            return qubit_pair_error_rates
 
 
     def xebq1(self, length_max, step_size, active_qubits=None, mode='respective'):
@@ -346,6 +423,7 @@ class MetricQuality:
             list: A list of average error rates for each qubit.
         """
         qubit_error_rates = []
+        qubit_purities = []
 
         # Ensure that hardware and simulation results have the same number of qubits
         if len(self.hardware_results) != len(self.simulation_results):
@@ -362,6 +440,7 @@ class MetricQuality:
                     raise ValueError(f"Qubit {qubit_idx}: Hardware and simulation results have different number of lengths.")
 
                 fidelities = []
+                purities = []
 
                 # Iterate through each circuit length
                 for length_idx in range(len(qubit_real)):
@@ -373,6 +452,7 @@ class MetricQuality:
                         raise ValueError(f"Qubit {qubit_idx}, Length {length_idx}: Hardware and simulation have different ncr counts.")
 
                     fidelity_xeb_list = []
+                    purity_list = []
 
                     # Iterate through each ncr circuit for this length
                     for ncr_idx in range(len(length_real)):
@@ -387,16 +467,23 @@ class MetricQuality:
                         p_real = {k: v / total_shots_real for k, v in counts_real.items()}
                         p_ideal = {k: v / total_shots_ideal for k, v in counts_ideal.items()}
 
+                        # --- fidelity ---
                         # Calculate sum(p_real(x) * p_ideal(x)) for all possible outcomes
                         sum_p_real_p_ideal = sum(p_real.get(x, 0.0) * p_ideal.get(x, 0.0) for x in p_ideal)
-
                         # Calculate fidelity for this ncr, clipped to the range [0, 1]
                         fidelity_xeb = np.clip(2 * sum_p_real_p_ideal - 1, 0, 1)
                         fidelity_xeb_list.append(fidelity_xeb)
 
+                        # --- purity ---
+                        purity = sum([v ** 2 for v in p_real.values()])
+                        purity_list.append(purity)
+
                     # Average fidelity for this length
                     avg_fidelity_length = np.mean(fidelity_xeb_list) if fidelity_xeb_list else np.nan
                     fidelities.append(avg_fidelity_length)
+
+                    avg_purity_length = np.mean(purity_list) if purity_list else np.nan
+                    purities.append(avg_purity_length)
 
                 length_list = range(1, length_max + 1, step_size)
 
@@ -408,19 +495,22 @@ class MetricQuality:
 
                 # Ensure the error rate is within the range [0, 1]
                 qubit_error_rates.append(np.clip(float(error_rate) if not np.isnan(error_rate) else np.nan, 0, 1))
+                qubit_purities.append(np.mean(purities))
 
-            return qubit_error_rates
+            return qubit_error_rates, qubit_purities
         elif mode == 'simultaneous':
             qubit_real = self.hardware_results[0]  # shape = [length, ncr]
             qubit_ideal = self.simulation_results[0]
             num_qubits = len(active_qubits)  # 目标qubit个数
             all_fidelity_curves = [[] for _ in range(num_qubits)]  # 每个qubit一条曲线
+            all_purity_curves = [[] for _ in range(num_qubits)]
 
             # 遍历不同length
             for length_idx, (length_real, length_ideal) in enumerate(zip(qubit_real, qubit_ideal)):
                 # ncr内聚合
                 # 每个qubit的ncr下fidelity
                 fidelities_ncr = [[] for _ in range(num_qubits)]
+                purity_ncr = [[] for _ in range(num_qubits)]
                 # Iterate through each ncr circuit for this length
                 for ncr_idx, (counts_real, counts_ideal) in enumerate(zip(length_real, length_ideal)):
                     # Calculate total shots for normalization
@@ -445,26 +535,37 @@ class MetricQuality:
                         fidelity_xeb = np.clip(fidelity_xeb, 0, 1)
                         fidelities_ncr[idx].append(fidelity_xeb)
 
+                        purity = p_real_0 ** 2 + p_real_1 ** 2 if total_shots_real > 0 else np.nan
+                        purity_ncr[idx].append(purity)
+
                 # ncr均值，得到每个length下每个qubit的平均fidelity
                 avg_fidelities = [
                     np.mean(fidelities_ncr[idx]) if fidelities_ncr[idx] else np.nan
                     for idx in range(num_qubits)
                 ]
+                avg_purities = [
+                    np.mean(purity_ncr[idx]) if purity_ncr[idx] else np.nan
+                    for idx in range(num_qubits)
+                ]
                 for idx in range(num_qubits):
                     all_fidelity_curves[idx].append(avg_fidelities[idx])
+                    all_purity_curves[idx].append(avg_purities[idx])
 
             length_list = list(range(1, length_max + 1, step_size))
             error_rates = []
+            qubit_purities = []
             for idx in range(num_qubits):
                 curve = all_fidelity_curves[idx]
+                purity_curve = all_purity_curves[idx]
                 # 判断数据点足够
                 if len(curve) < 3:
                     error_rate = np.nan
                 else:
                     error_rate = self.fit_xeb(length_list, curve, nqubit=1)
                 error_rates.append(float(error_rate) if not np.isnan(error_rate) else None)
+                qubit_purities.append(np.mean(purity_curve))
 
-            return error_rates
+            return error_rates, qubit_purities
 
             # TODO 以下两行适合全局XEB分布
             # Calculate sum(p_real(x) * p_ideal(x)) for all possible outcomes
@@ -474,7 +575,7 @@ class MetricQuality:
         else:
             pass
 
-    def xebq2(self, length_max, step_size):
+    def xebq2(self, length_max, step_size, qubit_connectivity=None, mode=None):
         """
         Calculates the average error rate for 2-qubit cross entropy benchmarking.
 
@@ -491,75 +592,142 @@ class MetricQuality:
         if len(self.hardware_results) != len(self.simulation_results):
             raise ValueError("Hardware and simulation results have different number of qubit pairs.")
 
-        # Iterate through each qubit pair in the hardware results
-        for pair_idx in range(len(self.hardware_results)):
-            qubit_pair_real = self.hardware_results[pair_idx]  # Real (hardware) results for this qubit pair
-            qubit_pair_ideal = self.simulation_results[pair_idx]  # Ideal (simulation) results for this qubit pair
+        if mode == 'respective':
 
-            # Ensure that for each qubit pair, the number of lengths matches between real and ideal results
-            if len(qubit_pair_real) != len(qubit_pair_ideal):
-                raise ValueError(f"Qubit Pair {pair_idx}: Hardware and simulation results have different number of lengths.")
+            # Iterate through each qubit pair in the hardware results
+            for pair_idx in range(len(self.hardware_results)):
+                qubit_pair_real = self.hardware_results[pair_idx]  # Real (hardware) results for this qubit pair
+                qubit_pair_ideal = self.simulation_results[pair_idx]  # Ideal (simulation) results for this qubit pair
 
-            fidelities = []  # List to store fidelities for each length
+                # Ensure that for each qubit pair, the number of lengths matches between real and ideal results
+                if len(qubit_pair_real) != len(qubit_pair_ideal):
+                    raise ValueError(f"Qubit Pair {pair_idx}: Hardware and simulation results have different number of lengths.")
 
-            # Iterate through each length in the results
-            for length_idx in range(len(qubit_pair_real)):
-                length_real = qubit_pair_real[length_idx]  # Real results for this length
-                length_ideal = qubit_pair_ideal[length_idx]  # Ideal results for this length
+                fidelities = []  # List to store fidelities for each length
 
-                # Ensure that the number of ncr (number of circuits) matches for both real and ideal results
-                if len(length_real) != len(length_ideal):
-                    raise ValueError(f"Qubit Pair {pair_idx}, Length {length_idx}: Hardware and simulation have different ncr counts.")
+                # Iterate through each length in the results
+                for length_idx in range(len(qubit_pair_real)):
+                    length_real = qubit_pair_real[length_idx]  # Real results for this length
+                    length_ideal = qubit_pair_ideal[length_idx]  # Ideal results for this length
 
-                fidelity_xeb_list = []  # List to store fidelity values for each ncr
+                    # Ensure that the number of ncr (number of circuits) matches for both real and ideal results
+                    if len(length_real) != len(length_ideal):
+                        raise ValueError(f"Qubit Pair {pair_idx}, Length {length_idx}: Hardware and simulation have different ncr counts.")
 
-                # Iterate through each ncr (circuit) for this length
-                for ncr_idx in range(len(length_real)):
-                    counts_real = length_real[ncr_idx]  # Real counts for this ncr
-                    counts_ideal = length_ideal[ncr_idx]  # Ideal counts for this ncr
+                    fidelity_xeb_list = []  # List to store fidelity values for each ncr
 
-                    # Calculate total shots for normalization
-                    total_shots_real = sum(counts_real.values())
-                    total_shots_ideal = sum(counts_ideal.values())
+                    # Iterate through each ncr (circuit) for this length
+                    for ncr_idx in range(len(length_real)):
+                        counts_real = length_real[ncr_idx]  # Real counts for this ncr
+                        counts_ideal = length_ideal[ncr_idx]  # Ideal counts for this ncr
 
-                    # Skip iteration if there are no shots in real or ideal counts
-                    if total_shots_real == 0 or total_shots_ideal == 0:
-                        fidelity_xeb_list.append(np.nan)  # Skip this iteration if shots are zero
-                        continue
+                        # Calculate total shots for normalization
+                        total_shots_real = sum(counts_real.values())
+                        total_shots_ideal = sum(counts_ideal.values())
 
-                    # Normalize counts to probabilities based on total shots
-                    p_real = {k: v / total_shots_real for k, v in counts_real.items()}
-                    p_ideal = {k: v / total_shots_ideal for k, v in counts_ideal.items()}
+                        # Skip iteration if there are no shots in real or ideal counts
+                        if total_shots_real == 0 or total_shots_ideal == 0:
+                            fidelity_xeb_list.append(np.nan)  # Skip this iteration if shots are zero
+                            continue
 
-                    # Calculate sum_x p_real(x) * p_ideal(x)
-                    sum_p_real_p_ideal = sum(p_real.get(x, 0.0) * p_ideal.get(x, 0.0) for x in p_ideal)
+                        # Normalize counts to probabilities based on total shots
+                        p_real = {k: v / total_shots_real for k, v in counts_real.items()}
+                        p_ideal = {k: v / total_shots_ideal for k, v in counts_ideal.items()}
 
-                    # Calculate fidelity_xeb and clip it to [0, 1] range
-                    fidelity_xeb = np.clip(2 * sum_p_real_p_ideal - 1, 0, 1)
+                        # Calculate sum_x p_real(x) * p_ideal(x)
+                        sum_p_real_p_ideal = sum(p_real.get(x, 0.0) * p_ideal.get(x, 0.0) for x in p_ideal)
 
-                    # Append the fidelity for this ncr to the list
-                    fidelity_xeb_list.append(fidelity_xeb)
+                        # Calculate fidelity_xeb and clip it to [0, 1] range
+                        fidelity_xeb = np.clip(2 * sum_p_real_p_ideal - 1, 0, 1)
 
-                # Calculate average fidelity for this length and add it to the fidelities list
-                avg_fidelity_length = np.mean(fidelity_xeb_list) if fidelity_xeb_list else np.nan
-                fidelities.append(avg_fidelity_length)
+                        # Append the fidelity for this ncr to the list
+                        fidelity_xeb_list.append(fidelity_xeb)
 
-            length_list = range(1, length_max + 1, step_size)  # Define the length list for fitting
+                    # Calculate average fidelity for this length and add it to the fidelities list
+                    avg_fidelity_length = np.mean(fidelity_xeb_list) if fidelity_xeb_list else np.nan
+                    fidelities.append(avg_fidelity_length)
 
-            # Skip fitting if there are too few fidelities to analyze
-            if len(fidelities) < 3:
-                error_rate = np.nan
-            else:
-                # Fit the fidelities to extract the average error rate (for 2-qubit system)
-                error_rate = self.fit_xeb(length_list, fidelities, nqubit=2)
+                length_list = range(1, length_max + 1, step_size)  # Define the length list for fitting
 
-            # Ensure the error rate is within the [0, 1] range and add it to the list
-            qubit_pair_error_rates.append(np.clip(float(error_rate) if not np.isnan(error_rate) else np.nan, 0, 1))
+                # Skip fitting if there are too few fidelities to analyze
+                if len(fidelities) < 3:
+                    error_rate = np.nan
+                else:
+                    # Fit the fidelities to extract the average error rate (for 2-qubit system)
+                    error_rate = self.fit_xeb(length_list, fidelities, nqubit=2)
 
-        return qubit_pair_error_rates  # Return the list of error rates for each qubit pair
+                # Ensure the error rate is within the [0, 1] range and add it to the list
+                qubit_pair_error_rates.append(np.clip(float(error_rate) if not np.isnan(error_rate) else np.nan, 0, 1))
 
+            return qubit_pair_error_rates  # Return the list of error rates for each qubit pair
 
+        elif mode == 'simultaneous':
 
+            all_qubits = sorted(set().union(*qubit_connectivity))  # 比如[10,21,22,23,34]
+            qubit_index_map = {q: idx for idx, q in enumerate(all_qubits)}  # {10:0, 21:1, ...}
+            qubit_pair_error_rates = []
+
+            for pair_idx, qubit_pair in enumerate(qubit_connectivity):
+                fidelities = []
+
+                for length_idx in range(len(self.hardware_results[0])):
+                    length_real = self.hardware_results[0][length_idx]
+                    length_ideal = self.simulation_results[0][length_idx]
+                    fidelity_xeb_list = []
+
+                    for ncr_idx in range(len(length_real)):
+                        counts_real = length_real[ncr_idx]
+                        counts_ideal = length_ideal[ncr_idx]
+
+                        # ------- 统计real -------
+                        pair_idx_0 = qubit_index_map[qubit_pair[0]]
+                        pair_idx_1 = qubit_index_map[qubit_pair[1]]
+                        counts_2bit_real = {'00': 0, '01': 0, '10': 0, '11': 0}
+                        total_shots_real = 0
+                        for bitstring, count in counts_real.items():
+                            b0 = bitstring[-(pair_idx_0 + 1)]  # Qiskit 右边是最低位
+                            b1 = bitstring[-(pair_idx_1 + 1)]
+                            key = b0 + b1
+                            counts_2bit_real[key] += count
+                            total_shots_real += count
+
+                        # ------- 统计ideal -------
+                        counts_2bit_ideal = {'00': 0, '01': 0, '10': 0, '11': 0}
+                        total_shots_ideal = 0
+                        for bitstring, count in counts_ideal.items():
+                            b0 = bitstring[-(pair_idx_0 + 1)]
+                            b1 = bitstring[-(pair_idx_1 + 1)]
+                            key = b0 + b1
+                            counts_2bit_ideal[key] += count
+                            total_shots_ideal += count
+
+                        if total_shots_real == 0 or total_shots_ideal == 0:
+                            fidelity_xeb_list.append(np.nan)
+                            continue
+
+                        # 概率分布
+                        p_real = {k: v / total_shots_real for k, v in counts_2bit_real.items()}
+                        p_ideal = {k: v / total_shots_ideal for k, v in counts_2bit_ideal.items()}
+
+                        sum_p_real_p_ideal = sum(p_real.get(x, 0.0) * p_ideal.get(x, 0.0) for x in p_ideal)
+                        # Calculate fidelity_xeb and clip it to [0, 1] range
+                        fidelity_xeb = np.clip(2 * sum_p_real_p_ideal - 1, 0, 1)
+
+                        fidelity_xeb_list.append(fidelity_xeb)
+
+                    avg_fidelity_length = np.mean(fidelity_xeb_list) if fidelity_xeb_list else np.nan
+                    fidelities.append(avg_fidelity_length)
+
+                length_list = range(1, length_max + 1, step_size)
+
+                if len(fidelities) < 3:
+                    error_rate = np.nan
+                else:
+                    error_rate = self.fit_xeb(length_list, fidelities, nqubit=2)
+
+                qubit_pair_error_rates.append(np.clip(float(error_rate) if not np.isnan(error_rate) else np.nan, 0, 1))
+
+            return qubit_pair_error_rates
 
     @staticmethod
     def matrix_pencil(data, L, N_poles, cutoff=1e-10):
@@ -606,7 +774,7 @@ class MetricQuality:
         return poles_p, amplitudes, S
 
     @staticmethod
-    def compute_csb(bitstring_counts, target_phase=np.pi / 2, rep=1, cutoff=1e-10):
+    def compute_csb(bitstring_counts, target_phase=np.pi / 2, rep=1, cutoff=1e-10, ini_modes=[]):
         """
         Compute CSB errors (process infidelity, stochastic infidelity, and angle error) from bitstring results.
 
@@ -623,8 +791,8 @@ class MetricQuality:
         probabilities = [counts.get('0', 0) / sum(counts.values()) for counts in bitstring_counts]
 
         # Split data into two modes and combine
-        data1, data2 = np.split(np.array(probabilities), 2)
-        data_combined = data1 + data2
+        data_split  = np.split(np.array(probabilities), len(ini_modes))
+        data_combined = sum(data_split)
 
         # Perform Matrix Pencil analysis
         len_data = len(data_combined)
@@ -703,7 +871,8 @@ class MetricQuality:
             for qubit_idx, qubit_circuits in enumerate(self.hardware_results):
                 # Attempt to compute CSB for the current qubit's circuits
                 try:
-                    csb_result = self.compute_csb(qubit_circuits, target_phase=target_phase, rep=rep, cutoff=cutoff)
+                    csb_result = self.compute_csb(qubit_circuits, target_phase=target_phase, rep=rep,
+                                                  cutoff=cutoff, ini_modes=self.ini_modes)
                     process_infidelities.append(csb_result["process_infidelity"])
                     stochastic_infidelities.append(csb_result["stochastic_infidelity"])
                     angle_errors.append(csb_result["angle_error"])
@@ -771,8 +940,10 @@ class MetricQuality:
                         qubit_circuits[qubit_idx],
                         target_phase=target_phase,
                         rep=rep,
-                        cutoff=cutoff
+                        cutoff=cutoff,
+                        ini_modes=self.ini_modes
                     )
+
                     process_infidelities[qubit_idx] = non_negative(csb_result["process_infidelity"])
                     stochastic_infidelities[qubit_idx] = non_negative(csb_result["stochastic_infidelity"])
                     angle_errors[qubit_idx] = non_negative(csb_result["angle_error"])
@@ -855,7 +1026,7 @@ class MetricQuality:
             "phi_error": float(phi_error)
         }
 
-    def csbq2cz(self, phi=np.pi, ndeg=3, rep=1, cutoff=1e-10):
+    def csbq2cz(self, phi=np.pi, ndeg=3, rep=1, cutoff=1e-10, qubit_connectivity=None, mode='respective'):
         """
         Computes the CSB (Cross-Entropy Benchmarking) errors for multiple 2-qubit CZ gates.
 
@@ -875,25 +1046,63 @@ class MetricQuality:
         """
         csb_results_list = []  # Initialize list to store CSB results for each qubit pair
 
-        # Iterate over the hardware results for each qubit pair
-        for qubit_pair_index, qubit_circuits in enumerate(self.hardware_results):
-            # Compute CSB metrics for the current qubit pair's circuits
-            csb_result = self.compute_csb_q2cz(
-                qubit_circuits, target_phase=phi, rep=rep, cutoff=cutoff
-            )
-            
-            # Append the results in a dictionary format
-            csb_results_list.append({
-                "process_infidelity": float(csb_result["process_infidelity"]),
-                "stochastic_infidelity": float(csb_result["stochastic_infidelity"]),
-                "theta_error": float(csb_result["theta_error"]),
-                "phi_error": float(csb_result["phi_error"])
-            })
+        if mode == 'respective':
+            # Iterate over the hardware results for each qubit pair
+            for qubit_pair_index, qubit_circuits in enumerate(self.hardware_results):
+                # Compute CSB metrics for the current qubit pair's circuits
+                csb_result = self.compute_csb_q2cz(
+                    qubit_circuits, target_phase=phi, rep=rep, cutoff=cutoff
+                )
 
-        return csb_results_list
+                # Append the results in a dictionary format
+                csb_results_list.append({
+                    "process_infidelity": float(csb_result["process_infidelity"]),
+                    "stochastic_infidelity": float(csb_result["stochastic_infidelity"]),
+                    "theta_error": float(csb_result["theta_error"]),
+                    "phi_error": float(csb_result["phi_error"])
+                })
 
+            return csb_results_list
 
-    def csbq2cnot(self, phi=np.pi, ndeg=3, rep=1, cutoff=1e-10):
+        elif mode == 'simultaneous':
+
+            all_qubits = sorted(set(q for pair in qubit_connectivity for q in pair))
+            qubit_index_map = {q: idx for idx, q in enumerate(all_qubits)}  # 全局比特序号到bitstring序号
+
+            results_per_pair = []  # 外层list，每个qubit_pair的统计
+
+            # 外层循环，每个qubit pair单独统计自己的比特对概率
+            for pair_idx, qubit_pair in enumerate(qubit_connectivity):
+                idx0 = qubit_index_map[qubit_pair[0]]
+                idx1 = qubit_index_map[qubit_pair[1]]
+                pair_stats = []  # 每个depth的list
+
+                for depth_result in self.hardware_results:  # 这里hardware_results[depth]是ncr个dict的list
+                    ncr_stats = []  # 统计所有ncr
+                    for ncr_result in depth_result:  # ncr_result是dict
+                        counts_2bit = {'00': 0, '01': 0, '10': 0, '11': 0}
+                        for bitstring, count in ncr_result.items():
+                            # 注意Qiskit bitstring的最低位在右边
+                            b0 = bitstring[-(idx0 + 1)]
+                            b1 = bitstring[-(idx1 + 1)]
+                            key = b0 + b1
+                            counts_2bit[key] += count
+                        ncr_stats.append(counts_2bit)
+
+                # 对于当前pair，把全部深度的统计结果传给CSB处理
+                csb_result = self.compute_csb_q2cz(
+                    ncr_stats, target_phase=phi, rep=rep, cutoff=cutoff
+                )
+                csb_results_list.append({
+                    "process_infidelity": float(csb_result["process_infidelity"]),
+                    "stochastic_infidelity": float(csb_result["stochastic_infidelity"]),
+                    "theta_error": float(csb_result["theta_error"]),
+                    "phi_error": float(csb_result["phi_error"])
+                })
+
+            return csb_results_list
+
+    def csbq2cnot(self, phi=np.pi, ndeg=3, rep=1, cutoff=1e-10, qubit_connectivity=None, mode=None):
         """
         Computes the CSB (Channel Spectrum Benchmarking) errors for the 2-qubit CNOT gate.
 
@@ -913,22 +1122,62 @@ class MetricQuality:
         """
         csb_results_list = []  # Initialize list to store CSB results for each qubit pair
 
-        # Iterate over the hardware results for each qubit pair
-        for qubit_pair_index, qubit_circuits in enumerate(self.hardware_results):
-            # Compute CSB metrics for the current qubit pair's circuits
-            csb_result = self.compute_csb_q2cnot(
-                qubit_circuits, target_phase=phi, rep=rep, cutoff=cutoff
-            )
-            
-            # Append the results in a dictionary format
-            csb_results_list.append({
-                "process_infidelity": float(csb_result["process_infidelity"]),
-                "stochastic_infidelity": float(csb_result["stochastic_infidelity"]),
-                "theta_error": float(csb_result["theta_error"]),
-                "phi_error": float(csb_result["phi_error"])
-            })
+        if mode == 'respective':
 
-        return csb_results_list
+            # Iterate over the hardware results for each qubit pair
+            for qubit_pair_index, qubit_circuits in enumerate(self.hardware_results):
+                # Compute CSB metrics for the current qubit pair's circuits
+                csb_result = self.compute_csb_q2cnot(
+                    qubit_circuits, target_phase=phi, rep=rep, cutoff=cutoff
+                )
+
+                # Append the results in a dictionary format
+                csb_results_list.append({
+                    "process_infidelity": float(csb_result["process_infidelity"]),
+                    "stochastic_infidelity": float(csb_result["stochastic_infidelity"]),
+                    "theta_error": float(csb_result["theta_error"]),
+                    "phi_error": float(csb_result["phi_error"])
+                })
+
+            return csb_results_list
+
+        elif mode == 'simultaneous':
+
+            all_qubits = sorted(set(q for pair in qubit_connectivity for q in pair))
+            qubit_index_map = {q: idx for idx, q in enumerate(all_qubits)}  # 全局比特序号到bitstring序号
+
+            results_per_pair = []  # 外层list，每个qubit_pair的统计
+
+            # 外层循环，每个qubit pair单独统计自己的比特对概率
+            for pair_idx, qubit_pair in enumerate(qubit_connectivity):
+                idx0 = qubit_index_map[qubit_pair[0]]
+                idx1 = qubit_index_map[qubit_pair[1]]
+                pair_stats = []  # 每个depth的list
+
+                for depth_result in self.hardware_results:  # 这里hardware_results[depth]是ncr个dict的list
+                    ncr_stats = []  # 统计所有ncr
+                    for ncr_result in depth_result:  # ncr_result是dict
+                        counts_2bit = {'00': 0, '01': 0, '10': 0, '11': 0}
+                        for bitstring, count in ncr_result.items():
+                            # 注意Qiskit bitstring的最低位在右边
+                            b0 = bitstring[-(idx0 + 1)]
+                            b1 = bitstring[-(idx1 + 1)]
+                            key = b0 + b1
+                            counts_2bit[key] += count
+                        ncr_stats.append(counts_2bit)
+
+                # 对于当前pair，把全部深度的统计结果传给CSB处理
+                csb_result = self.compute_csb_q2cz(
+                    ncr_stats, target_phase=phi, rep=rep, cutoff=cutoff
+                )
+                csb_results_list.append({
+                    "process_infidelity": float(csb_result["process_infidelity"]),
+                    "stochastic_infidelity": float(csb_result["stochastic_infidelity"]),
+                    "theta_error": float(csb_result["theta_error"]),
+                    "phi_error": float(csb_result["phi_error"])
+                })
+
+            return csb_results_list
 
     def compute_csb_q2cnot(self, bitstring_counts, target_phase=np.pi, rep=1, cutoff=1e-10):
         """

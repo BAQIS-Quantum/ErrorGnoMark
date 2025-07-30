@@ -246,7 +246,7 @@ def build_xeb_sequence(qubit_index, total_qubits, length):
 
 
 class csbq1_circuit_generator:
-    def __init__(self, rot_axis='x', rot_angle=np.pi, rep=1):
+    def __init__(self, rot_axis='x', rot_angle=np.pi, hadamard=None, gate_name=None, rep=1):
         """
         Initialize the CSB Q1 circuit generator.
 
@@ -255,10 +255,12 @@ class csbq1_circuit_generator:
             rot_angle (float): Rotation angle for the target rotation gate.
             rep (int): Number of repetitions for the target rotation gate.
         """
-        if rot_axis not in ['x', 'y', 'z']:
-            raise ValueError("rot_axis must be one of 'x', 'y', or 'z'.")
+        # if rot_axis not in ['x', 'y', 'z']:
+        #     raise ValueError("rot_axis must be one of 'x', 'y', or 'z'.")
         self.rot_axis = rot_axis
         self.rot_angle = rot_angle
+        self.hadamard = hadamard
+        self.gate_name = gate_name
         self.rep = rep
 
     def csbq1_circuit(self, lc, ini_mode, qubit_indices=[0]):
@@ -295,13 +297,44 @@ class csbq1_circuit_generator:
 
         # Apply the target rotation gate repeatedly
         for _ in range(lc * self.rep):
+
+            # 统计激活了几个功能
+            active_opts = 0
+            if self.rot_axis is not None:
+                active_opts += 1
+            if self.hadamard is not None:
+                active_opts += 1
+            if self.gate_name is not None:
+                active_opts += 1
+
+            if active_opts > 1:
+                raise ValueError("只能选择 rot_axis/rot_angle、hadamard 或 gate_name 中的一个参数，不能多选！")
+
             for q in qubit_indices:
-                if self.rot_axis == 'x':
-                    qc.rx(self.rot_angle, q)
-                elif self.rot_axis == 'y':
-                    qc.ry(self.rot_angle, q)
-                elif self.rot_axis == 'z':
-                    qc.rz(self.rot_angle, q)
+                if getattr(self, "rot_axis", None) is not None:
+                    if self.rot_axis == 'x':
+                        qc.rx(self.rot_angle, q)
+                    elif self.rot_axis == 'y':
+                        qc.ry(self.rot_angle, q)
+                    elif self.rot_axis == 'z':
+                        qc.rz(self.rot_angle, q)
+                elif getattr(self, "hadamard", None) == 'h':
+                    qc.h(q)
+                elif getattr(self, "gate_name", None) is not None:
+                    if self.gate_name == 'XGate':
+                        qc.rx(np.pi, q)
+                    elif self.gate_name == 'YGate':
+                        qc.ry(np.pi, q)
+                    elif self.gate_name == 'ZGate':
+                        qc.rz(np.pi, q)
+                    elif self.gate_name == 'IdGate':
+                        qc.rx(0, q)
+                    elif self.gate_name == 'WGate':
+                        qc.rx(np.pi / 4, q)
+                    elif self.gate_name == 'HGate':
+                        qc.rx(np.pi / 2, q)
+                    elif self.gate_name == 'SGate':
+                        qc.rz(np.pi / 2, q)
         qc.barrier()
 
         # Apply inverse operations to return to the computational basis
@@ -464,43 +497,88 @@ class Csbq2_cz_circuit_generator:
         else:
             raise ValueError(f"Unknown mode: {mode}")
 
-    def csbq2_cz_circuit(self, len_list, mode='01', nrep=1, qubit_indices=[0, 1]):
+    def csbq2_cz_circuit(self, len_list, mode='01', nrep=1, qubit_indices=[0, 1], mode_='respective'):
         """
         Generate and return a list of two-qubit CZ circuits with customizable qubit indices.
         """
-        circ_list = []
+        if mode_ == 'respective':
+            circ_list = []
 
-        max_qubit = max(qubit_indices) + 1
+            max_qubit = max(qubit_indices) + 1
 
-        # Prepare the initial state
-        qc_ini = QuantumCircuit(max_qubit, max_qubit)
-        self.prepare_initial_state(qc_ini, mode, qubit_indices)
-        qc_ini.barrier()
+            # Prepare the initial state
+            qc_ini = QuantumCircuit(max_qubit, max_qubit)
+            self.prepare_initial_state(qc_ini, mode, qubit_indices)
+            qc_ini.barrier()
 
-        # Define CZ gate
-        cz_gate = CZGate()
+            # Define CZ gate
+            cz_gate = CZGate()
 
-        # Define the inverse preparation operation
-        qc_ini_inverse = QuantumCircuit(max_qubit, max_qubit)
-        self.prepare_inverse_initial_state(qc_ini_inverse, mode, qubit_indices)
+            # Define the inverse preparation operation
+            qc_ini_inverse = QuantumCircuit(max_qubit, max_qubit)
+            self.prepare_inverse_initial_state(qc_ini_inverse, mode, qubit_indices)
 
-        for lc in len_list:
-            qc_rep = QuantumCircuit(max_qubit, max_qubit)
-            for _ in range(lc * nrep):
-                qc_rep.append(cz_gate, qubit_indices)
+            for lc in len_list:
+                qc_rep = QuantumCircuit(max_qubit, max_qubit)
+                for _ in range(lc * nrep):
+                    qc_rep.append(cz_gate, qubit_indices)
 
-            # Combine the initial preparation circuit and repeated circuit
-            qc = qc_ini.compose(qc_rep)
+                # Combine the initial preparation circuit and repeated circuit
+                qc = qc_ini.compose(qc_rep)
 
-            # Add the inverse operation to return to the initial state
-            qc = qc.compose(qc_ini_inverse)
+                # Add the inverse operation to return to the initial state
+                qc = qc.compose(qc_ini_inverse)
 
-            # Add measurement
-            qc.measure(qubit_indices, qubit_indices)
+                # Add measurement
+                qc.measure(qubit_indices, qubit_indices)
 
-            circ_list.append(qc)
+                circ_list.append(qc)
 
-        return circ_list
+            return circ_list
+        elif mode_ == 'simultaneous':
+            circ_list = []
+
+            all_qubits = sorted(set(q for pair in qubit_indices for q in pair))
+            max_qubit = max(all_qubits) + 1
+
+            # Prepare the initial state
+            qc_ini = QuantumCircuit(max_qubit, max_qubit)
+
+            for pair in qubit_indices:
+                self.prepare_initial_state(qc_ini, mode, qubit_indices=pair)
+            qc_ini.barrier()
+
+            # Define CZ gate
+            cz_gate = CZGate()
+
+            # Define the inverse preparation operation
+            qc_ini_inverse = QuantumCircuit(max_qubit, max_qubit)
+            for pair in qubit_indices:
+                self.prepare_inverse_initial_state(qc_ini_inverse, mode, qubit_indices=pair)
+            qc_ini_inverse.barrier()
+
+            for lc in len_list:
+                qc_rep = QuantumCircuit(max_qubit, max_qubit)
+                for _ in range(lc * nrep):
+                    for pair in qubit_indices:
+                        qc_rep.append(cz_gate, pair)
+                qc_rep.barrier()
+
+                # Combine the initial preparation circuit and repeated circuit
+                qc = qc_ini.compose(qc_rep)
+
+                # Add the inverse operation to return to the initial state
+                qc = qc.compose(qc_ini_inverse)
+
+                qc.barrier()
+
+                # Add measurement
+                for q in all_qubits:
+                    qc.measure(q, q)
+
+                circ_list.append(qc)
+
+            return circ_list
 
 
 class Csbq2_cnot_circuit_generator:
@@ -576,43 +654,89 @@ class Csbq2_cnot_circuit_generator:
         else:
             raise ValueError(f"Unknown mode: {mode}")
 
-    def csbq2_cnot_circuit(self, len_list, mode='01', nrep=1, qubit_indices=[0, 1]):
+    def csbq2_cnot_circuit(self, len_list, mode='01', nrep=1, qubit_indices=[0, 1], mode_='respective'):
         """
         Generate and return a list of two-qubit CNOT circuits with customizable qubit indices.
         """
-        circ_list = []
+        if mode_ == 'respective':
+            circ_list = []
 
-        max_qubit = max(qubit_indices) + 1
+            max_qubit = max(qubit_indices) + 1
 
-        # Prepare the initial state
-        qc_ini = QuantumCircuit(max_qubit, max_qubit)
-        self.prepare_initial_state(qc_ini, mode, qubit_indices)
-        qc_ini.barrier()
+            # Prepare the initial state
+            qc_ini = QuantumCircuit(max_qubit, max_qubit)
+            self.prepare_initial_state(qc_ini, mode, qubit_indices)
+            qc_ini.barrier()
 
-        # Define CNOT gate
-        cnot_gate = CXGate()
+            # Define CNOT gate
+            cnot_gate = CXGate()
 
-        # Define the inverse preparation operation
-        qc_ini_inverse = QuantumCircuit(max_qubit, max_qubit)
-        self.prepare_inverse_initial_state(qc_ini_inverse, mode, qubit_indices)
+            # Define the inverse preparation operation
+            qc_ini_inverse = QuantumCircuit(max_qubit, max_qubit)
+            self.prepare_inverse_initial_state(qc_ini_inverse, mode, qubit_indices)
 
-        for lc in len_list:
-            qc_rep = QuantumCircuit(max_qubit, max_qubit)
-            for _ in range(lc * nrep):
-                qc_rep.append(cnot_gate, qubit_indices)
+            for lc in len_list:
+                qc_rep = QuantumCircuit(max_qubit, max_qubit)
+                for _ in range(lc * nrep):
+                    qc_rep.append(cnot_gate, qubit_indices)
 
-            # Combine the initial preparation circuit and repeated circuit
-            qc = qc_ini.compose(qc_rep)
+                # Combine the initial preparation circuit and repeated circuit
+                qc = qc_ini.compose(qc_rep)
 
-            # Add the inverse operation to return to the initial state
-            qc = qc.compose(qc_ini_inverse)
+                # Add the inverse operation to return to the initial state
+                qc = qc.compose(qc_ini_inverse)
 
-            # Add measurement
-            qc.measure(qubit_indices, qubit_indices)
+                # Add measurement
+                qc.measure(qubit_indices, qubit_indices)
 
-            circ_list.append(qc)
+                circ_list.append(qc)
 
-        return circ_list
+            return circ_list
+        elif mode_ == 'simultaneous':
+            circ_list = []
+
+            all_qubits = sorted(set(q for pair in qubit_indices for q in pair))
+            max_qubit = max(all_qubits) + 1
+
+            # Prepare the initial state
+            qc_ini = QuantumCircuit(max_qubit, max_qubit)
+
+            for pair in qubit_indices:
+                self.prepare_initial_state(qc_ini, mode, qubit_indices=pair)
+            qc_ini.barrier()
+
+            # Define CNOT gate
+            cnot_gate = CXGate()
+
+            # Define the inverse preparation operation
+            qc_ini_inverse = QuantumCircuit(max_qubit, max_qubit)
+            for pair in qubit_indices:
+                self.prepare_inverse_initial_state(qc_ini_inverse, mode, qubit_indices=pair)
+            qc_ini_inverse.barrier()
+
+            for lc in len_list:
+                qc_rep = QuantumCircuit(max_qubit, max_qubit)
+                for _ in range(lc * nrep):
+                    for pair in qubit_indices:
+                        qc_rep.append(cnot_gate, pair)
+
+                qc_rep.barrier()
+
+                # Combine the initial preparation circuit and repeated circuit
+                qc = qc_ini.compose(qc_rep)
+
+                # Add the inverse operation to return to the initial state
+                qc = qc.compose(qc_ini_inverse)
+
+                qc.barrier()
+
+                # Add measurement
+                for q in all_qubits:
+                    qc.measure(q, q)
+
+                circ_list.append(qc)
+
+            return circ_list
 
 
 def permute_qubits(num_qubits):

@@ -990,29 +990,29 @@ class EGMReportManager:
             # plt.close()
 
         if csbq1_selected:
-            visualizer.plot_csbq1(grid_size=(12, 13), mode=mode, path=xebq1_path)
+            visualizer.plot_csbq1(grid_size=(12, 13), mode=mode, path=csbq1_path)
             # plt.savefig(csbq1_path)
             # plt.close()
 
         if rbq2_selected:
-            visualizer.plot_rbq2()
+            visualizer.plot_rbq2(mode=mode)
             plt.savefig(rbq2_path)
             plt.close()
 
         if xebq2_selected:
-            visualizer.plot_xebq2()
+            visualizer.plot_xebq2(mode=mode)
             plt.savefig(xebq2_path)
             plt.close()
 
         # Generate and save the CSBQ2_CZ plot if selected
         if csbq2_selected:  # Check if the CSBQ2_CZ plot is selected
-            visualizer.plot_csbq2_cz()  # Call the CSBQ2_CZ plot function
+            visualizer.plot_csbq2_cz(mode=mode)  # Call the CSBQ2_CZ plot function
             plt.savefig(csbq2_cz_path)  # Save the plot as a PNG file
             plt.close()
 
         # Generate and save the CSBQ2_CNOT plot if selected
         if csbq2_cnot_selected:  # Check if the CSBQ2_CNOT plot is selected
-            visualizer.plot_csbq2_cnot()  # Call the CSBQ2_CNOT plot function
+            visualizer.plot_csbq2_cnot(mode=mode)  # Call the CSBQ2_CNOT plot function
             plt.savefig(csbq2_cnot_path)  # Save the plot as a PNG file
             plt.close()
 

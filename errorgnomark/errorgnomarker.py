@@ -8,6 +8,7 @@ from pathlib import Path
 # Third-party library imports
 from requests.exceptions import RequestException, ReadTimeout  # For HTTP requests and error handling
 from tqdm import tqdm  # For progress bar visualization
+import numpy as np
 
 # sys.path.append('/Users/ousiachai/Desktop/ErrorGnoMark')
 
@@ -33,7 +34,11 @@ class Errorgnomarker(chip):
                  file_path='', weights=None, run_all_Qubits=False,
                  rbq1_selected=False,  # Execute Single Qubit RB for Q1
                  xebq1_selected=True,  # Execute Single Qubit XEB for Q1
+
                  csbq1_selected=False,  # Execute Single Qubit CSB for Q1
+                 ini_modes=['x', 'y', 'z'], rot_axis='y', rot_angle=np.pi / 4, hadamard=None,
+                 gate_name=None,
+
                  rbq2_selected=False,  # Execute Two Qubit RB for Q2
                  xebq2_selected=False,  # Execute Two Qubit XEB for Q2
                  csbq2_selected=False,  # Execute Two Qubit CSB for Q2
@@ -45,7 +50,8 @@ class Errorgnomarker(chip):
                  vqeqm_selected=False,  # Execute m-Qubit VQE
                  Benchmarking=True,
                  Characterization=False,
-                 mode='simultaneous'
+                 mode='simultaneous',
+                 Lightweighting=True
                  ):
         """
         Initializes the ErrorGnoMarker with the specified chip configuration.
@@ -68,6 +74,12 @@ class Errorgnomarker(chip):
         self.Benchmarking = Benchmarking
         self.Characterization = Characterization
         self.mode = mode
+        self.Lightweighting = Lightweighting
+        self.ini_modes = ini_modes
+        self.rot_axis = rot_axis
+        self.rot_angle = rot_angle
+        self.hadamard = hadamard
+        self.gate_name = gate_name
 
         # 转换为bool
         self.rbq1_selected = self.rbq1_selected[0]
@@ -132,14 +144,17 @@ class Errorgnomarker(chip):
 
     def _run_single_qubit_xeb(self):
         start_time = time.time()
-        res = self.config_quality_q1gate.q1xeb(mode=self.mode, Lightweighting=True)
+        res = self.config_quality_q1gate.q1xeb(mode=self.mode, Lightweighting=self.Lightweighting)
         elapsed_time = time.time() - start_time
         print(f"Single Qubit XEB completed in {elapsed_time:.2f} seconds.")
         return res
 
     def _run_single_qubit_csb(self):
         start_time = time.time()
-        res = self.config_quality_q1gate.q1csb_pi_over_2_x(mode=self.mode)
+        res = self.config_quality_q1gate.q1csb_pi_over_2_x(ini_modes=self.ini_modes, rot_axis=self.rot_axis,
+                                                           rot_angle=self.rot_angle, hadamard=self.hadamard,
+                                                           gate_name=self.gate_name,
+                                                           mode=self.mode)
         if res is None:
             print("Error: Q1CSB π/2-x task did not complete successfully.")
             return None
@@ -149,7 +164,7 @@ class Errorgnomarker(chip):
 
     def _run_two_qubit_rb(self):
         start_time = time.time()
-        res = self.config_quality_q2gate.q2rb()
+        res = self.config_quality_q2gate.q2rb(mode=self.mode)
         elapsed_time = time.time() - start_time
         print(f"Two Qubit RB completed in {elapsed_time:.2f} seconds.")
         return res
@@ -157,21 +172,21 @@ class Errorgnomarker(chip):
 
     def _run_two_qubit_xeb(self):
         start_time = time.time()
-        res = self.config_quality_q2gate.q2xeb()
+        res = self.config_quality_q2gate.q2xeb(mode=self.mode, Lightweighting=self.Lightweighting)
         elapsed_time = time.time() - start_time
         print(f"Two Qubit XEB completed in {elapsed_time:.2f} seconds.")
         return res
 
     def _run_two_qubit_csb(self):
         start_time = time.time()
-        res = self.config_quality_q2gate.q2csb_cz()
+        res = self.config_quality_q2gate.q2csb_cz(mode=self.mode)
         elapsed_time = time.time() - start_time
         print(f"Two Qubit CSB completed in {elapsed_time:.2f} seconds.")
         return res
 
     def _run_two_qubit_cnot_csb(self):
         start_time = time.time()
-        res = self.config_quality_q2gate.q2csb_cnot()
+        res = self.config_quality_q2gate.q2csb_cnot(mode=self.mode)
         elapsed_time = time.time() - start_time
         print(f"Two Qubit CNOT CSB completed in {elapsed_time:.2f} seconds.")
         return res

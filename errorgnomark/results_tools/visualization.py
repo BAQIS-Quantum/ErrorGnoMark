@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm, colors as mcolors
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+import json
 
 plt.rcParams['font.sans-serif'] = ['DejaVu Sans']  # matplotlib自带
 plt.rcParams['axes.unicode_minus'] = False
@@ -264,14 +265,19 @@ class VisualPlot:
                                        save_path='./figures/Csbq1 Angle Errors Heatmap')
 
 
-    def plot_rbq2(self):
+    def plot_rbq2(self, mode=None):
         chip_info = self.data["chip_info"]
         rows = chip_info["rows"]
         cols = chip_info["columns"]
-        rb_data = self.data["results"]["res_egmq2_rb"]
+        if mode == 'respective':
+            rb_data = self.data["respective results"]["res_egmq2_rb"]
+        elif mode == 'simultaneous':
+            rb_data = self.data["simultaneous results"]["res_egmq2_rb"]
+        else:
+            raise ValueError(f"Unknown mode: {mode}. Should be 'respective' or 'simultaneous'.")
 
         norm = mcolors.Normalize(vmin=-0.02, vmax=0.04)
-        cmap = cm.get_cmap("viridis")
+        cmap = cm.get_cmap("PuBu")
 
         # 自动找出使用的 qubit 区域
         used_rows = [qubit // cols for pair in rb_data if pair != "average_error_rate" for qubit in eval(pair)]
@@ -339,13 +345,17 @@ class VisualPlot:
         plt.tight_layout()
         # plt.show()
 
-    def plot_xebq2(self):
+    def plot_xebq2(self, mode=None):
         """
         Generate a heatmap for two-qubit Cross-Entropy Benchmarking (XEB) error rates.
         The grid is fixed as 12x13, representing the chip layout.
         """
         qubit_pairs = self.data["qubit_connectivity"]
-        xeb_data = self.data["results"]["res_egmq2_xeb"]["hardware"]
+
+        if mode == 'respective':
+            xeb_data = self.data["respective results"]["res_egmq2_xeb"]["hardware"]
+        elif mode == 'simultaneous':
+            xeb_data = self.data["simultaneous results"]["res_egmq2_xeb"]["hardware"]
 
         # 手动排除不需要的点
         pairs_to_remove = [[0, 1], [4, 5], [5, 6], [11, 12], [18, 19], [26, 27], [27, 28],
@@ -361,7 +371,7 @@ class VisualPlot:
                 xeb_data[i] = None
         # 手动排除结束
 
-        # Filter out any null or None data
+        # Filter out any null or None data，则取消下一行注释，并将下面第三行注释
         # filtered = [(pair, val) for pair, val in zip(qubit_pairs, xeb_data) if val is not None]
         # Retain any null or None data
         filtered = list(zip(qubit_pairs, xeb_data))
@@ -455,7 +465,7 @@ class VisualPlot:
         plt.savefig('XEBq2_Heatmap.pdf', dpi=300, format='pdf')
         # plt.show()
 
-    def plot_csbq2_cz(self):
+    def plot_csbq2_cz(self, mode='respective'):
         """
         Generate a heatmap for two-qubit CSB (Controlled-Z Gate) error rates.
         The grid is fixed as 12x13, representing the chip layout.
@@ -464,7 +474,10 @@ class VisualPlot:
         rows = chip_info["rows"]  # 12
         cols = chip_info["columns"]  # 13
         qubit_pairs = self.data["qubit_connectivity"]
-        csb_data = self.data["results"]["res_egmq2_csb"]["qubit_pairs_results"]  # CSB data for CZ gate
+        if mode == 'respective':
+            csb_data = self.data["respective results"]["res_egmq2_csb"]["qubit_pairs_results"]  # CSB data for CZ gate
+        elif mode == 'simultaneous':
+            csb_data = self.data["simultaneous results"]["res_egmq2_csb"]["qubit_pairs_results"]  # CSB data for CZ gate
 
         # Filter out any null or None data
         filtered = [(pair, val) for pair, val in zip(qubit_pairs, csb_data) if val is not None]
@@ -538,7 +551,7 @@ class VisualPlot:
         plt.tight_layout()
         # plt.show()
 
-    def plot_csbq2_cnot(self):
+    def plot_csbq2_cnot(self, mode=None):
         """
         Generate a heatmap for two-qubit CSB (Controlled-NOT Gate) error rates.
         The grid is fixed as 12x13, representing the chip layout.
@@ -547,17 +560,21 @@ class VisualPlot:
         rows = chip_info["rows"]  # 12
         cols = chip_info["columns"]  # 13
         qubit_pairs = self.data["qubit_connectivity"]
-        csb_data = self.data["results"]["res_egmq2_csb_cnot"]["qubit_pairs_results"]  # CSB data for CNOT gate
+        if mode == 'respective':
+            csb_data = self.data["respective results"]["res_egmq2_csb_cnot"]["qubit_pairs_results"]  # CSB data for CNOT gate
+        elif mode == 'simultaneous':
+            csb_data = self.data["simultaneous results"]["res_egmq2_csb_cnot"]["qubit_pairs_results"]  # CSB data for CNOT gate
 
         # 手动排除一些qubits
-        pairs_to_remove = [[0, 1], [4, 5], [5, 6], [11, 12], [18, 19], [26, 27], [27, 28],
-                           [31, 32], [35, 36], [36, 37], [36, 49], [45, 46],
-                           [49, 50], [51, 64], [63, 64], [65, 66], [66, 67],
-                           [68, 69], [73, 86], [84, 97], [89, 90], [100, 101], [110, 111], [111, 112],
-                           [112, 113], [113, 114], [121, 134], [125, 126], [131, 132], [132, 145], [132, 133],
-                           [135, 136], [136, 137], [137, 138],
-                           [140, 153], [140, 141], [146, 147],
-                           ]
+        # pairs_to_remove = [[0, 1], [4, 5], [5, 6], [11, 12], [18, 19], [26, 27], [27, 28],
+        #                    [31, 32], [35, 36], [36, 37], [36, 49], [45, 46],
+        #                    [49, 50], [51, 64], [63, 64], [65, 66], [66, 67],
+        #                    [68, 69], [73, 86], [84, 97], [89, 90], [100, 101], [110, 111], [111, 112],
+        #                    [112, 113], [113, 114], [121, 134], [125, 126], [131, 132], [132, 145], [132, 133],
+        #                    [135, 136], [136, 137], [137, 138],
+        #                    [140, 153], [140, 141], [146, 147],
+        #                    ]
+        pairs_to_remove = []
         for i, pair in enumerate(qubit_pairs):
             if pair in pairs_to_remove or tuple(reversed(pair)) in pairs_to_remove:
                 csb_data[i] = None
