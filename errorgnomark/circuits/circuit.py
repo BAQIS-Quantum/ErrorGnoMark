@@ -1,15 +1,16 @@
 # errorgnomark/circuits/circuit.py
+from typing import List, Tuple, NamedTuple, Any
 
-from typing import List, Tuple, Any, NamedTuple
-
+# [DEFINITION]: Define the Gate class here.
+# We use NamedTuple because it's a lightweight and immutable data container, perfect for this scenario.
 class Gate(NamedTuple):
     """
     Represents a single quantum gate operation.
     
     Attributes:
-        name (str): The name of the gate (e.g., 'h', 'rx', 'cnot').
+        name (str): The name of the gate (e.g., 'h', 'cnot').
         qubits (Tuple[int, ...]): The qubit(s) the gate acts on.
-        params (List[Any]): A list of parameters, like rotation angles.
+        params (List[Any]): Optional parameters for the gate (e.g., rotation angles).
     """
     name: str
     qubits: Tuple[int, ...]
@@ -18,18 +19,22 @@ class Gate(NamedTuple):
 
 class QuantumCircuit:
     """
-    A simple container for a sequence of quantum gates.
+    A basic, framework-agnostic data structure for a quantum circuit.
     """
-    def __init__(self, num_qubits: int):
-        if num_qubits < 1:
-            raise ValueError("Number of qubits must be at least 1.")
-        self.num_qubits = num_qubits
-        self.gates: List[Gate] = []
+    # [UPDATE]: The 'gates' attribute of QuantumCircuit is now a list of Gate objects.
+    def __init__(self, qubits: List[int], gates: List[Gate]):
+        """
+        Initializes a quantum circuit.
 
-    def add_gate(self, gate: Gate):
-        """Adds a gate to the circuit."""
-        self.gates.append(gate)
+        Args:
+            qubits (List[int]): A list of qubit indices that this circuit acts upon.
+            gates (List[Gate]): A list of Gate objects that make up the circuit.
+        """
+        self.qubits = qubits
+        self.gates = gates
 
     def __repr__(self) -> str:
-        gate_str = ", ".join([f"{g.name}{g.qubits}" for g in self.gates])
-        return f"QuantumCircuit(num_qubits={self.num_qubits}, gates=[{gate_str}])"
+        """
+        Returns a string representation of the circuit.
+        """
+        return f"QuantumCircuit(qubits={self.qubits}, num_gates={len(self.gates)})"

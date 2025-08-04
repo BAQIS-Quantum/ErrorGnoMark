@@ -16,16 +16,20 @@ def main():
     """
     A high-level example demonstrating how to use our framework to run a 
     single XEB experiment.
+    
+    MODIFIED: This script now aligns with the simulator's shot-based output
+    and the analysis function's expectation of count dictionaries.
     """
     # --- 2. Define experiment parameters ---
     target_qubit = 0
     circuit_depth = 20
-    noise_level = 0.01 # Simulated hardware noise level
+    noise_level = 0.01  # Simulated hardware noise level
+    shots = 1000        # Number of measurements for each circuit run
 
     print("="*60)
     print("Running Single XEB Experiment via Layered Architecture")
     print("="*60)
-    print(f"Parameters: Qubits=[{target_qubit}], Depth={circuit_depth}, Noise Level={noise_level}\n")
+    print(f"Parameters: Qubits=[{target_qubit}], Depth={circuit_depth}, Noise Level={noise_level}, Shots={shots}\n")
 
     # --- 3. Assemble components (following the architecture design) ---
     # a. Define an experiment ("what to do")
@@ -44,21 +48,22 @@ def main():
     
     print("\n--- Starting Execution ---")
     # --- 4. Execute the workflow ---
-    # The Runner handles circuit generation and execution on the backend
-    raw_results = runner.run(experiment)
+    raw_results = runner.run(experiment, shots=shots)
     print("--- Execution Finished ---\n")
 
     # --- 5. Analyze the results ---
-    # We only ran one circuit, so we take the first element from the results list
     single_run_result = raw_results[0]
     
-    # Call the dedicated analysis function
-    fidelity = analyze_xeb_fidelity(single_run_result, num_qubits=1)
+    # THIS IS THE CORRECTED LINE:
+    fidelity = analyze_xeb_fidelity(
+        ideal_counts=single_run_result['ideal_counts'],
+        noisy_counts=single_run_result['noisy_counts']
+    )
 
     # --- 6. Report the final results ---
     print("--- Analysis Report ---")
-    print(f"Ideal Probabilities:    {single_run_result['ideal_probs']}")
-    print(f"Noisy Probabilities:    {single_run_result['noisy_probs']}")
+    print(f"Ideal Counts:    {single_run_result['ideal_counts']}")
+    print(f"Noisy Counts:    {single_run_result['noisy_counts']}")
     print("-" * 25)
     print(f"Calculated XEB Fidelity: {fidelity:.6f}")
     print("-" * 25)

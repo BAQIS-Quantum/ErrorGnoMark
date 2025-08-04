@@ -1,7 +1,9 @@
 # errorgnomark/engine/runner.py
-from typing import List, Dict, Any, Type
-from ..circuits.circuit import QuantumCircuit # Assuming base experiment class exists
-from ..backends.dummy_backend import DummyBackend
+from typing import List, Dict, Any
+from ..circuits.circuit import QuantumCircuit
+# [MODIFICATION 1]: Instead of importing a concrete DummyBackend, import the abstract BaseBackend
+from ..backends.base_backend import BaseBackend
+from ..experiments.base_experiment import BaseExperiment 
 
 class Runner:
     """
@@ -10,24 +12,28 @@ class Runner:
     It takes an experiment definition and a backend, and is responsible for 
     executing the workflow.
     """
-    def __init__(self, backend: DummyBackend):
+    # [MODIFICATION 2]: Changed the type hint in the __init__ method from DummyBackend to BaseBackend
+    def __init__(self, backend: BaseBackend):
         """
         Initializes the Runner.
 
         Args:
-            backend: An object that adheres to the backend interface, used for 
+            backend: An object that adheres to the BaseBackend interface, used for 
                      executing circuits.
         """
+        # This check is now more generic and robust.
+        if not hasattr(backend, 'run'):
+            raise TypeError("The provided backend object must have a 'run' method.")
         self.backend = backend
-        print("Runner initialized.")
 
-    def run(self, experiment: Any) -> List[Dict[str, Any]]:
+    def run(self, experiment: BaseExperiment, shots: int) -> List[Dict[str, Any]]:
         """
         Runs a complete experiment.
 
         Args:
             experiment: An experiment object, e.g., XEBExperiment, which must have
                         a `generate_circuits` method.
+            shots: The number of times each circuit should be run.
 
         Returns:
             A list where each element is the raw result of a single circuit run.
@@ -41,8 +47,9 @@ class Runner:
         # 2. Execute each circuit on the backend and collect the results
         results = []
         for i, circuit in enumerate(circuits):
-            print(f"  - Running circuit {i+1}/{len(circuits)}...")
-            result = self.backend.run(circuit)
+            print(f"  - Running circuit {i+1}/{len(circuits)} for {shots} shots...")
+            
+            result = self.backend.run(circuit, shots=shots)
             results.append(result)
         
         print("Runner: Experiment execution finished.")

@@ -1,56 +1,43 @@
-# errorgnomark/experiments/benchmarking/gate_sets.py
-
+# errorgnomark/experiments/gate_sets.py
 import abc
 import random
 import math
 from typing import Tuple
 
-from errorgnomark.circuits.circuit import Gate
+# This import will now work because we defined Gate in circuit.py
+from ..circuits.circuit import Gate
 
 class SingleQubitGateSet(abc.ABC):
     """
     Abstract Base Class for a single-qubit gate set.
-
-    This class defines the interface required for a valid gate set to be used
-    in experiments like XEB. To create a custom gate set, you must inherit
-    from this class and implement the `get_random_gate` method.
     """
     @abc.abstractmethod
     def get_random_gate(self, qubit: int) -> Gate:
         """
         Returns a single random gate from the set acting on the specified qubit.
-
-        Args:
-            qubit (int): The target qubit for the gate.
-
-        Returns:
-            Gate: A randomly chosen Gate object.
         """
         pass
-
-# --- Pre-defined Gate Set Implementations ---
 
 class CliffordGateSet(SingleQubitGateSet):
     """
     A gate set consisting of single-qubit Clifford gates.
-    Specifically, this set includes Hadamard and Phase (S) gates, which can
-    generate the entire single-qubit Clifford group.
     """
     def __init__(self):
+        # Template gates. The qubit index will be replaced.
         self._gates = [
-            Gate(name='h', qubits=(0,)),  # Placeholder qubit, will be replaced
+            Gate(name='h', qubits=(0,)),
             Gate(name='s', qubits=(0,))
         ]
 
     def get_random_gate(self, qubit: int) -> Gate:
         """Returns a random H or S gate."""
         gate_template = random.choice(self._gates)
-        return Gate(name=gate_template.name, qubits=(qubit,), params=gate_template.params)
+        # Create a new Gate instance with the correct target qubit
+        return Gate(name=gate_template.name, qubits=(qubit,))
 
 class XYGateSet(SingleQubitGateSet):
     """
-    A gate set of random rotations around the X and Y axes of the Bloch sphere.
-    This is often called the "XY-plane" gate set.
+    A gate set of random rotations around the X and Y axes.
     """
     def get_random_gate(self, qubit: int) -> Gate:
         """Returns a random Rx or Ry gate with a random angle."""
