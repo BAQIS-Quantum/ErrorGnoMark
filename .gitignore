@@ -1,0 +1,15 @@
+echo "
+# macOS
+.DS_Store
+
+# Python & Virtual Environments
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# IDE files
+.vscode/
+.idea/
+" > .gitignore

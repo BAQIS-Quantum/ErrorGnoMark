@@ -1,0 +1,17 @@
+# pyproject.toml
+
+[tool.poetry]
+name = "errorgnomark"
+version = "0.2.0"  # <--- 这是导致错误的关键字段！确保它存在且格式正确。
+description = "A Python package for quantum error benchmarking."
+authors = ["Chai Xudan <chaixd@baqis.ac.cn>"] # 换成您的信息
+readme = "README.md" # 您可以稍后创建一个 README 文件
+packages = [{include = "errorgnomark"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"  # <--- 指定您使用的 Python 版本
+numpy = "^1.21"  # <--- 在这里声明项目依赖
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

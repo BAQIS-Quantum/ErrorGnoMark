@@ -1,0 +1,7 @@
+# Circuit for measurement basis: ZY
+Qubits: [0, 1]
+--- Gates ---
+Gate(name='h', qubits=(0,), params=[])
+Gate(name='cnot', qubits=(0, 1), params=[])
+Gate(name='sdg', qubits=(1,), params=[])
+Gate(name='h', qubits=(1,), params=[])
