@@ -1,0 +1,21 @@
+# ==============================================================================
+# This file lists the exact pinned versions of Python packages required to run
+# this project. The versions below are the latest stable releases from PyPI
+# and are known to be installable and compatible.
+#
+# To install these dependencies, run:
+# pip install -r requirements.txt
+# ==============================================================================
+
+# -- Core Scientific Computing --
+numpy==2.0.0
+scipy==1.13.1
+
+# -- Data I/O & Visualization --
+matplotlib==3.9.0
+openpyxl==3.1.3
+
+# -- Quantum Computing Framework (Assumed Dependency) --
+# If your project still uses Qiskit, it is a critical dependency.
+# The version below is a stable release before the major 1.0 update.
+qiskit==0.46.2

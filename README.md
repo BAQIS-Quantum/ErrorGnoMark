@@ -1,8 +1,11 @@
 # ErrorGnoMark: A Modular Software Suite for Quantum Benchmarking and Characterization
 
-[![PyPI Version](https://img.shields.io/pypi/v/errorgnomark.svg)](https://pypi.org/project/errorgnomark/)
-[![License: MIT](https://img.shields.io/pypi/l/errorgnomark.svg)](https://github.com/your-org/errorgnomark/blob/main/LICENSE)
-<!-- [![Build Status](https://github.com/your-org/errorgnomark/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/errorgnomark/actions) -->
+[![PyPI Version](https://img.shields.io/pypi/v/errorgnomark.svg?style=flat-square)](https://pypi.org/project/errorgnomark/)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/BAQIS-Quantum/ErrorGnoMark/ci.yml?branch=main&style=flat-square)](https://github.com/BAQIS-Quantum/ErrorGnoMark/actions)
+[![Python Version](https://img.shields.io/pypi/pyversions/errorgnomark.svg?style=flat-square)](https://pypi.org/project/errorgnomark/)
+[![License](https://img.shields.io/github/license/BAQIS-Quantum/ErrorGnoMark.svg?style=flat-square)](https://github.com/BAQIS-Quantum/ErrorGnoMark/blob/main/LICENSE)
+[![Code Coverage](https://img.shields.io/codecov/c/github/BAQIS-Quantum/ErrorGnoMark.svg?style=flat-square)](https://codecov.io/gh/BAQIS-Quantum/ErrorGnoMark)
+
 
 ## 1. Overview
 
