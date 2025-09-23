@@ -207,4 +207,5 @@ We welcome contributions from the community! If you'd like to contribute, please
 
 [2] Wack, A., Paik, H., Javadi-Abhari, A., et al. Quality, Speed, and Scale: Three key attributes to measure the performance of near-term quantum computers. arXiv:2110.14108 (2021).
 Klimov, P.V., Bengtsson, A., Quintana, C. et al. Optimizing quantum gates towards the scale of logical qubits. Nature Communications, 15, 2442 (2024). https://doi.org/10.1038/s41467-024-46623-y.
+
 [3] Gu, Y., Zhuang, WF., Chai, X. et al. Benchmarking universal quantum gates via channel spectrum. Nature Communications, 14, 5880 (2023). https://doi.org/10.1038/s41467-023-41598-8.
