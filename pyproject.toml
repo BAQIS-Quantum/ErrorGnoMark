@@ -1,0 +1,102 @@
+# pyproject.toml
+
+# PEP 621: Standard for project metadata
+[project]
+name = "ErrorGnoMark"  # [修正] 移除了末尾的空格
+version = "0.2.0"
+description = "ErrorGnoMark diagnoses and benchmarks quantum chip errors, focusing on scalability, quality, and speed across all layers of the quantum operating system." # [优化] 更新为更详细的描述
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" } # [修正] 根据 GitHub 仓库信息，将许可证从 MIT 更改为 Apache-2.0
+
+# List of authors and their contact information
+authors = [
+  { name = "Chai Xudan", email = "chaixd@baqis.ac.cn" },
+  # Add other contributors here if any
+]
+
+# PEP 639: Standard for license trove classifiers
+keywords = ["quantum", "benchmarking", "characterization", "quantum computing", "qiskit", "qcvv"]
+
+# PEP 301: Standard for package classifiers
+classifiers = [
+    # Development Status
+    "Development Status :: 3 - Alpha",
+
+    # Intended Audience
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+
+    # License
+    "License :: OSI Approved :: Apache Software License", # [修正] 更改为与 Apache-2.0 对应的分类器
+
+    # Supported Python Versions
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+
+    # Topic
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+# -------------------------------------------------------------------
+# Core Dependencies - What the project needs to run
+# Using compatible release specifiers (e.g., ~=) is a best practice.
+# It allows for bug fixes and security patches but prevents breaking changes.
+# -------------------------------------------------------------------
+dependencies = [
+    # Core scientific computing stack
+    "numpy>=2.0",             # NumPy 2.0 is a major release with API cleanups. Targeting it is forward-looking.
+    "scipy~=1.13",            # Compatible with SciPy 1.13.x, allows updates within the 1.x series.
+    
+    # Data I/O and Visualization
+    "matplotlib~=3.8",        # Compatible with Matplotlib 3.8.x.
+    "openpyxl~=3.1",          # For reading/writing Excel files.
+    
+    # Quantum Computing Framework
+    "qiskit~=0.46.0"          # Pinning to a recent, stable version of Qiskit.
+                              # Note: Qiskit 1.0 has been released, which is a major breaking change.
+                              # If your code is not updated for Qiskit 1.0, using ~=0.46.0 is critical.
+]
+
+# -------------------------------------------------------------------
+# Optional Dependencies - For developers, testing, and documentation
+# Users can install these via `pip install .[dev,docs]`
+# -------------------------------------------------------------------
+[project.optional-dependencies]
+dev = [
+    # Code Quality & Formatting
+    "black~=24.4",
+    "ruff~=0.4.0",
+    
+    # Testing Framework
+    "pytest~=8.0",
+    "pytest-cov~=5.0", # For checking test coverage
+    
+    # Dependency Analysis
+    "pipreqs~=0.4.13",
+    "pip-tools~=7.4",  # Excellent tool for compiling requirements files
+]
+
+docs = [
+    # Documentation Generator
+    "sphinx~=7.3",
+    "furo~=2024.5.6", # A clean, modern Sphinx theme
+    "myst-parser~=3.0", # For writing docs in Markdown
+]
+
+# Project URLs to display on PyPI
+[project.urls]
+# [优化] 使用标准键名，使 PyPI 页面显示更规范
+Homepage = "https://github.com/BAQIS-Quantum/ErrorGnoMark"
+Repository = "https://github.com/BAQIS-Quantum/ErrorGnoMark"
+Gitee-Mirror = "https://gitee.com/xdchai/errorgnomark" # Gitee 镜像
+
+
+# Build system configuration (standard for setuptools)
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
