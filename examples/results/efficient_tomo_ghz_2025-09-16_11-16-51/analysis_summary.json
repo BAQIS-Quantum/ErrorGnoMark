@@ -1,6 +1,0 @@
-{
-    "analysis_type": "Direct Fidelity Estimation",
-    "method": "DFE from Pauli Expectation Values",
-    "reconstructed_rho": [
-        [
-            
