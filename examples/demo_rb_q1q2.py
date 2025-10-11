@@ -1,117 +1,99 @@
-# File Path: examples/demo_rb_final.py
-# This script demonstrates the usage of the new, adapted RB experiment classes.
-# It follows the user's specified demonstration flow.
+# File Path: examples/demo_rb_professional.py
+#
+# ErrorGnomark: Professional Randomized Benchmarking Demonstration (Minimalist)
+#
+# This script showcases the core functionality of the RB experiments.
+# It relies on default parameters but explicitly requests plotting, which is
+# often an opt-in feature in professional libraries.
 
 import sys
 import os
+
+# =========================================================================
+# --- PLOTTING FIX: Force an Interactive Matplotlib Backend ---
+# This ensures matplotlib attempts to create a GUI window for plots.
+# This is good practice for scripts intended to be run from a terminal.
+import matplotlib
+matplotlib.use('TkAgg')
+# =========================================================================
+
 import matplotlib.pyplot as plt
 
-# Ensure the main package is in the Python path
+# --- Python Path Setup ---
 try:
     import errorgnomark
 except ImportError:
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    sys.path.insert(0, project_root)
 
+# --- Framework Imports ---
 from errorgnomark.engine import QuantumEngine
 from errorgnomark.backends.dummy_backend import DummyBackend
 from errorgnomark.experiments.benchmarking.rb import StandardRBExperiment, InterleavedRBExperiment
 
-print("=" * 70)
-print("  Randomized Benchmarking (RB) Demonstration (Adapted Framework)")
-print("=" * 70)
-print("This demo showcases the RB experiments using the new BaseExperiment")
-print("and QuantumEngine framework, following the user's specified logic.")
-print("-" * 70 + "\n")
-
-
-# --- Setup ---
-# Use a dummy backend with some simulated noise
-backend = DummyBackend(depolarizing_error_1q=0.002, depolarizing_error_2q=0.02, t_gate_error=0.005)
-engine = QuantumEngine(backend=backend)
-
-
 # =========================================================================
-# Step 1: Generate and Display a Single Circuit
+# --- Main Demonstration Script ---
 # =========================================================================
-print("[Step 1] Generating a single 2-qubit INTERLEAVED RB circuit for inspection.")
-# We create an experiment instance just to use its circuit generation method.
-# We don't need to run the full experiment here.
-demo_exp = InterleavedRBExperiment(
-    qubits=[0, 1],
-    target_gate_name='cnot',
-    depths=[3], # We only need one depth
-    circuits_per_depth=1
-)
-# Use the public method to generate one circuit
-single_circuit = demo_exp.generate_single_circuit(depth=3, seed=42)
-print("Generated a sample circuit with depth=3 and target gate 'cnot':")
-print(single_circuit)
-print("-" * 70 + "\n")
 
+if __name__ == "__main__":
 
-# =========================================================================
-# Step 2: 1-Qubit Experiments
-# =========================================================================
-print("[Step 2] Performing 1-Qubit RB experiments...")
+    print("=" * 79)
+    print("      Professional Randomized Benchmarking (RB) Demonstration")
+    print("=" * 79)
+    print("This demo relies on default parameters for maximal simplicity.")
+    print("Parameter customization hints are in the source code comments.\n")
 
-# --- 2.A: 1-Qubit Standard RB ---
-print("\n[2.A] Running 1-Qubit Standard RB...")
-std_exp_1q = StandardRBExperiment(
-    qubits=[0],
-    depths=[1, 10, 20, 40, 60, 80],
-    circuits_per_depth=20
-)
-# Run the experiment and request a plot. The plot will be shown at the end.
-std_results_1q = std_exp_1q.run(engine, shots=2048, plot=True)
-print("1-Qubit Standard RB finished.")
+    # --- 1. Framework Setup ---
+    print("[INFO] Setting up a simulated backend and quantum engine...")
+    backend = DummyBackend(
+        depolarizing_error_1q=0.0018,
+        depolarizing_error_2q=0.035,
+        t_gate_error=0.002,
+    )
+    engine = QuantumEngine(backend=backend)
+    print("-" * 79 + "\n")
 
-# --- 2.B: 1-Qubit Interleaved RB ---
-print("\n[2.B] Running 1-Qubit Interleaved RB for 'T' gate...")
-int_exp_1q = InterleavedRBExperiment(
-    qubits=[0],
-    target_gate_name='t',
-    depths=[1, 10, 20, 40, 60, 80],
-    circuits_per_depth=20
-)
-# The run method handles everything: baseline, interleaved, analysis, and plotting.
-full_results_1q = int_exp_1q.run(engine, shots=2048, plot=True)
-print("1-Qubit Interleaved RB finished.")
-print(f"  -> Calculated EPG for 'T' gate: {full_results_1q['gate_error']:.4e}")
-print("-" * 70 + "\n")
+    # --- 2. Generate and Display a Single Circuit ---
+    print("[STEP 1] Generate a single, reproducible 2-Qubit Interleaved RB circuit.")
+    demo_exp = InterleavedRBExperiment(qubits=[0, 1], target_gate_name='cnot')
+    single_circuit = demo_exp.generate_single_circuit(depth=3, seed=42)
+    print("         Sample Circuit (depth=3, target='cnot'):")
+    print(str(single_circuit))
+    print("-" * 79 + "\n")
 
+    # --- 3. One-Qubit Standard RB ---
+    print("[STEP 2] Run 1-Qubit Standard RB.")
+    std_exp_1q = StandardRBExperiment(qubits=[0])
+    # CORRECTED: Explicitly request plotting.
+    std_exp_1q.run(engine, plot=True)
+    print("Plotting 1Q Standard RB results... Please close the plot window to continue.")
+    plt.show()
 
-# =========================================================================
-# Step 3: 2-Qubit Experiments
-# =========================================================================
-print("[Step 3] Performing 2-Qubit RB experiments...")
+    # --- 4. One-Qubit Interleaved RB ---
+    print("\n[STEP 3] Run 1-Qubit Interleaved RB for 't' gate.")
+    int_exp_1q = InterleavedRBExperiment(qubits=[0], target_gate_name='t')
+    # CORRECTED: Explicitly request plotting.
+    int_exp_1q.run(engine, plot=True)
+    print("Plotting 1Q Interleaved RB results... Please close the plot window to continue.")
+    plt.show()
 
-# --- 3.A: 2-Qubit Standard RB ---
-print("\n[3.A] Running 2-Qubit Standard RB...")
-std_exp_2q = StandardRBExperiment(
-    qubits=[0, 1],
-    depths=[1, 5, 10, 15, 20],
-    circuits_per_depth=15
-)
-std_results_2q = std_exp_2q.run(engine, shots=4096, plot=True)
-print("2-Qubit Standard RB finished.")
+    # --- 5. Two-Qubit Standard RB ---
+    print("\n[STEP 4] Run 2-Qubit Standard RB.")
+    std_exp_2q = StandardRBExperiment(qubits=[0, 1])
+    # CORRECTED: Explicitly request plotting.
+    std_exp_2q.run(engine, plot=True)
+    print("Plotting 2Q Standard RB results... Please close the plot window to continue.")
+    plt.show()
 
-# --- 3.B: 2-Qubit Interleaved RB ---
-print("\n[3.B] Running 2-Qubit Interleaved RB for 'CNOT' gate...")
-int_exp_2q = InterleavedRBExperiment(
-    qubits=[0, 1],
-    target_gate_name='cnot',
-    depths=[1, 5, 10, 15, 20],
-    circuits_per_depth=15
-)
-full_results_2q = int_exp_2q.run(engine, shots=4096, plot=True)
-print("2-Qubit Interleaved RB finished.")
-print(f"  -> Calculated EPG for 'CNOT' gate: {full_results_2q['gate_error']:.4e}")
-print("-" * 70 + "\n")
+    # --- 6. Two-Qubit Interleaved RB ---
+    print("\n[STEP 5] Run 2-Qubit Interleaved RB for 'cnot' gate.")
+    int_exp_2q = InterleavedRBExperiment(qubits=[0, 1], target_gate_name='cnot')
+    # CORRECTED: Explicitly request plotting.
+    int_exp_2q.run(engine, plot=True)
+    print("Plotting 2Q Interleaved RB results... Please close the plot window to continue.")
+    plt.show()
 
-
-# =========================================================================
-# Final Step: Display All Generated Plots
-# =========================================================================
-print("Demonstration finished. All generated plots will now be displayed.")
-print("Close ALL plot windows to exit the program.")
-plt.show()
+    # --- 7. Final Message ---
+    print("\n" + "=" * 79)
+    print("Demonstration finished successfully.")
+    print("=" * 79)

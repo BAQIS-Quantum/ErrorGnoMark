@@ -1,5 +1,5 @@
 # File Path: errorgnomark/circuits/gate_sets.py
-# MODIFIED: Added support for 3-qubit gate layers, enabling more complex RB/XEB.
+# [CORRECTED & ENHANCED VERSION BASED ON YOUR NEW FILE]
 
 import abc
 import random
@@ -27,63 +27,37 @@ class SingleQubitGateSet(BaseGateSet):
     pass
 
 class TwoQubitGateSet(BaseGateSet):
+    # [FIX 1] Add 'seed' parameter to the abstract method to enforce the API contract.
+    # The calling code in xeb.py requires this parameter for reproducibility.
     @abc.abstractmethod
-    def get_random_2q_layer(self, topology: List[Tuple[int, int]]) -> List[Gate]:
+    def get_random_2q_layer(self, topology: List[Tuple[int, int]], seed: Optional[int] = None) -> List[Gate]:
         pass
 
-# vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-# [[[ NEW ThreeQubitGateSet ABSTRACT CLASS ]]]
-# vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 class ThreeQubitGateSet(BaseGateSet):
     @abc.abstractmethod
     def get_random_3q_layer(self, topology: List[Tuple[int, int, int]], seed: Optional[int] = None) -> List[Gate]:
-        """Generates a layer of random three-qubit gates for a given topology."""
         pass
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 # ==============================================================================
 # --- Gate Set Implementations ---
 # ==============================================================================
 
-# CliffordGateSet now inherits from all three types
 class CliffordGateSet(SingleQubitGateSet, TwoQubitGateSet, ThreeQubitGateSet):
-    """
-    A Clifford gate set supporting 1, 2, and 3-qubit operations.
-    """
     def __init__(self, generation_method: str = 'from_generators'):
         if generation_method not in ['from_generators', 'uniform_from_c24_decompositions']:
             raise ValueError("generation_method must be 'from_generators' or 'uniform_from_c24_decompositions'")
         self.generation_method = generation_method
-
-        # --- Gate Definitions ---
         self.single_qubit_generators = [('h',), ('s',), ('x',), ('y',), ('z',)]
         self.pauli_gates = [('x',), ('y',), ('z',)]
         self.two_qubit_gate_name = 'cnot'
-        
-        # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-        # [[[ ADDED 3-QUBIT CLIFFORD GATES ]]]
-        # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-        self.three_qubit_clifford_gates = [('ccnot',), ('cswap',)] # Toffoli and Fredkin
-        # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-        # For RB: provide pairs with consistent (lowercase) names
+        self.three_qubit_clifford_gates = [('ccnot',), ('cswap',)]
         self._simple_clifford_inverse_pairs = [('h', 'h'), ('s', 'sdg'), ('x', 'x'), ('y', 'y'), ('z', 'z')]
-
-        # Inverse map expanded for compatibility and new gates
         self._inverse_map = {
-            'h': 'h', 'H': 'H',
-            's': 'sdg', 'S': 'sdg',
-            'sdg': 's', 'Sdg': 's',
-            'x': 'x', 'X': 'X',
-            'y': 'y', 'Y': 'Y',
-            'z': 'z', 'Z': 'Z',
-            'cnot': 'cnot', 'CNOT': 'cnot',
-            # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-            'ccnot': 'ccnot', 'CCNOT': 'ccnot', 'toffoli': 'toffoli',
-            'cswap': 'cswap', 'CSWAP': 'cswap', 'fredkin': 'fredkin',
-            # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            'h': 'h', 'H': 'H', 's': 'sdg', 'S': 'sdg', 'sdg': 's', 'Sdg': 's',
+            'x': 'x', 'X': 'X', 'y': 'y', 'Y': 'Y', 'z': 'z', 'Z': 'Z',
+            'cnot': 'cnot', 'CNOT': 'cnot', 'ccnot': 'ccnot', 'CCNOT': 'ccnot',
+            'toffoli': 'toffoli', 'cswap': 'cswap', 'CSWAP': 'cswap', 'fredkin': 'fredkin',
         }
-
         self._CLIFFORD_24_DECOMPOSITIONS = [
             ['id'], ['x'], ['y'], ['y', 'x'], ['rx90'], ['rxm90'], ['ry90'], ['rym90'],
             ['rxm90', 'ry90', 'rx90'], ['rxm90', 'rym90', 'rx90'], ['x', 'rym90'], ['x', 'ry90'],
@@ -106,21 +80,32 @@ class CliffordGateSet(SingleQubitGateSet, TwoQubitGateSet, ThreeQubitGateSet):
                     gates.append(Gate(name=name, qubits=(q,)))
         return gates
 
-    def get_random_2q_layer(self, topology: List[Tuple[int, int]]) -> List[Gate]:
-        return [Gate(name=self.two_qubit_gate_name, qubits=pair) for pair in topology]
+    # [FIX 2] Implement the random, non-overlapping layer logic for 2-qubit gates.
+    def get_random_2q_layer(self, topology: List[Tuple[int, int]], seed: Optional[int] = None) -> List[Gate]:
+        rng = random.Random(seed)
+        gates = []
+        available_pairs = topology[:]
+        used_qubits = set()
+        while available_pairs:
+            pair_index = rng.randrange(len(available_pairs))
+            q1, q2 = available_pairs.pop(pair_index)
+            if q1 not in used_qubits and q2 not in used_qubits:
+                gates.append(Gate(name=self.two_qubit_gate_name, qubits=(q1, q2)))
+                used_qubits.add(q1)
+                used_qubits.add(q2)
+                available_pairs = [
+                    (p_q1, p_q2) for p_q1, p_q2 in available_pairs
+                    if p_q1 not in used_qubits and p_q2 not in used_qubits
+                ]
+        return gates
 
-    # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-    # [[[ IMPLEMENTATION OF get_random_3q_layer ]]]
-    # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
     def get_random_3q_layer(self, topology: List[Tuple[int, int, int]], seed: Optional[int] = None) -> List[Gate]:
-        """Generates a layer of random three-qubit Clifford gates (e.g., CCNOT, CSWAP)."""
         rng = random.Random(seed)
         gates = []
         for triplet in topology:
             name, = rng.choice(self.three_qubit_clifford_gates)
             gates.append(Gate(name=name, qubits=triplet))
         return gates
-    # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     def get_random_pauli_layer(self, qubits: List[int], seed: Optional[int] = None) -> List[Gate]:
         rng = random.Random(seed)
@@ -153,11 +138,8 @@ class CliffordGateSet(SingleQubitGateSet, TwoQubitGateSet, ThreeQubitGateSet):
             inv_cnot = fwd_cnot.inverse()
             return fwd_1q_sublayer + [fwd_cnot], [inv_cnot] + inv_1q_sublayer_rev
         else:
-            # Note: RB for 3+ qubits is more complex and not implemented here.
-            # This method is specific to 1 and 2 qubit RB.
             raise ValueError("This RB method is only for 1 or 2 qubits.")
 
-# --- Other classes and factory function remain unchanged ---
 class XYGateSet(SingleQubitGateSet, TwoQubitGateSet):
     def __init__(self):
         self.single_qubit_gate_names = ['sqrtX', 'sqrtY']
@@ -165,8 +147,25 @@ class XYGateSet(SingleQubitGateSet, TwoQubitGateSet):
     def get_random_1q_layer(self, qubits: List[int], seed: Optional[int] = None) -> List[Gate]:
         rng = random.Random(seed)
         return [Gate(name=rng.choice(self.single_qubit_gate_names), qubits=(q,)) for q in qubits]
-    def get_random_2q_layer(self, topology: List[Tuple[int, int]]) -> List[Gate]:
-        return [Gate(name=self.two_qubit_gate_name, qubits=pair) for pair in topology]
+    
+    # [FIX 3] Apply the same fix to XYGateSet for consistency.
+    def get_random_2q_layer(self, topology: List[Tuple[int, int]], seed: Optional[int] = None) -> List[Gate]:
+        rng = random.Random(seed)
+        gates = []
+        available_pairs = topology[:]
+        used_qubits = set()
+        while available_pairs:
+            pair_index = rng.randrange(len(available_pairs))
+            q1, q2 = available_pairs.pop(pair_index)
+            if q1 not in used_qubits and q2 not in used_qubits:
+                gates.append(Gate(name=self.two_qubit_gate_name, qubits=(q1, q2)))
+                used_qubits.add(q1)
+                used_qubits.add(q2)
+                available_pairs = [
+                    (p_q1, p_q2) for p_q1, p_q2 in available_pairs
+                    if p_q1 not in used_qubits and p_q2 not in used_qubits
+                ]
+        return gates
 
 class UniversalXEBGateSet(SingleQubitGateSet, TwoQubitGateSet):
     def __init__(self):
@@ -191,8 +190,25 @@ class UniversalXEBGateSet(SingleQubitGateSet, TwoQubitGateSet):
             matrix = rng.choice(self._1q_matrices)
             gates.append(Gate(name="matrix_gate", qubits=(q,), params=[matrix]))
         return gates
-    def get_random_2q_layer(self, topology: List[Tuple[int, int]]) -> List[Gate]:
-        return [Gate(name=self.two_qubit_gate_name, qubits=pair) for pair in topology]
+    
+    # [FIX 4] Apply the same fix to UniversalXEBGateSet for consistency.
+    def get_random_2q_layer(self, topology: List[Tuple[int, int]], seed: Optional[int] = None) -> List[Gate]:
+        rng = random.Random(seed)
+        gates = []
+        available_pairs = topology[:]
+        used_qubits = set()
+        while available_pairs:
+            pair_index = rng.randrange(len(available_pairs))
+            q1, q2 = available_pairs.pop(pair_index)
+            if q1 not in used_qubits and q2 not in used_qubits:
+                gates.append(Gate(name=self.two_qubit_gate_name, qubits=(q1, q2)))
+                used_qubits.add(q1)
+                used_qubits.add(q2)
+                available_pairs = [
+                    (p_q1, p_q2) for p_q1, p_q2 in available_pairs
+                    if p_q1 not in used_qubits and p_q2 not in used_qubits
+                ]
+        return gates
 
 def get_gate_set(spec: Union[str, Dict, BaseGateSet]) -> BaseGateSet:
     if isinstance(spec, BaseGateSet):

@@ -1,6 +1,5 @@
 # File Path: errorgnomark/circuits/circuit.py
-# FINAL VISUAL UPGRADE: Implements a professional, column-aligned character-based
-# circuit renderer to fix the misaligned drawing issue.
+# [CORRECTED VERSION - Final Typo Fix]
 
 import numpy as np
 from typing import List, Tuple, Any, Dict, Optional
@@ -11,6 +10,11 @@ class Gate:
         self.name = name
         self.qubits = qubits
         self.params = params if params is not None else []
+
+    @property
+    def arity(self) -> int:
+        """Returns the number of qubits this gate acts on."""
+        return len(self.qubits)
 
     def inverse(self) -> 'Gate':
         lower_name = self.name.lower()
@@ -44,9 +48,6 @@ class QuantumCircuit:
         self.gates = gates if gates is not None else []
         self.num_qubits = len(qubits)
 
-    # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-    # [[[ NEW, PROFESSIONALLY ALIGNED __str__ METHOD ]]]
-    # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
     def __str__(self) -> str:
         """
         Provides a well-aligned, character-based string representation of the
@@ -55,52 +56,36 @@ class QuantumCircuit:
         if not self.gates:
             return f"QuantumCircuit(qubits={self.qubits}, num_gates=0)"
 
-        # Constants for drawing
         GATE_WIDTH = 7
         WIRE_SEGMENT = "-" * GATE_WIDTH
         CONTROL_SEGMENT = "--(*)--"
         TARGET_SEGMENT = "--(X)--"
         CONNECTION_SEGMENT = "--|--"
-
-        # Initialize the drawing lanes for each qubit
         lanes = {q: f"q{q}: " for q in self.qubits}
 
-        # Process one gate at a time, treating each as a "column"
         for gate in self.gates:
-            # For each gate, create a map of what to draw on each qubit's line
             column_drawings = {}
-
-            # Populate the map for qubits involved in the gate
             if gate.name == "measure":
                 q = gate.qubits[0]
                 column_drawings[q] = f"--[M]--"
             elif len(gate.qubits) == 1:
                 q = gate.qubits[0]
-                gate_name = gate.name.upper()[:3]  # Truncate long names
+                gate_name = gate.name.upper()[:3]
                 column_drawings[q] = f"-|{gate_name:^3}|-"
             elif len(gate.qubits) == 2:
                 q1, q2 = gate.qubits
                 control, target = min(q1, q2), max(q1, q2)
-                
-                # Default to CNOT representation
                 column_drawings[control] = CONTROL_SEGMENT
                 column_drawings[target] = TARGET_SEGMENT
-                
-                # Draw the vertical connection line for any qubits in between
                 for q_mid in range(control + 1, target):
                     if q_mid in self.qubits:
                         column_drawings[q_mid] = CONNECTION_SEGMENT
             
-            # Append the correct segment to EVERY lane
             for q in self.qubits:
-                # If the qubit has a gate part in this column, draw it.
-                # Otherwise, draw a plain wire segment to maintain alignment.
                 lanes[q] += column_drawings.get(q, WIRE_SEGMENT)
 
-        # Assemble the final string from all lanes
         header = f"QuantumCircuit(qubits={self.qubits}, num_gates={len(self.gates)})"
         circuit_drawing = "\n".join(lanes[q] for q in self.qubits)
-        
         return f"{header}\n{circuit_drawing}"
 
     def __repr__(self) -> str:
@@ -125,7 +110,6 @@ class QuantumCircuit:
         combined_gates: List[Gate] = self.gates + other.gates
         return QuantumCircuit(qubits=combined_qubits, gates=combined_gates)
 
-# --- The rest of the file remains unchanged ---
 GATE_MATRIX_MAP: Dict[str, np.ndarray] = {
     'id': np.eye(2, dtype=complex), 'h': np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2),
     'x': np.array([[0, 1], [1, 0]], dtype=complex), 'y': np.array([[0, -1j], [1j, 0]], dtype=complex),
@@ -147,6 +131,7 @@ GATE_MATRIX_MAP: Dict[str, np.ndarray] = {
     'toffoli': np.array([[1,0,0,0,0,0,0,0], [0,1,0,0,0,0,0,0], [0,0,1,0,0,0,0,0], [0,0,0,1,0,0,0,0], [0,0,0,0,1,0,0,0], [0,0,0,0,0,1,0,0], [0,0,0,0,0,0,0,1], [0,0,0,0,0,0,1,0]], dtype=complex),
     'cswap': np.array([[1,0,0,0,0,0,0,0], [0,1,0,0,0,0,0,0], [0,0,1,0,0,0,0,0], [0,0,0,1,0,0,0,0], [0,0,0,0,1,0,0,0], [0,0,0,0,0,0,1,0], [0,0,0,0,0,1,0,0], [0,0,0,0,0,0,0,1]], dtype=complex),
     'fredkin': np.array([[1,0,0,0,0,0,0,0], [0,1,0,0,0,0,0,0], [0,0,1,0,0,0,0,0], [0,0,0,1,0,0,0,0], [0,0,0,0,1,0,0,0], [0,0,0,0,0,0,1,0], [0,0,0,0,0,1,0,0], [0,0,0,0,0,0,0,1]], dtype=complex),
+    # [FIX] Corrected the typo from 'dtye' to 'dtype'.
     'ccz': np.array([[1,0,0,0,0,0,0,0], [0,1,0,0,0,0,0,0], [0,0,1,0,0,0,0,0], [0,0,0,1,0,0,0,0], [0,0,0,0,1,0,0,0], [0,0,0,0,0,1,0,0], [0,0,0,0,0,0,1,0], [0,0,0,0,0,0,0,-1]], dtype=complex),
 }
 
