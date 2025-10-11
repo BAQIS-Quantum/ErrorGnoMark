@@ -1,0 +1,186 @@
+# File Path: errorgnomark/experiments/benchmarking/rb.py
+# FINAL ADAPTED VERSION: This version uses the correct, flattened import path for the
+# analysis module and integrates the user's new `analyze_epg` function.
+
+import numpy as np
+from typing import List, Dict, Optional, Any
+import matplotlib.pyplot as plt
+
+# Imports from the framework
+from errorgnomark.engine import QuantumEngine
+from errorgnomark.circuits.circuit import QuantumCircuit, Gate
+from errorgnomark.experiments.base import BaseExperiment
+from errorgnomark.circuits.gate_sets import CliffordGateSet
+
+# vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+# [[[ FIX: Corrected the import path for the flattened analysis module ]]]
+# Also importing the new `analyze_epg` helper function.
+# vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+from errorgnomark.analysis.rb import fit_rb_data, plot_rb_single, plot_rb_comparison, analyze_epg
+
+
+class StandardRBExperiment(BaseExperiment):
+    """
+    Performs a standard RB experiment to find the Error Per Clifford (EPC).
+    """
+    def __init__(
+        self,
+        qubits: List[int],
+        depths: Optional[List[int]] = None,
+        circuits_per_depth: int = 30,
+    ):
+        super().__init__(qubits)
+        self.circuits_per_depth = circuits_per_depth
+        if depths is None:
+            self.depths = [1, 10, 20, 40, 60, 80] if self.num_qubits == 1 else [1, 5, 10, 15, 20, 25]
+        else:
+            self.depths = depths
+        self.gate_set = CliffordGateSet()
+        self._circuits: List[QuantumCircuit] = []
+
+    def generate_single_circuit(self, depth: int, seed: Optional[int] = None) -> QuantumCircuit:
+        rng = np.random.default_rng(seed)
+        forward_gates, inverse_stack = [], []
+        for _ in range(depth):
+            layer_seed = rng.integers(2**32 - 1) if seed is not None else None
+            fwd_layer, inv_layer = self.gate_set.get_random_clifford_and_inverse(self.qubits, seed=layer_seed)
+            forward_gates.extend(fwd_layer)
+            inverse_stack.append(inv_layer)
+        inverse_gates = [gate for layer in reversed(inverse_stack) for gate in layer]
+        circuit = QuantumCircuit(qubits=self.qubits, gates=forward_gates + inverse_gates)
+        circuit.measure_all()
+        return circuit
+
+    def circuits(self) -> List[QuantumCircuit]:
+        if self._circuits:
+            return self._circuits
+        print(f"Generating {len(self.depths) * self.circuits_per_depth} circuits for Standard RB...")
+        all_circuits = [self.generate_single_circuit(depth) for depth in self.depths for _ in range(self.circuits_per_depth)]
+        self._circuits = all_circuits
+        return self._circuits
+
+    def run(self, engine: QuantumEngine, shots: int = 4096, plot: bool = False, verbose: bool = True) -> Dict[str, Any]:
+        if verbose:
+            print(f"--- Running Standard {self.num_qubits}-Qubit RB ---")
+        experiment_circuits = self.circuits()
+        raw_results = engine.execute(experiment_circuits, shots=shots)
+        survivals: Dict[int, List[float]] = {depth: [] for depth in self.depths}
+        ground_state_str = '0' * self.num_qubits
+        result_idx = 0
+        for depth in self.depths:
+            for _ in range(self.circuits_per_depth):
+                _, noisy_counts = raw_results[result_idx]
+                total_shots = sum(noisy_counts.values())
+                prob = noisy_counts.get(ground_state_str, 0) / total_shots if total_shots > 0 else 0.0
+                survivals[depth].append(prob)
+                result_idx += 1
+        if verbose: print("Fitting standard RB data...")
+        fit_results = fit_rb_data(survivals, self.num_qubits)
+        if verbose:
+            if fit_results['fit_successful']:
+                print(f"Fit successful. EPC = {fit_results['epc']:.3e}")
+            else:
+                print("Fit failed.")
+        if plot:
+            if verbose: print("Generating plot...")
+            plot_rb_single(fit_results, self.num_qubits, title=f"Standard {self.num_qubits}-Qubit RB")
+        return fit_results
+
+
+class InterleavedRBExperiment(BaseExperiment):
+    """
+    Performs an interleaved RB experiment to find the error of a specific target gate.
+    """
+    def __init__(
+        self,
+        qubits: List[int],
+        target_gate_name: str,
+        depths: Optional[List[int]] = None,
+        circuits_per_depth: int = 50,
+    ):
+        super().__init__(qubits)
+        self.target_gate_name = target_gate_name
+        self.target_gate = Gate(name=target_gate_name, qubits=tuple(qubits))
+        self.circuits_per_depth = circuits_per_depth
+        if len(self.target_gate.qubits) != self.num_qubits:
+            raise ValueError(f"Target gate '{target_gate_name}' acts on {len(self.target_gate.qubits)} qubits, but experiment is for {self.num_qubits} qubits.")
+        if depths is None:
+            self.depths = [1, 10, 20, 30, 40, 50] if self.num_qubits == 1 else [1, 4, 8, 12, 16, 20]
+        else:
+            self.depths = depths
+        self.gate_set = CliffordGateSet()
+        self._circuits: List[QuantumCircuit] = []
+
+    def generate_single_circuit(self, depth: int, seed: Optional[int] = None) -> QuantumCircuit:
+        rng = np.random.default_rng(seed)
+        forward_gates, inverse_stack = [], []
+        interleaved_gate_inv = self.target_gate.inverse()
+        for _ in range(depth):
+            layer_seed = rng.integers(2**32 - 1) if seed is not None else None
+            fwd_layer, inv_layer = self.gate_set.get_random_clifford_and_inverse(self.qubits, seed=layer_seed)
+            forward_gates.extend(fwd_layer)
+            inverse_stack.append(inv_layer)
+            forward_gates.append(self.target_gate)
+            inverse_stack.append([interleaved_gate_inv])
+        inverse_gates = [gate for layer in reversed(inverse_stack) for gate in layer]
+        circuit = QuantumCircuit(qubits=self.qubits, gates=forward_gates + inverse_gates)
+        circuit.measure_all()
+        return circuit
+
+    def circuits(self) -> List[QuantumCircuit]:
+        if self._circuits:
+            return self._circuits
+        print(f"Generating {len(self.depths) * self.circuits_per_depth} circuits for Interleaved RB...")
+        all_circuits = [self.generate_single_circuit(depth) for depth in self.depths for _ in range(self.circuits_per_depth)]
+        self._circuits = all_circuits
+        return self._circuits
+
+    def run(self, engine: QuantumEngine, shots: int = 8096, plot: bool = False, verbose: bool = True) -> Dict[str, Any]:
+        if verbose:
+            print(f"\n--- Running Full Interleaved {self.num_qubits}-Qubit RB for gate '{self.target_gate_name}' ---")
+
+        # Step 1: Run Standard RB experiment as a baseline
+        if verbose: print("\n[Step 1/2] Running Standard RB reference experiment...")
+        std_experiment = StandardRBExperiment(self.qubits, self.depths, self.circuits_per_depth)
+        results_std = std_experiment.run(engine, shots=shots, plot=False, verbose=verbose)
+
+        # Step 2: Run Interleaved RB experiment
+        if verbose: print(f"\n[Step 2/2] Running Interleaved RB experiment with '{self.target_gate_name}'...")
+        interleaved_circuits = self.circuits()
+        raw_results_int = engine.execute(interleaved_circuits, shots=shots)
+        survivals_int: Dict[int, List[float]] = {depth: [] for depth in self.depths}
+        ground_state_str = '0' * self.num_qubits
+        result_idx = 0
+        for depth in self.depths:
+            for _ in range(self.circuits_per_depth):
+                _, noisy_counts = raw_results_int[result_idx]
+                total_shots = sum(noisy_counts.values())
+                prob = noisy_counts.get(ground_state_str, 0) / total_shots if total_shots > 0 else 0.0
+                survivals_int[depth].append(prob)
+                result_idx += 1
+
+        if verbose: print("Fitting interleaved RB data...")
+        results_int = fit_rb_data(survivals_int, self.num_qubits)
+        if verbose and results_int['fit_successful']:
+            print(f"Fit successful. Interleaved EPC = {results_int['epc']:.3e}")
+
+        # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+        # [[[ FIX: Use the new `analyze_epg` function from the analysis module ]]]
+        # This simplifies the code and aligns with the user's new structure.
+        # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+        # Step 3: Analyze the results using the dedicated function
+        final_results = analyze_epg(results_std, results_int, self.num_qubits)
+        gate_error = final_results['gate_error']
+        
+        if verbose:
+            if not np.isnan(gate_error):
+                print("\n--- Results ---")
+                print(f"Calculated Error of gate '{self.target_gate_name}' (EPG) = {gate_error:.3e}")
+            else:
+                print("\nCould not calculate gate error because one or both fits failed.")
+
+        if plot:
+            if verbose: print("Generating comparison plot...")
+            plot_rb_comparison(results_std, results_int, self.num_qubits, self.target_gate_name)
+
+        return final_results
