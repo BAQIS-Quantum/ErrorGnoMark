@@ -25,43 +25,53 @@ EGM is designed to be a critical tool in various stages of the quantum computing
 
 ## 3. Key Modules & Components
 
-EGM's architecture is built around several key components, ensuring flexibility and extensibility:
+EGM's architecture is engineered for modularity, flexibility, and extensibility. It is built upon a collection of distinct, high-cohesion components that work in concert to deliver powerful benchmarking capabilities.
 
-*   **`experiment`**: The central module for defining all benchmarking and characterization protocols.
-
-*   **`analysis`**: A suite of tools for processing experimental data, fitting models, and extracting key performance metrics.
-*   **`engine`**: The core execution engine that orchestrates experiments, from circuit generation to data acquisition and analysis.
-*   **`backend`**: An abstraction layer for interfacing with different quantum hardware or simulators, essential for end-to-end workflows.
-*   **`circuit`**: A utility module for circuit construction and manipulation, primarily used for end-to-end workflows.
-*   **`pulse`**: An interface for defining pulse-level experiments, enabling direct interaction with control hardware for low-level characterization.
-*   **`simulators`**: A collection of built-in, extensible simulators for testing and development.
+*   **`experiments`**: The heart of EGM. This core module contains the "blueprints" for all benchmarking and characterization protocols, meticulously organized into a three-layer evaluation hierarchy.
+*   **`analysis`**: A dedicated suite of tools for post-processing experimental data. It handles everything from raw data aggregation and statistical analysis to sophisticated model fitting and the extraction of key performance metrics.
+*   **`engine`**: The core execution engine that orchestrates the entire experimental workflow. It manages circuit generation, submission to the backend, data retrieval, and coordination with the `analysis` module.
+*   **`backends`**: A hardware abstraction layer that makes EGM hardware-agnostic. It provides a standardized interface for communicating with diverse quantum hardware platforms (cloud or on-premise) and simulators.
+*   **`circuits`**: A foundational module for quantum circuit representation, construction, and manipulation, providing the essential objects that `experiments` and the `engine` operate on.
+*   **`pulse`**: An interface for defining pulse-level experiments, enabling direct interaction with control hardware for low-level device physics characterization (e.g., Rabi, Ramsey, T1/T2).
+*   **`simulators`**: A collection of built-in, extensible simulators for rapid development, testing, and validation of experiments without requiring access to physical quantum hardware.
 
 ---
 
-<!-- ### In-depth Look: The `Experiment` Module -->
+### In-depth Look: The `experiments` Module's Three-Layer Hierarchy
 
-The **`experiment`** module is the heart of EGM and is divided into two main categories: 
+The true power of EGM's design is revealed in the logical structure of the `experiments` module. It is organized into a three-layer hierarchy, allowing users to probe quantum processor performance at different levels of abstraction—from fundamental physics to application-level utility.
 
-#### 3.1. Benchmarking
+#### **Layer 1: `benchmarking` — Protocol-Level Benchmarking**
 
-This module includes a collection of state-of-the-art protocols for assessing gate and circuit fidelity:
-*   **Randomized Benchmarking (RB)** and **Interleaved RB (IRB)**
-*   **Cross-Entropy Benchmarking (XEB)**: Including multi-qubit fidelity estimation and fitting of single/two-qubit gate error rates.
-*   **Channel Spectrum Benchmarking (CSB)**
-*   **Mirror Randomized Benchmarking (MRB)**
+This layer answers the question: **"How good are the fundamental operations (gates and circuits)?"** It contains standardized, scalable protocols that yield critical fidelity metrics.
 
-#### 3.2. Characterization
+*   **Randomized Benchmarking (`rb`)**: Implements Standard, Interleaved, and other variants of RB to measure the average error rate of Clifford gates (Error Per Clifford, EPC) and, by extension, the fidelity of specific target gates (Error Per Gate, EPG).
+*   **Cross-Entropy Benchmarking (`xeb`)**: Assesses the fidelity of quantum circuits by comparing their output distribution to that of a noiseless simulation, providing a holistic measure of performance on random circuits.
+*   **Quantum Volume (`qv`)**: A full-stack benchmark that measures the largest "square" random circuit a quantum computer can successfully execute, reflecting a combined measure of qubit count, fidelity, and connectivity.
 
-This module provides a set of targeted experiments to diagnose specific noise mechanisms:
-*   **Coherent Errors**: Quantify unitary errors like over/under-rotations.
-*   **Incoherent Errors**: Measure stochastic noise sources like T1 and T2.
-*   **Crosstalk**: Characterize unwanted interactions between qubits.
-*   **Leakage**: Measure transitions to non-computational states.
-*   **SPAM**: Characterize State Preparation and Measurement errors.
-*   **Tomography**:
-    *   **State Tomography**: For both arbitrary and graph states.
-    *   **Process Tomography**
-    *   **Gate Set Tomography (GST)**
+#### **Layer 2: `characterization` — Physics-Level Characterization**
+
+This layer answers the question: **"What are the specific physical error sources and their magnitudes?"** It provides a suite of targeted experiments to diagnose noise mechanisms and validate quantum states.
+
+*   **Coherent Errors (`coherent`)**: Quantifies unitary errors, such as systematic over/under-rotations. Experiments like **Rabi** and **Ramsey** are used to precisely measure pulse amplitude errors and qubit frequency detuning, which are primary sources of coherent gate infidelity.
+*   **Incoherent Errors (`incoherent`)**: Measures stochastic noise sources, including energy relaxation time (**T1**) and dephasing time (**T2**), which are fundamental limits on quantum computation.
+*   **Crosstalk (`crosstalk`)**: Characterizes the magnitude of unwanted interactions between qubits. This is crucial for assessing the viability of parallel gate operations and understanding the scalability limits of the processor.
+*   **SPAM Errors (`spam`)**: Characterizes the fidelity of **S**tate **P**reparation **a**nd **M**easurement, a critical source of error that affects every quantum algorithm.
+*   **Entanglement (`entanglement`)**: A specialized suite to verify the creation of high-fidelity multi-qubit entangled states, the essential resource for quantum advantage. This includes fidelity checks for:
+    *   **Bell States**: The fundamental unit of two-qubit entanglement.
+    *   **GHZ & W States**: Canonical examples of multi-qubit entanglement with distinct properties.
+    *   **Graph & Cluster States**: The resource for measurement-based quantum computing and a key component in many quantum error correction codes.
+*   **Tomography (`tomography`)**: Provides tools for full quantum state and process reconstruction.
+    *   **State Tomography**: Validates the creation of specific quantum states by reconstructing their density matrices.
+    *   **Process Tomography**: Characterizes the complete action of a quantum gate or process.
+
+#### **Layer 3: `algorithmic` — Application-Level Benchmarking**
+
+This layer answers the ultimate question: **"How well does the processor perform on end-to-end quantum algorithms?"** It assesses the practical performance of the system on small-scale but complete algorithms.
+
+*   **Variational Algorithms (`variational`)**: Benchmarks the performance of hybrid quantum-classical algorithms like the **Variational Quantum Eigensolver (VQE)** and the **Quantum Approximate Optimization Algorithm (QAOA)**.
+*   **Algebraic & Search Algorithms (`algebraic`)**: Assesses performance on foundational algorithms like **Grover's Search** and **Quantum Phase Estimation (QPE)**.
+*   **Quantum Simulation (`simulation`)**: Evaluates the ability of the device to simulate other quantum systems, a primary proposed application for quantum computers.
 ---
 
 ## 4. Installation 
@@ -165,7 +175,7 @@ print(f"\n[Final Result] Estimated Error of 'CNOT' gate = {gate_error:.3e}")
 ```
 ## 6. Directory Structure
 
-The project is organized to separate the core library, tests, examples, and documentation.
+The project is organized to separate the core library, tests, examples, and documentation, ensuring a clean and maintainable codebase.
 
 ```text
 errorgnomark/
@@ -182,58 +192,32 @@ errorgnomark/
     ├── __init__.py                # Makes 'errorgnomark' a Python package
     ├── api.py                     # Public-facing, simplified API for common tasks
     │
-    ├── analysis/                  # Module: General data analysis, fitting, and plotting
-    │   ├── fitting.py
-    │   ├── plotting.py
-    │   └── result.py
-    │
-    ├── backends/                  # Module: Interfaces for quantum backends
-    │   ├── base.py
-    │   ├── dummy_backend.py
-    │   └── quafu_cloud.py
-    │
-    ├── circuits/                  # Module: Quantum circuit construction and manipulation
-    │   ├── circuit.py
-    │   └── operations.py
-    │
-    ├── engine/                    # Module: Core engine for experiment orchestration
-    │   └── scheduler.py
+    ├── analysis/                  # Module: Data processing, fitting, and plotting
+    ├── backends/                  # Module: Interfaces for quantum hardware & simulators
+    ├── circuits/                  # Module: Quantum circuit construction & manipulation
+    ├── engine/                    # Module: Core experiment orchestration engine
     │
     └── experiments/               # Module: Definitions of all experiment "blueprints"
         ├── base.py                # Abstract base class for all experiments
         │
-        ├── benchmarking/          # Layer 1: Protocol-level benchmarks (gates, circuits)
-        │   ├── rb.py              # Randomized Benchmarking
-        │   ├── xeb.py             # Cross-Entropy Benchmarking
-        │   └── qv.py              # Quantum Volume
+        ├── benchmarking/          # Layer 1: Protocol-Level Benchmarking
+        │   ├── rb.py              # e.g., Randomized Benchmarking
+        │   ├── xeb.py             # e.g., Cross-Entropy Benchmarking
+        │   └── ...
         │
-        ├── characterization/      # Layer 2: Physics-level characterization (noise, states)
-        │   ├── incoherent/        # Incoherent error (T1, T2)
-        │   │   ├── t1.py
-        │   │   └── t2.py
-        │   ├── spam/              # State Preparation and Measurement error
-        │   │   └── spam_characterization.py
-        │   ├── tomography/        # Quantum Tomography (general state/process validation)
-        │   │   ├── state_tomography.py
-        │   │   └── process_tomography.py
-        │   └── entanglement/      # Entanglement state fidelity characterization
-        │       ├── bell_state_fidelity.py
-        │       ├── ghz_state_fidelity.py
-        │       ├── w_state_fidelity.py
-        │       ├── linear_cluster_state_fidelity.py
-        │       ├── grid_cluster_state_fidelity.py
-        │       └── graph_state_fidelity.py
+        ├── characterization/      # Layer 2: Physics-Level Characterization
+        │   ├── coherent/          # Coherent error experiments (e.g., Rabi, Ramsey)
+        │   ├── crosstalk/         # Crosstalk measurement protocols
+        │   ├── entanglement/      # Entangled state fidelity validation (e.g., Bell, GHZ)
+        │   ├── incoherent/        # Incoherent error experiments (e.g., T1, T2)
+        │   ├── spam/              # State Preparation and Measurement (SPAM) errors
+        │   └── tomography/        # State and process tomography
         │
-        └── algorithmic/           # Layer 3: Algorithm-level benchmarks (end-to-end apps)
-            ├── variational/       # Variational Quantum Algorithms
-            │   ├── vqe_benchmark.py
-            │   └── qaoa_benchmark.py
-            ├── simulation/        # Quantum Simulation
-            │   └── digital_simulation_benchmark.py
-            └── algebraic/         # Algebraic & Search Algorithms
-                ├── grover_benchmark.py
-                └── qpe_benchmark.py
-```               
+        └── algorithmic/           # Layer 3: Application-Level Benchmarking
+            ├── variational/       # e.g., VQE, QAOA benchmarks
+            ├── algebraic/         # e.g., Grover's Search, QPE benchmarks
+            └── simulation/        # e.g., Quantum dynamics simulation benchmarks
+```                         
 
 ## 7. Contributing
 We welcome contributions from the community! If you'd like to contribute, please follow these steps:
