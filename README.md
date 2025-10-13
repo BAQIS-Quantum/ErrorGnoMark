@@ -122,10 +122,10 @@ print(f"  - SPAM error: {backend.spam_error:.2%}\n")
 int_rb_cnot = InterleavedRBExperiment(qubits=[0, 1], target_gate_name='CNOT')
 
 # 3. Run and Analyze:
-# The `run_and_fit` method is a high-level wrapper that handles circuit generation,
+# The `run` method is a high-level wrapper that handles circuit generation,
 # execution on the backend, data processing, and model fitting.
 print("\n" + "="*20, "Running 2-Qubit IRB for 'CNOT'", "="*20)
-int_results_cnot = int_rb_cnot.run_and_fit(backend, verbose=True, plot=True)
+int_results_cnot = int_rb_cnot.run(backend, verbose=True, plot=True)
 
 # 4. Get Results:
 # Extract the calculated gate error from the results object.
@@ -133,27 +133,39 @@ gate_error = int_results_cnot.get('gate_error', -1)
 print(f"\n[Final Result] Estimated Error of 'CNOT' gate = {gate_error:.3e}")
 
 # Expected Output：
-============================================================
-      Interleaved Randomized Benchmarking (IRB) Demonstration
-============================================================
-[Setup] Using a simulated backend with:
-  - Per-gate depolarizing error: 1.5%
-  - SPAM error: 0.01%
-
-
-==================== Running 2-Qubit IRB for 'CNOT' ====================
-[Fit] Standard RB decay parameter (p_std) = 0.9632
-[Fit] Interleaved RB decay parameter (p_int) = 0.9485
-[Analysis] Error per Clifford (EPC) = 0.0276
-[Analysis] Interleaved Error per Clifford (EPC_int) = 0.0386
-
-[Final Result] Estimated Error of 'CNOT' gate = 1.104e-02
+# ============================================================
+#       Interleaved Randomized Benchmarking (IRB) Demonstration
+# ============================================================
+# [Setup] Using a simulated backend with:
+#   - Per-gate depolarizing error: 1.5%
+#   - SPAM error: 0.01%
+#
+#
+# ==================== Running 2-Qubit IRB for 'CNOT' ====================
+# [Step 1/3] Running Standard RB reference experiment...
+# --- Running Standard 2-Qubit RB ---
+# Generating 150 circuits for Standard RB...
+# Fitting standard RB data...
+# Fit successful. EPC = 2.763e-02
+#
+# [Step 2/3] Running Interleaved RB experiment with 'cnot'...
+# Generating 150 circuits for Interleaved RB...
+# Fitting interleaved RB data...
+# Fit successful. Interleaved EPC = 3.864e-02
+#
+# [Step 3/3] Analyzing results and calculating EPG...
+#
+# --- Results ---
+# Calculated Error of gate 'cnot' (EPG) = 1.104e-02
+# Generating comparison plot...
+#
+# [Final Result] Estimated Error of 'CNOT' gate = 1.104e-02
 # (Note: A plot showing the exponential decay curves will be displayed in a separate window if run in a graphical environment.)
+
 ```
 ## 6. Directory Structure
+
 The project is organized to separate the core library, tests, examples, and documentation.
-
-
 
 ```text
 errorgnomark/
@@ -171,54 +183,57 @@ errorgnomark/
     ├── api.py                     # Public-facing, simplified API for common tasks
     │
     ├── analysis/                  # Module: General data analysis, fitting, and plotting
-    │   ├── __init__.py
-    │   ├── fitting.py             # Generic curve fitting models
-    │   ├── plotting.py            # Standardized plotting utilities
-    │   └── result.py              # Defines the standard ExperimentResult data structure
+    │   ├── fitting.py
+    │   ├── plotting.py
+    │   └── result.py
     │
     ├── backends/                  # Module: Interfaces for quantum backends
-    │   ├── __init__.py
-    │   ├── base.py                # Abstract base class for all backends
-    │   ├── dummy_backend.py       # A simple simulator for testing purposes
-    │   └── quafu_cloud.py         # Backend for the Quafu quantum cloud platform
+    │   ├── base.py
+    │   ├── dummy_backend.py
+    │   └── quafu_cloud.py
     │
     ├── circuits/                  # Module: Quantum circuit construction and manipulation
-    │   ├── __init__.py
-    │   ├── circuit.py             # Core QuantumCircuit class definition
-    │   ├── operations.py          # Definition of custom gates and operations
-    │   └── ...
+    │   ├── circuit.py
+    │   └── operations.py
     │
     ├── engine/                    # Module: Core engine for experiment orchestration
-    │   ├── __init__.py
-    │   └── scheduler.py           # Manages experiment execution and data retrieval
+    │   └── scheduler.py
     │
     └── experiments/               # Module: Definitions of all experiment "blueprints"
-        ├── __init__.py
         ├── base.py                # Abstract base class for all experiments
         │
-        ├── benchmarking/          # Protocols for benchmarking quantum device performance
-        │   ├── __init__.py
-        │   ├── rb.py              # e.g., Randomized Benchmarking (RB)
-        │   ├── qv.py              # e.g., Quantum Volume
-        │   └── ...
+        ├── benchmarking/          # Layer 1: Protocol-level benchmarks (gates, circuits)
+        │   ├── rb.py              # Randomized Benchmarking
+        │   ├── xeb.py             # Cross-Entropy Benchmarking
+        │   └── qv.py              # Quantum Volume
         │
-        ├── characterization/      # Protocols for characterizing noise sources
-        │   ├── __init__.py
-        │   ├── coherent/          # Coherent error characterization (e.g., Ramsey)
-        │   │   ├── rabi_experiment.py
-        │   │   └── ...
-        │   ├── incoherent/        # Incoherent error characterization (e.g., T1, T2)
-        │   │   ├── t1_experiment.py
-        │   │   ├── t2_echo_experiment.py
-        │   │   └── ...
-        │   ├── spam/              # State Preparation and Measurement (SPAM) error
-        │   └── ...
+        ├── characterization/      # Layer 2: Physics-level characterization (noise, states)
+        │   ├── incoherent/        # Incoherent error (T1, T2)
+        │   │   ├── t1.py
+        │   │   └── t2.py
+        │   ├── spam/              # State Preparation and Measurement error
+        │   │   └── spam_characterization.py
+        │   ├── tomography/        # Quantum Tomography (general state/process validation)
+        │   │   ├── state_tomography.py
+        │   │   └── process_tomography.py
+        │   └── entanglement/      # Entanglement state fidelity characterization
+        │       ├── bell_state_fidelity.py
+        │       ├── ghz_state_fidelity.py
+        │       ├── w_state_fidelity.py
+        │       ├── linear_cluster_state_fidelity.py
+        │       ├── grid_cluster_state_fidelity.py
+        │       └── graph_state_fidelity.py
         │
-        └── tomography/            # Quantum State and Process Tomography
-            ├── __init__.py
-            ├── process_tomography/
-            └── state_tomography/
-```
+        └── algorithmic/           # Layer 3: Algorithm-level benchmarks (end-to-end apps)
+            ├── variational/       # Variational Quantum Algorithms
+            │   ├── vqe_benchmark.py
+            │   └── qaoa_benchmark.py
+            ├── simulation/        # Quantum Simulation
+            │   └── digital_simulation_benchmark.py
+            └── algebraic/         # Algebraic & Search Algorithms
+                ├── grover_benchmark.py
+                └── qpe_benchmark.py
+```               
 
 ## 7. Contributing
 We welcome contributions from the community! If you'd like to contribute, please follow these steps:

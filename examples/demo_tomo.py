@@ -19,7 +19,7 @@ except ImportError:
 from errorgnomark.engine import QuantumEngine
 from errorgnomark.backends.dummy_backend import DummyBackend
 from errorgnomark.circuits.circuit import QuantumCircuit, Gate
-from errorgnomark.experiments.characterization.tomography.tomography import StateTomographyExperiment
+from errorgnomark.experiments.characterization.tomography.state_tomography import StateTomographyExperiment
 from errorgnomark.analysis.reporting import generate_report, plot_density_matrix, ExcelReport
 
 if __name__ == "__main__":
