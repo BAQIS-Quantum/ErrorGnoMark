@@ -33,6 +33,7 @@ EGM's architecture is engineered for modularity, flexibility, and extensibility.
 *   **`backends`**: A hardware abstraction layer that makes EGM hardware-agnostic. It provides a standardized interface for communicating with diverse quantum hardware platforms (cloud or on-premise) and simulators.
 *   **`circuits`**: A foundational module for quantum circuit representation, construction, and manipulation, providing the essential objects that `experiments` and the `engine` operate on.
 *   **`pulse`**: An interface for defining pulse-level experiments, enabling direct interaction with control hardware for low-level device physics characterization (e.g., Rabi, Ramsey, T1/T2).
+*   **`api`**: A high-level, user-friendly API that simplifies access to EGM's most common functionalities, making it easy to run standard benchmarks with just a few lines of code.
 
 ---
 
@@ -73,8 +74,9 @@ This layer answers the ultimate question: **"How well does the processor perform
 *   **Quantum Simulation (`simulation`)**: Evaluates the ability of the device to simulate other quantum systems, a primary proposed application for quantum computers.
 ---
 
-## 4. Installation 
-We recommend using a Python virtual environment for installation.
+## 4. Installation
+
+We recommend using a Python virtual environment for installation to avoid dependency conflicts.
 
 #### 4.1. Standard Installation (from PyPI)
 
@@ -82,23 +84,26 @@ For general use, you can install the latest stable version directly from the Pyt
 ```bash
 pip install errorgnomark
 ```
+
 #### 4.2. Local Development Installation
 
-If you plan to contribute to EGM or need the latest features not yet released, install it from a local clone of the repository:
+If you plan to contribute to EGM or need the latest features not yet released on PyPI, you should install it from a local clone of the Gitee repository.
 
+1.  **Clone the Repository from Gitee**
 
-1. Clone the repository (replace with your fork's URL if contributing)
-```bash
-git clone https://github.com/your-org/errorgnomark.git
-cd errorgnomark
-```
+    First, clone the repository to your local machine.
+    ```bash
+    git clone https://gitee.com/xdchai/errorgnomark.git
+    cd errorgnomark
+    ```
+    > **Note for Contributors:** If you plan to contribute code, please fork the repository on Gitee first. Then, clone your own fork using your personal URL (e.g., `git clone https://gitee.com/your-username/errorgnomark.git`).
 
-2. Install in editable mode
-The '-e' flag ensures that changes you make to the source code
-are immediately effective without needing to reinstall.
-```bash
-pip install -e 
-```
+2.  **Install in Editable Mode**
+
+    The `-e` flag (for "editable") creates a symbolic link to the source code. This ensures that any changes you make to the code are immediately effective in your environment without needing to reinstall the package.
+    ```bash
+    pip install -e .
+    ```
 
 ## 5. Usage
 
