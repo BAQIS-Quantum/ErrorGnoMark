@@ -33,7 +33,6 @@ EGM's architecture is engineered for modularity, flexibility, and extensibility.
 *   **`backends`**: A hardware abstraction layer that makes EGM hardware-agnostic. It provides a standardized interface for communicating with diverse quantum hardware platforms (cloud or on-premise) and simulators.
 *   **`circuits`**: A foundational module for quantum circuit representation, construction, and manipulation, providing the essential objects that `experiments` and the `engine` operate on.
 *   **`pulse`**: An interface for defining pulse-level experiments, enabling direct interaction with control hardware for low-level device physics characterization (e.g., Rabi, Ramsey, T1/T2).
-*   **`simulators`**: A collection of built-in, extensible simulators for rapid development, testing, and validation of experiments without requiring access to physical quantum hardware.
 
 ---
 
