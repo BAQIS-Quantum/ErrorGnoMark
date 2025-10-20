@@ -1,23 +1,32 @@
 # File Path: errorgnomark/experiments/benchmarking/xeb.py
-# [DEFINITIVE FINAL VERSION - Adapted to the RB-Optimized Engine]
+# [DEFINITIVE FINAL VERSION - Targeted fix based on user-provided code]
 
 import itertools
 import logging
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Any
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from errorgnomark.engine import QuantumEngine
-from errorgnomark.circuits.circuit import Gate, QuantumCircuit
-from errorgnomark.circuits.gate_sets import BaseGateSet, TwoQubitGateSet, get_gate_set
-from errorgnomark.analysis.xeb import (
-    analyze_xeb_fidelity,
-    fit_xeb_fidelity_decay,
-    calculate_interleaved_xeb_error,
-    plot_xeb_decay
-)
+# --- Internal Framework Imports ---
+try:
+    from ..engine import QuantumEngine
+    from ..circuits.circuit import Gate, QuantumCircuit
+    from ..circuits.gate_sets import BaseGateSet, TwoQubitGateSet, get_gate_set
+    from ..analysis.xeb import analyze_xeb_and_spb_from_results, plot_xeb_decay
+    from ..analysis.spb import plot_spb_decay
+except ImportError:
+    import sys, os
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+    from errorgnomark.engine import QuantumEngine
+    from errorgnomark.circuits.circuit import Gate, QuantumCircuit
+    from errorgnomark.circuits.gate_sets import BaseGateSet, TwoQubitGateSet, get_gate_set
+    from errorgnomark.analysis.xeb import analyze_xeb_and_spb_from_results, plot_xeb_decay
+    from errorgnomark.analysis.spb import plot_spb_decay
+
+# A sentinel object to detect if an argument was provided or not.
+_sentinel = object()
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
@@ -31,183 +40,238 @@ def _validate_list_of_integers(qubits: any, var_name: str):
         raise TypeError(f"`{var_name}` must be a list of integers.")
 
 class StandardXEBExperiment:
+    """
+    Base class for XEB experiments, encapsulating circuit generation, execution, and analysis.
+    """
     def __init__(self,
                  qubits: List[int],
                  depths: List[int] = [1, 5, 10, 15, 25, 40, 60],
                  circuits_per_depth: int = 30,
                  gate_set: Union[str, Dict, BaseGateSet] = "clifford",
-                 native_gates: Optional[List[str]] = DEFAULT_NATIVE_GATES):
+                 native_gates: Optional[List[str]] = DEFAULT_NATIVE_GATES,
+                 seed: Optional[int] = None):
         _validate_list_of_integers(qubits, "qubits")
         self.qubits = qubits
+        self.num_qubits = len(self.qubits)
         self.depths = depths
         self.circuits_per_depth = circuits_per_depth
-        self.gate_set = get_gate_set(gate_set)
+        
+        # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+        # [[[ FIX 1/2: Store the original gate_set input ]]]
+        # We store the raw input 'gate_set' before it's processed. This allows us
+        # to reliably check if the user requested "universal_xeb".
+        self.gate_set_input = gate_set
+        # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+        self.gate_set_obj = get_gate_set(gate_set)
+        
         self.topology = self._get_default_topology()
         self.native_gates = native_gates
+        self.seed = seed
         self.results: Dict = {}
-
-        if self.native_gates is None:
-            logging.info(f"XEB Experiment configured for LOGICAL view (`native_gates=None`). Decomposition is disabled.")
-        else:
-            logging.info(f"XEB Experiment configured for PHYSICAL view. Decomposing to native gates: {self.native_gates}")
-
-    @property
-    def circuits(self) -> List[QuantumCircuit]:
-        all_circuits = []
-        for depth in self.depths:
-            for i in range(self.circuits_per_depth):
-                circuit_seed = abs(hash((depth, i, tuple(self.qubits)))) % (2**32)
-                circuit = self._generate_circuit(depth, circuit_seed)
-                if self.native_gates:
-                    circuit = circuit.decompose(basis_gates=self.native_gates)
-                all_circuits.append(circuit)
-        return all_circuits
+        self._circuits: Optional[List[QuantumCircuit]] = None
 
     def _get_default_topology(self) -> List[Tuple[int, int]]:
         if len(self.qubits) < 2: return []
-        return list(itertools.combinations(self.qubits, 2))
+        return list(zip(self.qubits, self.qubits[1:]))
 
-    def _generate_circuit(self, depth: int, seed: Optional[int] = None) -> QuantumCircuit:
+    def _generate_circuit(self, depth: int, seed: Optional[int] = None, interleaved_gate: Optional[Gate] = None) -> QuantumCircuit:
         master_rng = np.random.default_rng(seed)
-        gates: List[Gate] = []
-        for _ in range(depth):
-            seed_1q = master_rng.integers(2**32)
-            gates.extend(self.gate_set.get_random_1q_layer(qubits=self.qubits, seed=seed_1q))
-            if self.topology and isinstance(self.gate_set, TwoQubitGateSet):
-                seed_2q = master_rng.integers(2**32)
-                gates.extend(self.gate_set.get_random_2q_layer(topology=self.topology, seed=seed_2q))
-        final_seed_1q = master_rng.integers(2**32)
-        gates.extend(self.gate_set.get_random_1q_layer(qubits=self.qubits, seed=final_seed_1q))
-        return QuantumCircuit(qubits=self.qubits, gates=gates)
+        gate_list: List[Gate] = []
+        
+        pattern_a = self.topology[0::2]
+        pattern_b = self.topology[1::2]
+        
+        for d in range(depth):
+            # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+            # [[[ FIX 2/2: Use the stored input for a reliable check ]]]
+            # Instead of inspecting the gate_set_obj, we check the original input.
+            # This guarantees that our special logic for "universal_xeb" is triggered.
+            if self.gate_set_input == "universal_xeb":
+                # If it is, we manually generate a layer of DECOMPOSABLE random gates (Rx, Rz)
+                # instead of calling the method that produces the non-decomposable 'matrix_gate'.
+                for q in self.qubits:
+                    theta_rx = master_rng.uniform(0, 2 * np.pi)
+                    theta_rz = master_rng.uniform(0, 2 * np.pi)
+                    gate_list.append(Gate('rx', (q,), params=[theta_rx]))
+                    gate_list.append(Gate('rz', (q,), params=[theta_rz]))
+            else:
+                # For all other gate sets (like "clifford"), we use the original, correct behavior.
+                gate_list.extend(self.gate_set_obj.get_random_1q_layer(self.qubits, master_rng.integers(2**32)))
+            # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    def generate_single_circuit(self, depth: int, seed: Optional[int] = None) -> QuantumCircuit:
-        circuit = self._generate_circuit(depth, seed)
-        if self.native_gates:
-            circuit = circuit.decompose(basis_gates=self.native_gates)
+            if self.topology and isinstance(self.gate_set_obj, TwoQubitGateSet):
+                pattern = pattern_a if d % 2 == 0 else pattern_b
+                gate_list.extend(self.gate_set_obj.get_random_2q_layer(pattern, master_rng.integers(2**32)))
+            if interleaved_gate:
+                gate_list.append(interleaved_gate)
+
+        # We apply the same logic for the final single-qubit layer
+        if self.gate_set_input == "universal_xeb":
+            for q in self.qubits:
+                theta_rx = master_rng.uniform(0, 2 * np.pi)
+                theta_rz = master_rng.uniform(0, 2 * np.pi)
+                gate_list.append(Gate('rx', (q,), params=[theta_rx]))
+                gate_list.append(Gate('rz', (q,), params=[theta_rz]))
+        else:
+            gate_list.extend(self.gate_set_obj.get_random_1q_layer(self.qubits, master_rng.integers(2**32)))
+        
+        circuit = QuantumCircuit(qubits=self.qubits, gates=gate_list)
+        circuit.measure_all()
+        
+        circuit.metadata['logical_depth_m'] = depth
+        circuit.metadata['seed'] = seed
+        if interleaved_gate:
+            circuit.metadata['interleaved'] = True
         return circuit
 
-    # <<< FIX: THIS METHOD IS NOW ADAPTED TO THE RB-OPTIMIZED ENGINE >>>
-    def run_single_circuit(self, engine: QuantumEngine, shots: int, circuit: QuantumCircuit) -> float:
-        """
-        Calculates XEB fidelity for a single circuit using an engine that only provides counts.
-        """
-        # Step 1: Get the noisy measurement counts.
-        # The engine's `run` or `execute` method provides this directly.
-        # We need to call `backend.run` to get the counts, but the engine provides a wrapper.
-        # To avoid batch overhead, we access the backend's primary run method.
-        # Note: The chosen engine's `run` method returns only counts, which is not enough.
-        # We must access the backend directly to get the full (ideal, noisy) tuple.
-        ideal_probabilities, noisy_counts = engine.backend.run(circuit, shots=shots)
+    def generate_single_circuit(self,
+                                depth: int,
+                                seed: Optional[int] = None,
+                                native_gates: Optional[List[str]] = _sentinel,
+                                interleaved_gate: Optional[Gate] = None) -> QuantumCircuit:
+        circuit_seed = seed if seed is not None else np.random.default_rng().integers(2**32)
+        circuit = self._generate_circuit(depth, circuit_seed, interleaved_gate=interleaved_gate)
+        final_native_gates = self.native_gates if native_gates is _sentinel else native_gates
+        if final_native_gates:
+            return circuit.decompose(basis_gates=final_native_gates)
+        return circuit
 
-        # Step 2: Now that we have both pieces of data, call the analysis function.
-        return analyze_xeb_fidelity(ideal_probabilities, noisy_counts)
+    @property
+    def circuits(self) -> List[QuantumCircuit]:
+        if self._circuits is None:
+            all_circuits = []
+            main_rng = np.random.default_rng(self.seed)
+            for depth in self.depths:
+                for _ in range(self.circuits_per_depth):
+                    circuit_seed = main_rng.integers(2**32)
+                    circuit = self.generate_single_circuit(depth, seed=circuit_seed)
+                    all_circuits.append(circuit)
+            self._circuits = all_circuits
+        return self._circuits
 
-    def run(self,
-            engine: QuantumEngine,
-            shots: int = 4096,
-            plot: bool = True,
-            verbose: bool = False) -> Dict:
-        if verbose: print(f"--- Running Standard XEB on Qubits {self.qubits} ---")
-        fidelities_by_depth = defaultdict(list)
-        all_circuits = self.circuits
-        if verbose:
-            print(f"  Generated {len(all_circuits)} circuits across {len(self.depths)} depths.")
-            print(f"  Running circuits with {shots} shots each...")
+    def run(self, engine: QuantumEngine, shots: int = 2048, plot: bool = True, axes: Optional[Tuple[plt.Axes, plt.Axes]] = None, **plot_kwargs) -> Dict[str, Any]:
+        xeb_type = "Interleaved" if isinstance(self, InterleavedXEBExperiment) else "Standard"
+        logging.info(f"--- Running Dual Analysis {xeb_type} XEB on Qubits {self.qubits} ---")
         
-        # We process circuits one by one because `run_single_circuit` now has special logic.
-        for i, circuit in enumerate(all_circuits):
-            depth = self.depths[i // self.circuits_per_depth]
-            fidelity = self.run_single_circuit(engine, shots, circuit)
-            fidelities_by_depth[depth].append(fidelity)
+        experiment_circuits = self.circuits
+        all_results_raw = engine.execute_with_ideal(experiment_circuits, shots)
+        
+        results_by_depth = defaultdict(list)
+        for i, circuit in enumerate(experiment_circuits):
+            depth = circuit.metadata.get('logical_depth_m', self.depths[i // self.circuits_per_depth])
+            results_by_depth[depth].append(all_results_raw[i])
             
-        if verbose: print("  Analysis: Fitting fidelity decay curve...")
-        fit_results = fit_xeb_fidelity_decay(fidelities_by_depth)
-        self.results = {
-            'type': 'Standard XEB',
-            'fit_results': fit_results,
-            'raw_fidelities': dict(fidelities_by_depth)
-        }
+        self.results = analyze_xeb_and_spb_from_results(results_by_depth, num_qubits=self.num_qubits)
+        
         if plot:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            plot_xeb_decay(fidelities_by_depth, fit_results, ax=ax, label='Standard', color='blue')
-            ax.set_title(f'Standard XEB Fidelity on Qubits {self.qubits}')
-            ax.set_xlabel('Circuit Depth (Number of Cycles)')
-            ax.set_ylabel('Linear XEB Fidelity')
-            ax.set_ylim(-0.1, 1.1)
-            ax.legend()
-            ax.grid(True, linestyle=':')
-            plt.tight_layout()
+            title = f"Dual Analysis on Qubits {self.qubits}"
+            if xeb_type == "Interleaved":
+                title = f"Dual Interleaved Analysis for Gate '{self.interleaved_gate.name}'"
+            self._plot_results(axes, title=title, **plot_kwargs)
         return self.results
 
+    def _plot_results(self, axes, title, **kwargs):
+        logging.info("Generating dual analysis plot...")
+        show_plot_at_end = axes is None
+        if axes is None:
+            fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+        
+        ax1, ax2 = axes
+        fig = ax1.get_figure()
+        if show_plot_at_end: fig.suptitle(title, fontsize=16)
+    
+        plot_xeb_decay(self.results['xeb_analysis']['raw_data'], self.results['xeb_analysis']['fit_results'], ax=ax1, **kwargs)
+        ax1.set_title("XEB Fidelity vs. Depth")
+        ax1.legend()
+        ax1.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+        plot_spb_decay(self.results['spb_analysis']['raw_data'], self.results['spb_analysis']['fit_results'], ax=ax2, **kwargs)
+        ax2.set_title("Speckle Purity vs. Depth")
+        ax2.legend()
+        ax2.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+        if show_plot_at_end:
+            fig.tight_layout(rect=[0, 0, 1, 0.96])
+            plt.show()
+
 class InterleavedXEBExperiment(StandardXEBExperiment):
+    """
+    Implements an Interleaved XEB experiment.
+    """
     def __init__(self,
                  qubits: List[int],
                  interleaved_gate: Gate,
                  depths: List[int] = [1, 5, 10, 15, 25, 40, 60],
                  circuits_per_depth: int = 30,
                  gate_set: Union[str, Dict, BaseGateSet] = "clifford",
-                 native_gates: Optional[List[str]] = DEFAULT_NATIVE_GATES):
-        super().__init__(qubits, depths, circuits_per_depth, gate_set, native_gates)
+                 native_gates: Optional[List[str]] = DEFAULT_NATIVE_GATES,
+                 seed: Optional[int] = None):
+        super().__init__(qubits, depths, circuits_per_depth, gate_set, native_gates, seed)
         self.interleaved_gate = interleaved_gate
-        if self.interleaved_gate.arity > 1 and not isinstance(self.gate_set, TwoQubitGateSet):
-            raise TypeError(
-                f"Cannot interleave a multi-qubit gate ('{self.interleaved_gate.name}') "
-                f"with a gate set ('{self.gate_set.__class__.__name__}') that does not support two-qubit gates."
-            )
 
-    def _generate_circuit(self, depth: int, seed: Optional[int] = None) -> QuantumCircuit:
-        master_rng = np.random.default_rng(seed)
-        gates: List[Gate] = []
-        for i in range(depth):
-            seed_1q = master_rng.integers(2**32)
-            gates.extend(self.gate_set.get_random_1q_layer(qubits=self.qubits, seed=seed_1q))
-            gates.append(self.interleaved_gate)
-        final_seed_1q = master_rng.integers(2**32)
-        gates.extend(self.gate_set.get_random_1q_layer(qubits=self.qubits, seed=final_seed_1q))
-        return QuantumCircuit(qubits=self.qubits, gates=gates)
+    def generate_single_circuit(self,
+                                depth: int,
+                                seed: Optional[int] = None,
+                                native_gates: Optional[List[str]] = _sentinel) -> QuantumCircuit:
+        return super().generate_single_circuit(
+            depth=depth, seed=seed, native_gates=native_gates, interleaved_gate=self.interleaved_gate
+        )
 
-    def run(self,
-            engine: QuantumEngine,
-            shots: int = 4096,
-            plot: bool = True,
-            verbose: bool = False) -> Dict:
-        gate_name = self.interleaved_gate.name.upper()
-        if verbose: print(f"--- Running Interleaved XEB for Gate '{gate_name}' on Qubits {self.qubits} ---")
-        if verbose: print("\n[Phase 1/2] Running Standard XEB for baseline...")
-        std_exp = StandardXEBExperiment(self.qubits, self.depths, self.circuits_per_depth, self.gate_set, self.native_gates)
-        std_results = std_exp.run(engine, shots, plot=False, verbose=verbose)
-        if verbose: print(f"\n[Phase 2/2] Running Interleaved XEB with '{gate_name}'...")
-        int_results = super().run(engine, shots, plot=False, verbose=verbose)
-        if verbose: print("\nCalculating gate error from fit results...")
-        if 'p' not in std_results['fit_results'] or 'p' not in int_results['fit_results']:
-             print("  > Warning: Could not calculate gate error due to failed fit in one of the experiments.")
-             gate_error_results = {'error_per_gate': float('nan')}
-        else:
-            p_std = std_results['fit_results']['p']
-            p_int = int_results['fit_results']['p']
-            gate_error_results = calculate_interleaved_xeb_error(p_std, p_int, self.interleaved_gate.arity)
+    def run(self, engine: QuantumEngine, shots: int = 2048, plot: bool = True, axes: Optional[Tuple[plt.Axes, plt.Axes]] = None) -> Dict[str, Any]:
+        logging.info(f"--- Running Full Dual Analysis Interleaved XEB for Gate '{self.interleaved_gate.name}' ---")
+        
+        logging.info("[Phase 1/2] Running Reference Experiment...")
+        ref_experiment = StandardXEBExperiment(
+            self.qubits, self.depths, self.circuits_per_depth, self.gate_set_input, self.native_gates, self.seed
+        )
+        ref_analysis = ref_experiment.run(engine, shots=shots, plot=False)
+        
+        logging.info("[Phase 2/2] Running Interleaved Experiment...")
+        int_analysis = super().run(engine, shots=shots, plot=False)
+
+        p_ref = ref_analysis['xeb_analysis']['fit_results']['p']
+        p_int = int_analysis['xeb_analysis']['fit_results']['p']
+        
+        num_interleaved_qubits = len(self.interleaved_gate.qubits)
+        d = 2**num_interleaved_qubits
+        gate_error = (d - 1) / d * (1 - p_int / p_ref) if p_ref > 0 else float('inf')
+        
         self.results = {
-            'type': 'Interleaved XEB',
-            'target_gate': self.interleaved_gate.name,
-            'gate_error_results': gate_error_results,
-            'standard_results': std_results,
-            'interleaved_results': int_results
+            "reference": ref_analysis, "interleaved": int_analysis,
+            "gate_error": gate_error, "gate_fidelity": 1 - gate_error,
         }
-        if verbose:
-            epg = gate_error_results.get('error_per_gate', float('nan'))
-            print(f"  > Estimated Error per Gate ('{gate_name}'): {epg:.4f}")
+        
         if plot:
-            fig, ax = plt.subplots(figsize=(10, 7))
-            plot_xeb_decay(std_results['raw_fidelities'], std_results['fit_results'], ax=ax, label='Standard', color='blue')
-            plot_xeb_decay(int_results['raw_fidelities'], int_results['fit_results'], ax=ax, label=f'Interleaved ({gate_name})', color='red')
-            gate_error_val = gate_error_results.get('error_per_gate', float('nan'))
-            title = (f"Interleaved XEB: '{gate_name}' on Qubits {self.qubits}\n"
-                     f"Estimated Gate Error = {gate_error_val:.4f}")
-            ax.set_title(title)
-            ax.set_xlabel('Circuit Depth (Number of Cycles)')
-            ax.set_ylabel('Linear XEB Fidelity')
-            ax.set_ylim(-0.1, 1.1)
-            ax.legend()
-            ax.grid(True, linestyle=':')
-            plt.tight_layout()
+            self._plot_interleaved_results(axes)
+
         return self.results
+
+    def _plot_interleaved_results(self, axes):
+        logging.info("Generating dual analysis comparison plot...")
+        show_plot_at_end = axes is None
+        if axes is None:
+            fig, axes = plt.subplots(2, 1, figsize=(10, 10), sharex=True)
+        
+        ax1, ax2 = axes
+        fig = ax1.get_figure()
+        fig.suptitle(f"Dual Interleaved Analysis for Gate '{self.interleaved_gate.name}'", fontsize=16)
+    
+        ref_results = self.results['reference']
+        plot_xeb_decay(ref_results['xeb_analysis']['raw_data'], ref_results['xeb_analysis']['fit_results'], ax=ax1, label='Reference', color='blue')
+        plot_spb_decay(ref_results['spb_analysis']['raw_data'], ref_results['spb_analysis']['fit_results'], ax=ax2, label='Reference', color='blue')
+
+        int_results = self.results['interleaved']
+        plot_xeb_decay(int_results['xeb_analysis']['raw_data'], int_results['xeb_analysis']['fit_results'], ax=ax1, label='Interleaved', color='green')
+        plot_spb_decay(int_results['spb_analysis']['raw_data'], int_results['spb_analysis']['fit_results'], ax=ax2, label='Interleaved', color='green')
+
+        ax1.legend()
+        ax2.legend()
+        ax1.set_title("XEB Fidelity Comparison")
+        ax2.set_title("Speckle Purity Comparison")
+        ax1.grid(True, which='both', linestyle='--', linewidth=0.5)
+        ax2.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+        if show_plot_at_end:
+            fig.tight_layout(rect=[0, 0, 1, 0.96])
+            plt.show()

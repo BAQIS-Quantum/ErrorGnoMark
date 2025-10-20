@@ -1,10 +1,10 @@
 # File Path: errorgnomark/analysis/rb.py
-# [DEFINITIVE FINAL VERSION - Cleaned of all circular imports]
+# [DEFINITIVE FINAL VERSION - With Flexible Plotting on Axes]
 
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 def fit_rb_data(survivals: Dict[int, List[float]], num_qubits: int) -> Dict:
     """
@@ -60,11 +60,16 @@ def analyze_epg(results_std: Dict, results_int: Dict, num_qubits: int) -> Dict:
         'interleaved_results': results_int,
     }
 
-def plot_rb_single(results: Dict, num_qubits: int, title: str) -> plt.Figure:
+def plot_rb_single(results: Dict, num_qubits: int, title: str, ax: Optional[plt.Axes] = None) -> plt.Figure:
     """
-    Plots the results of a single standard RB experiment.
+    Plots the results of a single standard RB experiment on a given axes object.
+    If no axes is provided, a new figure is created.
     """
-    fig, ax = plt.subplots(figsize=(10, 6))
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, 6))
+    else:
+        fig = ax.get_figure()
+
     if results['fit_successful']:
         label = f"Data (EPC = {results['epc']:.2e})"
         x_fit = np.linspace(0, max(results['depths']), 200)
@@ -78,14 +83,18 @@ def plot_rb_single(results: Dict, num_qubits: int, title: str) -> plt.Figure:
     ax.set_ylabel("Ground State Survival Probability", fontsize=12)
     ax.legend()
     ax.grid(True, linestyle='--')
-    plt.tight_layout()
+    
     return fig
 
-def plot_rb_comparison(results_std: Dict, results_int: Dict, num_qubits: int, target_gate_name: str) -> plt.Figure:
+def plot_rb_comparison(results_std: Dict, results_int: Dict, num_qubits: int, target_gate_name: str, ax: Optional[plt.Axes] = None) -> plt.Figure:
     """
-    Plots a comparison between a standard and an interleaved RB experiment.
+    Plots a comparison between a standard and an interleaved RB experiment on a given axes object.
+    If no axes is provided, a new figure is created.
     """
-    fig, ax = plt.subplots(figsize=(10, 6))
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, 6))
+    else:
+        fig = ax.get_figure()
 
     if results_std['fit_successful']:
         ax.errorbar(
@@ -111,5 +120,5 @@ def plot_rb_comparison(results_std: Dict, results_int: Dict, num_qubits: int, ta
     ax.set_ylabel("Ground State Survival Probability", fontsize=12)
     ax.legend(loc='lower left')
     ax.grid(True, linestyle='--')
-    plt.tight_layout()
+    
     return fig

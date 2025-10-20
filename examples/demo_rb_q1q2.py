@@ -1,187 +1,197 @@
-# File Path: examples/demo_rb_professional.py
-# [DEFINITIVE FINAL VERSION - Enhanced for Clarity and Educational Value]
-#
-# ErrorGnomark: Professional Randomized Benchmarking Demonstration
-#
-# This script serves as a complete, self-documenting tutorial. It demonstrates:
-# 1. The framework's clean architecture: Experiments PREPARE, the Engine EXECUTES.
-# 2. The critical distinction between "Logical" and "Physical" circuits.
-# 3. How to control circuit decomposition via the `native_gates` parameter:
-#    - Explicitly disabling it for a logical view (`native_gates=None`).
-#    - Relying on the smart default for a common physical view (CZ-basis).
-#    - Customizing it for a specific hardware target (CNOT-basis).
-# 4. The importance of using physically-correct, decomposed circuits for realistic
-#    fidelity estimation in RB.
-# 5. Benchmarking both standard (CNOT) and parameterized (U3) gates.
+# File: demo_rb_q1q2.py
+# Description: A comprehensive demonstration of the Randomized Benchmarking
+#              workflow in the errorgnomark framework. This script relies on
+#              the corrected library functions.
+# [VERSION 3.2 - Simplified for User Clarity, Professional English]
 
-import sys
-import os
 import numpy as np
-
-# =========================================================================
-# --- PLOTTING FIX: Force an Interactive Matplotlib Backend ---
-# This is often necessary to make plots appear when running scripts from the command line.
-import matplotlib
-matplotlib.use('TkAgg')
-# =========================================================================
-
+import logging
 import matplotlib.pyplot as plt
 
-# --- Python Path Setup ---
+# --- Framework Imports ---
+# This script assumes the library `errorgnomark` has been corrected.
 try:
-    # This will work if errorgnomark is installed as a package
-    import errorgnomark
-except ImportError:
-    # This is the fallback for running directly from the repository
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
+    from errorgnomark.experiments.benchmarking.rb import StandardRBExperiment, InterleavedRBExperiment
+    from errorgnomark.engine import QuantumEngine
+    from errorgnomark.backends.dummy_backend import DummyBackend
+    from errorgnomark.circuits.circuit import Gate
+    from errorgnomark.analysis.rb import fit_rb_data, plot_rb_single
+except ImportError as e:
+    print(f"ImportError: {e}")
+    print("Please ensure you run this script from the project's root directory,")
+    print("or that the 'errorgnomark' package is installed in your Python environment.")
+    exit()
 
-# --- Framework Imports (Using the final, correct API) ---
-from errorgnomark.engine import QuantumEngine
-from errorgnomark.backends.dummy_backend import DummyBackend
-from errorgnomark.experiments.benchmarking.rb import StandardRBExperiment, InterleavedRBExperiment
-from errorgnomark.circuits.circuit import Gate
+# Configure logging for clear, professional output
+logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
-# Define a common native gate set for CNOT-based hardware (e.g., IBM Quantum)
-IBM_Q_NATIVE_GATES = ['cnot', 'sx', 'x', 'rz', 'id']
-
+# Define a default physical gate set for clarity in the demo
+DEFAULT_PHYSICAL_GATES = ['sx', 'rz', 'h', 's', 'cz']
 
 # =========================================================================
-# --- Main Demonstration Script ---
+# Main Demo Workflow
 # =========================================================================
+
+def main():
+    """Main function to execute the RB demonstration workflow."""
+    DEMO_SEED = 42
+    print(f"Using a fixed seed ({DEMO_SEED}) for reproducibility in this demo.")
+
+    # =========================================================================
+    # 1. Generate and Draw a Single LOGICAL RB Circuit
+    # =========================================================================
+    print("\n" + "="*70)
+    print(" Part 1: Generate and Draw a Single LOGICAL 2-Qubit RB Circuit")
+    print("="*70)
+
+    # Initialize a Standard RB experiment. 'qubits' is a required argument.
+    # We explicitly set 'seed' to ensure the demo is reproducible.
+    logical_rb_exp = StandardRBExperiment(
+        qubits=[0, 1],
+        seed=DEMO_SEED
+        # NOTE: The following parameters are using their default values from the library:
+        # - native_gates=None (circuits remain at the logical Clifford level)
+        # - depths=[1, 10, 20, 40, 60, 80, 100, 125]
+        # - circuits_per_depth=25
+    )
+    
+    print("Generating a single logical RB circuit with Clifford depth m=10...")
+    # 'depth' is a required argument for this specific function call.
+    single_logical_circuit = logical_rb_exp.generate_single_circuit(depth=10)
+    print("Drawing the logical circuit (Clifford gates are shown as abstract blocks):")
+    print(single_logical_circuit.draw())
+    input("\nPress Enter to continue to Part 2...")
+
+    # =========================================================================
+    # 2. Decompose Circuit to a Physical Gate Set
+    # =========================================================================
+    print("\n" + "="*70)
+    print(" Part 2: Decompose Circuit to a Physical Gate Set")
+    print("="*70)
+
+    # For this experiment, we provide 'native_gates' to demonstrate the
+    # automatic decomposition of Clifford gates.
+    physical_rb_exp = StandardRBExperiment(
+        qubits=[0, 1],
+        native_gates=DEFAULT_PHYSICAL_GATES,
+        seed=DEMO_SEED
+        # NOTE: 'depths' and 'circuits_per_depth' are using their default values.
+    )
+
+    print(f"Generating the same circuit, but now decomposed into the gate set: {DEFAULT_PHYSICAL_GATES}")
+    single_physical_circuit = physical_rb_exp.generate_single_circuit(depth=10)
+    print("Drawing the decomposed (physical) circuit:")
+    print(single_physical_circuit.draw())
+    input("\nPress Enter to continue to Part 3...")
+
+    # =========================================================================
+    # 3. Set up and Visualize an Interleaved RB (IRB) Circuit
+    # =========================================================================
+    print("\n" + "="*70)
+    print(" Part 3: Set up and Visualize an Interleaved RB (IRB) Circuit")
+    print("="*70)
+    cz_gate_to_interleave = Gate('cz', qubits=[0, 1])
+    
+    # Initialize an Interleaved RB experiment. 'qubits' and 'interleaved_gate' are required.
+    irb_exp_setup = InterleavedRBExperiment(
+        qubits=[0, 1],
+        interleaved_gate=cz_gate_to_interleave,
+        seed=DEMO_SEED
+        # NOTE: 'native_gates', 'depths', and 'circuits_per_depth' are using defaults.
+    )
+
+    print(f"Generating a single IRB circuit to benchmark the '{cz_gate_to_interleave.name.upper()}' gate...")
+    single_irb_circuit = irb_exp_setup.generate_single_circuit(depth=5)
+    print("Drawing the logical IRB circuit:")
+    print(single_irb_circuit.draw())
+    print("Notice the 'interleaved_gate_name' in the metadata below:")
+    print(single_irb_circuit.metadata)
+    input("\nPress Enter to continue to Part 4...")
+
+    # =========================================================================
+    # 4. Analyze and Plot Pre-existing RB Data
+    # =========================================================================
+    print("\n" + "="*70)
+    print(" Part 4: Analyze Pre-existing RB Data")
+    print("="*70)
+    print("SCENARIO: Analyzing a pre-existing dataset of survival probabilities.\n")
+    mock_depths = [1, 10, 25, 50, 75, 100, 125]
+    p_true, A_true, B_true = 0.99, 0.75, 0.25
+    np.random.seed(DEMO_SEED)
+    mock_survival_data = {d: [max(0, min(1, A_true * (p_true ** d) + B_true + np.random.normal(scale=0.02))) for _ in range(20)] for d in mock_depths}
+    
+    print("Fitting data using the 'fit_rb_data' analysis tool...")
+    fit_results = fit_rb_data(mock_survival_data, num_qubits=2)
+    
+    if fit_results['fit_successful']:
+        print(f"Fit successful! Calculated Error Per Clifford (EPC) = {fit_results['epc']:.4e}")
+        print("Generating plot using 'plot_rb_single' from the library...")
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        plot_rb_single(
+            results=fit_results, 
+            num_qubits=2, 
+            title="Analysis of Pre-existing RB Data (2 Qubits)",
+            ax=ax
+        )
+        
+        plt.tight_layout()
+        plt.show()
+    else:
+        print("Fitting failed for the mock data.")
+    input("\nPress Enter to continue to Part 5...")
+
+    # =========================================================================
+    # 5. Run and Analyze a Full End-to-End Interleaved RB Experiment
+    # =========================================================================
+    print("\n" + "="*70)
+    print(" Part 5: End-to-End IRB Test with the Corrected DummyBackend")
+    print("="*70)
+    
+    # Define fidelities for the backend to simulate a realistic noisy device.
+    CLIFFORD_FIDELITY = 0.98  # Fidelity of a random Clifford, p_C
+    CZ_FIDELITY = 0.99        # Fidelity of the interleaved CZ gate, p_G
+    SPAM_ERROR = 0.005
+
+    print(f"Initializing DummyBackend with p_C = {CLIFFORD_FIDELITY} and p_G(CZ) = {CZ_FIDELITY}")
+    my_backend = DummyBackend(
+        clifford_fidelity=CLIFFORD_FIDELITY,
+        gate_fidelities={'cz': CZ_FIDELITY}, # Crucial for simulating the interleaved gate's error
+        spam_error_rate=SPAM_ERROR
+    )
+    my_engine = QuantumEngine(backend=my_backend)
+    NUM_SHOTS = 1024
+
+    # The InterleavedRBExperiment class runs both the standard and interleaved
+    # experiments and performs the analysis in one go.
+    
+    print("\n--- Running Full Interleaved RB Experiment Workflow ---")
+    irb_full_exp = InterleavedRBExperiment(
+        qubits=[0, 1], 
+        depths=mock_depths, # Using custom depths for this specific demo
+        interleaved_gate=Gate('cz', qubits=[0, 1]),
+        native_gates=DEFAULT_PHYSICAL_GATES, 
+        seed=DEMO_SEED
+        # NOTE: 'circuits_per_depth=25' is being used as it's the library default.
+    )
+    
+    # This single .run() call will:
+    # 1. Run the standard RB reference experiment.
+    # 2. Run the interleaved RB experiment.
+    # 3. Analyze both results and calculate EPG for the 'CZ' gate.
+    # 4. Plot the comparison graph.
+    irb_results = irb_full_exp.run(
+        engine=my_engine, 
+        shots=NUM_SHOTS
+        # NOTE: 'plot=True' is the default behavior, so it is omitted for simplicity.
+    )
+    
+    if not irb_results:
+        print("\nIRB experiment failed to produce results.")
+    
+    print("\n" + "="*70)
+    print(" Demo Finished Successfully.")
+    print("="*70)
 
 if __name__ == "__main__":
-
-    print("=" * 79)
-    print("      Professional Randomized Benchmarking (RB) Demonstration")
-    print("=" * 79)
-    print("This demo showcases the framework's clean architecture and the critical")
-    print("concept of circuit decomposition for physical realism.\n")
-
-    # --- 1. Framework Setup: A Single Backend and a Single Engine ---
-    print("[STEP 1] Setting up a backend and ONE universal quantum engine...")
-    backend = DummyBackend(
-        depolarizing_error_1q=0.001,
-        depolarizing_error_2q=0.01,
-        t_gate_error=0.002,
-    )
-    engine = QuantumEngine(backend=backend)
-    print("QuantumEngine initialized and ready.")
-    print("-" * 79 + "\n")
-
-    # --- Shared Experiment Parameters ---
-    rb_depths = [1, 10, 20, 30, 50, 75, 100, 125]
-    rb_num_sequences = 20
-    rb_shots = 2048
-
-    # --- 2. The Core Concept: Logical vs. Physical Circuits ---
-    print("[STEP 2] The Core Concept: Controlling Circuit Decomposition.")
-    print("         An 'Experiment' can generate circuits in different 'views'.\n")
-    
-    target_cnot_gate = Gate('cnot', [0, 1])
-    viz_depths = [1]
-    viz_sequences = 1
-    
-    # --- 2a. The Logical "Blueprint" ---
-    print("[2a] The 'Blueprint': A Logical View (Decomposition Disabled)")
-    print("     To see the pure, abstract circuit, we explicitly pass `native_gates=None`.")
-    print("     This disables the decomposition engine.")
-    logical_exp = StandardRBExperiment(
-        qubits=[0, 1], depths=viz_depths, num_sequences=viz_sequences,
-        interleaved_gate=target_cnot_gate, native_gates=None
-    )
-    logical_circuit = logical_exp.circuits()[0]
-    logical_circuit.draw()
-    print("     This view is ideal for algorithm design and theoretical analysis.\n")
-
-    # --- 2b. The Default Physical "Execution Plan" ---
-    print("[2b] The 'Default Execution Plan': Physical View (Default CZ-Basis)")
-    print("     If we do not specify `native_gates`, the Experiment uses its smart default:")
-    print("     a common CZ-based gate set. CNOT is not in this set.")
-    physical_exp_default = StandardRBExperiment(
-        qubits=[0, 1], depths=viz_depths, num_sequences=viz_sequences,
-        interleaved_gate=target_cnot_gate
-        # No `native_gates` argument passed, so it uses the default
-    )
-    physical_circuit_default = physical_exp_default.circuits()[0]
-    physical_circuit_default.draw()
-    print("     Notice how the abstract CNOTs are now automatically compiled into H-CZ-H sequences.\n")
-    
-    # --- 2c. The Custom Physical "Execution Plan" ---
-    print("[2c] The 'Custom Execution Plan': Targeting an IBM-like Backend")
-    print("     We can target a different hardware by providing a custom `native_gates` list.")
-    print("     This list includes 'cnot', so CNOT gates will be preserved.")
-    ibm_physical_exp = StandardRBExperiment(
-        qubits=[0, 1], depths=viz_depths, num_sequences=viz_sequences,
-        interleaved_gate=target_cnot_gate, native_gates=IBM_Q_NATIVE_GATES
-    )
-    ibm_physical_circuit = ibm_physical_exp.circuits()[0]
-    ibm_physical_circuit.draw()
-    print("     The circuit is now compiled to a CNOT-based instruction set. Other gates (like Y)")
-    print("     have been decomposed into `sx` and `rz` gates.\n")
-
-    # --- 2d. Automatic Decomposition of Any Gate ---
-    print("[2d] The Power of Decomposition: Handling Arbitrary Gates")
-    print("     The engine can decompose any gate, including parameterized ones like U3.")
-    target_u3_gate = Gate('u3', [0], params=[np.pi/2, 1.2, -0.5])
-    u3_physical_exp = StandardRBExperiment(
-        qubits=[0], depths=viz_depths, num_sequences=viz_sequences,
-        interleaved_gate=target_u3_gate, 
-        native_gates=IBM_Q_NATIVE_GATES
-    )
-    u3_physical_circuit = u3_physical_exp.circuits()[0]
-    u3_physical_circuit.draw()
-    print("     The abstract U3 gate is seamlessly compiled into the specified physical basis.")
-    print("-" * 79 + "\n")
-
-    # --- 3. Two-Qubit Standard RB ---
-    print("[STEP 3] Run 2-Qubit Standard RB.")
-    print("     By default, this runs on PHYSICALLY DECOMPOSED circuits (CZ-basis),")
-    print("     giving a realistic measure of the average gate fidelity.")
-    std_exp_2q = StandardRBExperiment(
-        qubits=[0, 1],
-        depths=rb_depths,
-        num_sequences=rb_num_sequences
-    )
-    std_exp_2q.run(engine, shots=rb_shots, plot=True, verbose=False) # verbose=False for cleaner output
-    print("Plotting 2Q Standard RB results... Please close the plot window to continue.")
-    plt.show()
-    print("-" * 79 + "\n")
-
-    # --- 4. Two-Qubit Interleaved RB for CNOT ---
-    print("[STEP 4] Run Physically-Correct Interleaved RB for the CNOT gate.")
-    print("     This measures the fidelity of the CNOT gate's PHYSICAL IMPLEMENTATION (H-CZ-H).")
-    correct_irb_exp = InterleavedRBExperiment(
-        qubits=[0, 1],
-        interleaved_gate=target_cnot_gate,
-        depths=rb_depths,
-        num_sequences=rb_num_sequences
-    )
-    correct_irb_exp.run(engine, shots=rb_shots, plot=True, verbose=False)
-    print("Plotting Correct Interleaved RB... Note the physically meaningful fidelity.")
-    print("Please close the plot window to continue.")
-    plt.show()
-    print("-" * 79 + "\n")
-
-    # --- 5. Interleaved RB for a Parameterized Gate ---
-    print("[STEP 5] Run Interleaved RB for a specific parameterized U3 gate.")
-    print("     We target an IBM-like basis to measure the fidelity of its compiled form.")
-    irb_u3_exp = InterleavedRBExperiment(
-        qubits=[0],
-        interleaved_gate=target_u3_gate,
-        depths=rb_depths,
-        num_sequences=rb_num_sequences,
-        native_gates=IBM_Q_NATIVE_GATES,
-    )
-    irb_u3_exp.run(engine, shots=rb_shots, plot=True, verbose=False)
-    print(f"Plotting IRB results for the U3 gate... Please close the plot window to continue.")
-    plt.show()
-    print("-" * 79 + "\n")
-
-    # --- 6. Final Message ---
-    print("\n" + "=" * 79)
-    print("Demonstration Finished Successfully.")
-    print("You have seen how to control circuit compilation and run realistic,")
-    print("physically-aware benchmarking experiments.")
-    print("=" * 79)
+    main()

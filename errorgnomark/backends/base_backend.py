@@ -1,46 +1,64 @@
 # File Path: errorgnomark/backends/base_backend.py
-# REVISED & CORRECTED VERSION
+# [DEFINITIVE FINAL VERSION - Use this to replace your current file]
 
-import abc
-from typing import Dict, Tuple
+from abc import ABC, abstractmethod
+from typing import Tuple, Dict, Any, Optional
 
-# This try/except block is good practice for internal development
+# --- Internal Framework Imports ---
 try:
-    from errorgnomark.circuits.circuit import QuantumCircuit
+    from ..circuits.circuit import QuantumCircuit
 except ImportError:
+    # Fallback for standalone execution or testing
     import sys, os
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
     from errorgnomark.circuits.circuit import QuantumCircuit
 
 
-class BaseBackend(abc.ABC):
+class BaseBackend(ABC):
     """
-    Abstract base class for all quantum backends.
+    Abstract base class for all execution backends in the ErrorGnomark framework.
 
-    A backend is responsible for executing a quantum circuit and returning
-    the results of the simulation or experiment.
+    This class defines the "contract" that all backends, whether they are
+    simulators or interfaces to real hardware, must follow. The core of this
+    contract is the `run` method.
     """
-
-    @abc.abstractmethod
-    def run(self, circuit: QuantumCircuit, shots: int) -> Tuple[Dict[str, float], Dict[str, int]]:
+    
+    def __init__(self, name: str):
         """
-        Executes the given quantum circuit.
-
-        This method simulates the circuit and returns the final probability
-        distribution and the measurement counts from sampling.
+        Initializes the base backend.
 
         Args:
-            circuit: The QuantumCircuit object to execute.
-            shots: The number of times to sample from the final state to gather statistics.
+            name (str): The identifier for the backend (e.g., "DummyBackend", "IdealBackend").
+        """
+        self._name = name
+
+    @property
+    def name(self) -> str:
+        """Returns the name of the backend."""
+        return self._name
+
+    @abstractmethod
+    def run(self, 
+            circuit: QuantumCircuit, 
+            shots: Optional[int] = None
+           ) -> Tuple[Any, Optional[Dict[str, int]]]:
+        """
+        Executes a single quantum circuit.
+
+        This is the central method for any backend. It takes a circuit and an
+        optional number of shots and returns the results.
+
+        Args:
+            circuit (QuantumCircuit): The circuit to be executed.
+            shots (Optional[int]): The number of times the circuit is run and measured.
+                                   This may be ignored by some backends (like ideal ones).
 
         Returns:
             A tuple containing:
-            - final_probabilities (Dict[str, float]): A dictionary mapping each
-              output bitstring to its final probability after simulation. For a noisy
-              backend, this includes noise effects. For an ideal backend, this is
-              the ideal probability.
-            - final_counts (Dict[str, int]): A dictionary mapping each
-              output bitstring to the number of times it was measured, obtained by
-              sampling `shots` times from the `final_probabilities`.
+            - result_obj (Any): A backend-specific result object. For simulators,
+              this could be the final statevector. For hardware, it might be a
+              job ID or None.
+            - counts (Optional[Dict[str, int]]): A dictionary mapping measured bitstrings
+              to the number of times they were observed. Can be None if not applicable.
         """
         pass

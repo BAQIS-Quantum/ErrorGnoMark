@@ -1,7 +1,8 @@
 # File Path: errorgnomark/circuits/visualization.py
-# [FINAL VERSION WITH CZ/CNOT DISTINCTION & HIGHLIGHTING]
+# [DEFINITIVE FINAL VERSION - Recursive Flattening for Ultimate Robustness]
 
 from typing import List, Dict, Tuple, Optional, Set, TYPE_CHECKING
+import numpy as np
 
 if TYPE_CHECKING:
     from .circuit import QuantumCircuit, Gate
@@ -19,7 +20,29 @@ def _get_gate_label(gate: "Gate", is_highlighted: bool = False) -> str:
     """Creates a label for a gate, with an option for a highlighted style."""
     name = gate.name.upper()
     if gate.params:
-        param_str = ",".join([f"{p:.2f}" for p in gate.params])
+        # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+        # [[[ THE RECURSIVE FIX: This is the definitive, correct solution ]]]
+        # We define a recursive helper function to flatten any arbitrarily nested
+        # list or array of parameters into a single, flat list of numbers.
+
+        def _flatten_recursively(items):
+            """Yields items from any nested iterable."""
+            for item in items:
+                # If the item is a collection (but not a string), recurse into it.
+                if isinstance(item, (list, tuple, np.ndarray)):
+                    yield from _flatten_recursively(item)
+                else:
+                    # If it's a number, yield it.
+                    yield item
+
+        # Call the recursive flattener and convert the resulting generator to a list.
+        flat_params = list(_flatten_recursively(gate.params))
+        
+        # Now, this formatting is guaranteed to work because flat_params
+        # can only contain numbers.
+        param_str = ",".join([f"{float(p):.2f}" for p in flat_params])
+        # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        
         label = f"{name}({param_str})"
     else:
         label = name
@@ -92,19 +115,14 @@ def draw_circuit_text(circuit: "QuantumCircuit", highlighted_gates: Optional[Lis
         
         lower_name = gate.name.lower()
         
-        # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-        # [[[ BUG FIX: Correctly distinguish between CNOT and CZ gates ]]]
         if lower_name in ('cnot', 'cx'):
-            # For CNOT, the target is '⊕'
             grid[target_row][col] = TARGET_X
         elif lower_name == 'cz':
-            # For CZ, the target is also a control symbol '●'
             grid[target_row][col] = CONTROL
-        else: # For other controlled gates like CRX, etc.
+        else:
             target_gate_name = gate.name[1:] if len(gate.name) > 1 and gate.name.startswith('C') else gate.name
             temp_target_gate = type(gate)(name=target_gate_name, qubits=(gate.qubits[-1],), params=gate.params)
             grid[target_row][col] = _get_gate_label(temp_target_gate, is_highlighted)
-        # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     output_lines = []
     for i, q in enumerate(sorted_qubits):
