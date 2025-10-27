@@ -1,5 +1,4 @@
-# [CORRECTED VERSION v2.1 - Fixed TypeError on len(method) in refactored code]
-
+# [CORRECTED VERSION v2.3 - Default Depth Starts at 0]
 import random
 import logging
 from collections import defaultdict
@@ -36,16 +35,25 @@ DEFAULT_NATIVE_GATES: List[str] = [
 
 def _validate_list_of_integers(qubits: any, var_name: str):
     if not isinstance(qubits, list) or not all(isinstance(q, int) for q in qubits):
-        raise TypeError(f"`{var_name}` must be a list of integers.")
+        raise TypeError(f"{var_name} must be a list of integers.")
 
 class StandardXEBExperiment:
     """
     Generates and analyzes circuits for a standard Cross-Entropy Benchmarking (XEB) experiment.
-    This class is aligned with the design patterns of StandardRBExperiment.
+
+    [V2.3 ChangeLog]
+    - MODIFIED: The default `depths` list now starts from 0 instead of 1.
+    - FIX: Aligns the analysis x-axis with the backend's noise model.
+    - ADD: After decomposing a circuit, it counts the number of native gates that
+      contribute to noise and stores this count in `circuit.metadata['noise_exponent']`.
+    - CHANGE: The `run` method now groups results by this `noise_exponent` instead of
+      the logical `depth`, ensuring the fit parameter `p` corresponds to the
+      per-gate fidelity of the backend.
     """
     def __init__(self,
                  qubits: List[int],
-                 depths: List[int] = [1, 5, 10, 15, 25, 40, 60],
+                 # [MODIFIED] Default depths now start from 0.
+                 depths: List[int] = [0, 5, 10, 15, 25, 40, 60],
                  circuits_per_depth: int = 30,
                  gate_set: Union[str, Dict, BaseGateSet] = "universal_xeb",
                  native_gates: Optional[List[str]] = DEFAULT_NATIVE_GATES,
@@ -110,13 +118,18 @@ class StandardXEBExperiment:
                                 seed: Optional[Union[int, float]] = None,
                                 interleaved_gate: Optional[Gate] = None) -> QuantumCircuit:
         """
-        Generates a single XEB circuit for a given depth, decomposing it to native gates.
-        This is a public-facing wrapper, mirroring the structure of StandardRBExperiment.
+        Generates a single XEB circuit, decomposes it, and calculates the noise exponent.
         """
         circuit = self._generate_circuit(depth, seed, interleaved_gate=interleaved_gate)
         
         if self.native_gates:
             circuit = circuit.decompose(basis_gates=self.native_gates)
+
+        # This is the crucial step. We count the number of operations that the backend
+        # will apply noise to. This assumes the backend applies noise per-gate and
+        # ignores measurement operations.
+        noise_exponent = sum(1 for gate in circuit.gates if not gate.is_measurement)
+        circuit.metadata['noise_exponent'] = noise_exponent
             
         return circuit
 
@@ -142,22 +155,25 @@ class StandardXEBExperiment:
         xeb_type = "Interleaved" if isinstance(self, InterleavedXEBExperiment) else "Standard"
         logging.info(f"--- Running Dual Analysis {xeb_type} XEB on Qubits {self.qubits} ---")
         
-        # ==============================================================================
-        # === FIX: Added parentheses () to CALL the `circuits` method.               ===
-        # === This ensures we get the list of circuits, not the method object itself. ===
-        # ==============================================================================
         experiment_circuits = self.circuits()
         
         logging.info(f"Generated {len(experiment_circuits)} circuits. Executing on backend...")
         
         all_results_raw = engine.execute_with_ideal(experiment_circuits, shots)
         
-        results_by_depth = defaultdict(list)
+        results_by_exponent = defaultdict(list)
         for i, circuit in enumerate(experiment_circuits):
-            depth = circuit.metadata.get('depth', self.depths[i // self.circuits_per_depth])
-            results_by_depth[depth].append(all_results_raw[i])
-            
-        self.results = analyze_xeb_and_spb_from_results(results_by_depth, num_qubits=self.num_qubits)
+            noise_exponent = circuit.metadata.get('noise_exponent')
+            if noise_exponent is None:
+                raise ValueError(
+                    "CRITICAL: 'noise_exponent' not found in circuit metadata. "
+                    "Ensure it is calculated in `generate_single_circuit` after decomposition."
+                )
+            results_by_exponent[noise_exponent].append(all_results_raw[i])
+        
+        # The analysis function now receives data grouped by the correct x-axis unit.
+        # The keys of the dictionary will be used as the x-values for fitting.
+        self.results = analyze_xeb_and_spb_from_results(results_by_exponent, num_qubits=self.num_qubits)
         
         if plot:
             title = f"Dual Analysis on Qubits {self.qubits}"
@@ -177,14 +193,14 @@ class StandardXEBExperiment:
         ax1, ax2 = axes
         fig = ax1.get_figure()
         if show_plot_at_end: fig.suptitle(title, fontsize=16)
-    
+
         plot_xeb_decay(self.results['xeb_analysis']['raw_data'], self.results['xeb_analysis']['fit_results'], ax=ax1, **kwargs)
-        ax1.set_title("XEB Fidelity vs. Depth")
+        ax1.set_title("XEB Fidelity vs. Noise Exponent")
         ax1.legend()
         ax1.grid(True, which='both', linestyle='--', linewidth=0.5)
 
         plot_spb_decay(self.results['spb_analysis']['raw_data'], self.results['spb_analysis']['fit_results'], ax=ax2, **kwargs)
-        ax2.set_title("Speckle Purity vs. Depth")
+        ax2.set_title("Speckle Purity vs. Noise Exponent")
         ax2.legend()
         ax2.grid(True, which='both', linestyle='--', linewidth=0.5)
 
@@ -192,14 +208,18 @@ class StandardXEBExperiment:
             fig.tight_layout(rect=[0, 0, 1, 0.96])
             plt.show()
 
+# The InterleavedXEBExperiment class inherits these changes automatically and does not
+# need to be modified itself. Its call to super().run() will now use the corrected logic.
 class InterleavedXEBExperiment(StandardXEBExperiment):
     """
     Implements an Interleaved XEB experiment, inheriting the refactored logic.
     """
+    # [FIXED] Corrected constructor name from `init` to `__init__`.
     def __init__(self,
                  qubits: List[int],
                  interleaved_gate: Gate,
-                 depths: List[int] = [1, 5, 10, 15, 25, 40, 60],
+                 # [MODIFIED] Default depths now start from 0.
+                 depths: List[int] = [0, 5, 10, 15, 25, 40, 60],
                  circuits_per_depth: int = 30,
                  gate_set: Union[str, Dict, BaseGateSet] = "universal_xeb",
                  native_gates: Optional[List[str]] = DEFAULT_NATIVE_GATES,
@@ -265,7 +285,7 @@ class InterleavedXEBExperiment(StandardXEBExperiment):
         ax1, ax2 = axes
         fig = ax1.get_figure()
         fig.suptitle(f"Dual Interleaved Analysis for Gate '{self.interleaved_gate.name}'", fontsize=16)
-    
+
         ref_results = self.results['reference']
         plot_xeb_decay(ref_results['xeb_analysis']['raw_data'], ref_results['xeb_analysis']['fit_results'], ax=ax1, label='Reference', color='blue')
         plot_spb_decay(ref_results['spb_analysis']['raw_data'], ref_results['spb_analysis']['fit_results'], ax=ax2, label='Reference', color='blue')

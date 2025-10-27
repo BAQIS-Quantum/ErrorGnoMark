@@ -1,8 +1,8 @@
 # File Path: errorgnomark/engine.py
-# [DEFINITIVE FINAL VERSION v4 - Unified Smart Engine Architecture]
+# [DEFINITIVE FINAL VERSION v5 - With Backward Compatibility]
 
 import logging
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 import numpy as np
 
 # --- Internal Framework Imports ---
@@ -24,6 +24,9 @@ class QuantumEngine:
     The QuantumEngine orchestrates the execution of quantum circuits. It follows a
     "Smart Engine" design, where the engine is responsible for coordinating both
     ideal simulations and noisy backend executions.
+
+    Version 5 Update: A `run` method has been added to provide backward compatibility
+    for older experiment scripts (like prb.py) that execute circuits one by one.
     """
     def __init__(self, backend: BaseBackend):
         """
@@ -42,6 +45,39 @@ class QuantumEngine:
         self.ideal_backend = IdealBackend()
         
         logging.info(f"QuantumEngine initialized with backend '{self.backend.name}' and is ready.")
+
+    # =================================================================================
+    # BACKWARD COMPATIBILITY METHOD
+    # =================================================================================
+    def run(
+        self,
+        circuit: QuantumCircuit,
+        shots: int
+    ) -> Tuple[Optional[np.ndarray], Dict[str, int]]:
+        """
+        [BACKWARD COMPATIBILITY] Executes a single circuit on the configured backend.
+
+        This method is maintained for compatibility with older experiment scripts
+        (e.g., StandardPRBExperiment) that expect the engine to have a `run` method
+        for single-circuit execution. It directly calls the underlying backend.
+
+        Args:
+            circuit: The QuantumCircuit object to execute.
+            shots: The number of times to run the circuit.
+
+        Returns:
+            A tuple of (statevector, counts), as returned by the backend. For noisy
+            simulators, the statevector is typically None.
+        """
+        logging.debug(f"Executing single circuit via compatibility `run` method on backend '{self.backend.name}'.")
+        # Directly delegate to the configured backend's run method.
+        # The BaseBackend interface guarantees this method exists and returns
+        # the (statevector, counts) tuple that prb.py expects.
+        return self.backend.run(circuit, shots=shots)
+
+    # =================================================================================
+    # PRIMARY EXECUTION METHODS
+    # =================================================================================
 
     def get_ideal_statevector(self, circuit: QuantumCircuit) -> np.ndarray:
         """
@@ -71,7 +107,7 @@ class QuantumEngine:
     ) -> List[Tuple[Dict[str, float], Dict[str, int]]]:
         """
         Executes a list of circuits, returning both ideal probabilities and noisy counts for each.
-        This is the single, unified execution method for all benchmarking experiments.
+        This is the single, unified execution method for all modern benchmarking experiments.
 
         Args:
             circuits: A list of QuantumCircuit objects to execute.
@@ -90,14 +126,10 @@ class QuantumEngine:
                 logging.info(f"  ... processing circuit {i+1}/{num_circuits}")
             
             # Step 1: Calculate the ideal probability distribution using the internal ideal simulator.
-            # THIS IS THE CRITICAL FIX for the bug you discovered in the XEB plots.
-            # It ensures each circuit is compared against its OWN ideal result.
             ideal_statevector = self.get_ideal_statevector(circuit)
             ideal_probabilities = self._statevector_to_probs(ideal_statevector, circuit.num_qubits)
 
             # Step 2: Run the circuit on the configured noisy backend to get measurement counts.
-            # Our BaseBackend interface guarantees the run method returns a tuple,
-            # and we only need the second element (the counts).
             _, noisy_counts = self.backend.run(circuit, shots=shots)
             
             # Step 3: Pair the results.

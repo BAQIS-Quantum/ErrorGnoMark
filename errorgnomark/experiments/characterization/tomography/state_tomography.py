@@ -1,5 +1,5 @@
-# File Path: errorgnomark/experiments/characterization/tomography/tomography.py
-# [CORRECTED AND FINAL VERSION]
+# File Path: errorgnomark/experiments/characterization/tomography/state_tomography.py
+# [CORRECTED VERSION - Fixes the engine call]
 
 import itertools
 from typing import List, Dict, Any, Optional
@@ -8,14 +8,7 @@ import numpy as np
 from errorgnomark.engine import QuantumEngine
 from errorgnomark.circuits.circuit import QuantumCircuit, Gate
 from errorgnomark.experiments.base import BaseExperiment
-
-# =========================================================================
-# [THE FIX IS HERE]
-# This line is the one causing your error. It should import StateTomographyAnalysis,
-# not AnalysisResult.
 from errorgnomark.analysis.tomography import StateTomographyAnalysis
-# =========================================================================
-
 from errorgnomark.analysis.result import ExperimentResult
 
 class StateTomographyExperiment(BaseExperiment):
@@ -58,10 +51,17 @@ class StateTomographyExperiment(BaseExperiment):
         raw_counts_by_basis: Dict[str, Dict[str, int]] = {}
         exp_circuits = self.circuits
         
-        results_list = engine.execute(exp_circuits, shots)
+        # =========================================================================
+        # [THE FIX IS HERE]
+        # Changed engine.execute to engine.execute_with_ideal to match the
+        # method name defined in the final version of engine.py.
+        results_list = engine.execute_with_ideal(exp_circuits, shots)
+        # =========================================================================
         
         for circuit, result_tuple in zip(exp_circuits, results_list):
             basis = circuit.metadata['basis']
+            # The result_tuple is (ideal_probabilities, noisy_counts).
+            # We correctly select the second element, which is the noisy counts.
             noisy_counts = result_tuple[1]
             raw_counts_by_basis[basis] = noisy_counts
         
@@ -112,4 +112,3 @@ class StateTomographyExperiment(BaseExperiment):
             
             processed_data[basis] = {'expectation': expectation, 'probabilities': probs}
         return processed_data
-

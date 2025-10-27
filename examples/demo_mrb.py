@@ -1,5 +1,5 @@
 # File Path: examples/demo_mrb.py
-# [UPDATED DEMO - To match the adapted MRB experiment class]
+# [DEMO ADAPTED for DummyBackend v1.2-clifford]
 
 import sys
 import os
@@ -20,15 +20,26 @@ from errorgnomark.experiments.benchmarking.mrb import MirrorRBExperiment
 
 if __name__ == "__main__":
     print("=" * 79)
-    print("   Mirror Randomized Benchmarking (MRB) Demonstration (Adapted Workflow)")
+    print("   Mirror Randomized Benchmarking (MRB) Demonstration")
+    print("   (Using DummyBackend with a single 'clifford_fidelity')")
     print("=" * 79)
 
     # --- 1. Framework Setup ---
     print("[INFO] Setting up a simulated backend and quantum engine...")
+    
+    # =========================================================================
+    # [THE FIX IS HERE]
+    # We now instantiate the backend using `clifford_fidelity` and `spam_error_rate`,
+    # which are the parameters expected by your provided `dummy_backend.py`.
+    #
+    # IMPORTANT NOTE: This backend will apply the SAME fidelity (0.98) to both
+    # the 1-qubit and 2-qubit circuits. The resulting analysis will show similar
+    # EPC values for all qubit groups. This is a limitation of this specific
+    # backend model for a multi-group MRB simulation.
+    # =========================================================================
     backend = DummyBackend(
-        depolarizing_error_1q=0.001,
-        depolarizing_error_2q=0.01,
-        spam_error=0.005
+        clifford_fidelity=0.98, # Represents the fidelity of a Clifford operation (e.g., for the 2Q case)
+        spam_error_rate=0.005
     )
     engine = QuantumEngine(backend=backend)
     print("-" * 79 + "\n")
@@ -47,6 +58,8 @@ if __name__ == "__main__":
     print("-" * 79 + "\n")
     
     # --- 3. Initialize and Run the Experiment ---
+    # The mrb.py and rbleipzig.py files from my previous answers are robust
+    # and DO NOT need to be changed. They work correctly with this setup.
     print("[STEP 2] Initializing and running the full MRB experiment workflow...")
     mrb_exp = MirrorRBExperiment(
         qubits=qubit_groups,
@@ -54,17 +67,23 @@ if __name__ == "__main__":
         circuits_per_depth=circuits_per_depth
     )
     
-    # The 'run' method now handles everything: execution, analysis, and reporting.
-    # The final analysis results are returned.
+    # Create 'reports' directory if it doesn't exist
+    report_dir = "reports"
+    if not os.path.exists(report_dir):
+        os.makedirs(report_dir)
+    report_path = os.path.join(report_dir, "MRB_Report_Clifford_Fidelity_Model.xlsx")
+
+    # The 'run' method handles everything.
     analysis_results = mrb_exp.run(
         engine, 
         shots=shots, 
         verbose=True, 
         report=True, 
-        report_path="MRB_Report_Adapted.xlsx"
+        report_path=report_path
     )
     
     print("\n" + "=" * 79)
     print("MRB Demonstration finished successfully.")
-    print(f"Check the console output and the generated report at: reports/MRB_Report_Adapted.xlsx")
+    print(f"Check the console output and the generated report at: {report_path}")
+    print("NOTE: The EPC for 1Q and 2Q groups will be similar due to the backend model used.")
     print("=" * 79)

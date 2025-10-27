@@ -1,147 +1,304 @@
 # File Path: errorgnomark/analysis/prb.py
-# [FINAL VERSION - Incorporates robust data calibration from user's reference]
+# [FINAL VERSION - Implemented robust fitting and correct calibration]
+
+"""
+Module for analyzing Purity Randomized Benchmarking (PRB) experiments.
+
+This module provides functions for fitting PRB decay data, calculating interleaved
+gate error, and generating plots for visualization. The key feature is a robust
+fitting strategy that first fits the raw purity data to the model P(m) = A * alpha^m + B,
+and then uses the fitted A and B parameters to calibrate the data for clear
+visualization and interpretation of the decay parameter 'alpha'.
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from typing import Dict, List, Optional
+from typing import Dict, List, Tuple, TypedDict, Optional
 
-def prb_decay_model(m: np.ndarray, A: float, B: float, alpha: float) -> np.ndarray:
-    """The exponential decay model for Purity RB: P(m) = A * alpha^m + B."""
-    return A * alpha**m + B
+# --- Type Definitions for Clarity ---
 
-def fit_prb_data(purities: Dict[int, List[float]], num_qubits: int) -> Dict:
+class PRBFitResult(TypedDict):
     """
-    Fits Purity RB data to the exponential decay model.
-    This version includes a crucial calibration step to remove SPAM effects,
-    leading to a more robust fit for the decay parameter alpha.
+    Defines the structure for the results of a PRB data fit.
     """
-    depths = np.array(sorted(purities.keys()))
-    # Filter out any depths with no data
-    valid_depths = [d for d in depths if purities[d]]
-    if not valid_depths:
-        return {'fit_successful': False}
-        
+    fit_successful: bool
+    A: float
+    B: float
+    alpha: float
+    params: Tuple[float, float, float]
+    param_errors: Tuple[float, float, float]
+    depths: List[int]
+    calibrated_mean_purities: List[float]
+    calibrated_std_errors: List[float]
+    raw_mean_purities: List[float]
+
+class GateErrorResult(TypedDict):
+    """
+    Defines the structure for the result of a gate error calculation.
+    """
+    gate_error: float
+    calculation_successful: bool
+
+# --- Core Analysis Functions ---
+
+def _prb_decay_model(m: np.ndarray, A: float, B: float, alpha: float) -> np.ndarray:
+    """
+    The exponential decay model for Purity Randomized Benchmarking.
+
+    The model is P(m) = A * alpha^m + B, where:
+      - m: The sequence depth (number of Cliffords).
+      - A: Amplitude, related to state preparation and measurement (SPAM) quality.
+      - B: Asymptotic purity, ideally 1/d for a fully depolarized state.
+      - alpha: The decay parameter, related to the average fidelity of a Clifford.
+
+    Args:
+        m: An array of sequence depths.
+        A: The amplitude parameter.
+        B: The offset or asymptotic purity parameter.
+        alpha: The decay parameter.
+
+    Returns:
+        An array of calculated purities based on the model.
+    """
+    return A * (alpha**m) + B
+
+def fit_prb_data(purities: Dict[int, List[float]], num_qubits: int) -> PRBFitResult:
+    """
+    Fits Purity RB data to the exponential decay model using a robust method.
+
+    This function first fits the raw purity data to P(m) = A * alpha^m + B.
+    It then uses the fitted A and B parameters to calibrate the purity data
+    for visualization, where the calibrated data should approximate alpha^m.
+
+    Args:
+        purities: A dictionary mapping sequence depth (int) to a list of
+                  measured purities (float) for that depth.
+        num_qubits: The number of qubits in the experiment.
+
+    Returns:
+        A PRBFitResult dictionary containing the fit status, parameters,
+        errors, and both calibrated and raw purity data.
+    """
+    valid_depths = sorted([d for d in purities if purities.get(d)])
+    
+    # At least 3 data points are needed to reliably fit 3 parameters (A, B, alpha).
+    if len(valid_depths) < 3:
+        return _create_prb_failure_result(purities, valid_depths)
+
     depths = np.array(valid_depths)
-    avg_purities = np.array([np.mean(purities[d]) for d in depths])
-    std_devs = np.array([np.std(purities[d]) / np.sqrt(len(purities[d])) for d in depths])
+    mean_purities = np.array([np.mean(purities[d]) for d in depths])
+    # Use sample standard deviation (ddof=1) for an unbiased estimate.
+    std_errors = np.array([
+        np.std(purities[d], ddof=1) / np.sqrt(len(purities[d])) if len(purities[d]) > 1 else 0.0
+        for d in depths
+    ])
+    # Prevent division by zero in the fitter for points with no variance.
+    std_errors[std_errors == 0] = 1e-9
 
-    # --- Data Calibration (from user's robust reference code) ---
-    # This process normalizes the data to start at 1 and decay to 0,
-    # which makes the fit for alpha much more stable.
     try:
-        # Estimate B (the baseline) from the last few data points.
-        B_guess = np.mean(avg_purities[-2:]) if len(avg_purities) > 1 else avg_purities[-1]
+        # --- Robust Fitting of Raw Data ---
+        # Provide educated initial guesses for the fitting parameters [A, B, alpha].
+        # Guess B (asymptote) from the last few data points.
+        B_guess = np.mean(mean_purities[-2:]) if len(mean_purities) > 1 else mean_purities[-1]
+        # Guess A (amplitude) as the difference between the start and the asymptote.
+        A_guess = mean_purities[0] - B_guess
+        # Guess alpha as a typical high-fidelity decay parameter.
+        alpha_guess = 0.99
+        p0 = [A_guess, B_guess, alpha_guess]
         
-        # Estimate A (the amplitude) from the first data point.
-        A_guess = avg_purities[0]
+        # Define physical bounds for the parameters. alpha must be in [0, 1].
+        bounds = ([-np.inf, 0.0, 0.0], [np.inf, np.inf, 1.0])
 
-        # Avoid division by zero if data is flat
-        if np.isclose(A_guess, B_guess):
-            raise ValueError("Data is too flat to calibrate.")
-
-        # Calibrate the data: y' = (y - B) / (A - B)
-        calibrated_purities = (avg_purities - B_guess) / (A_guess - B_guess)
-        calibrated_std_devs = std_devs / abs(A_guess - B_guess)
-
-        # Ensure the data is decaying, not growing.
-        if calibrated_purities[0] < 0.5: # Should start near 1
-             calibrated_purities = 1 - calibrated_purities
-
-    except (ValueError, IndexError, FloatingPointError):
-        # Fallback if calibration fails: use raw data but with tighter bounds.
-        calibrated_purities = avg_purities
-        calibrated_std_devs = std_devs
-
-    # --- Fitting ---
-    def decay_model_for_fit(m, alpha):
-        return alpha**m
-
-    try:
-        # Fit the calibrated data to a simple alpha^m model.
-        params, _ = curve_fit(
-            decay_model_for_fit, depths, calibrated_purities,
-            p0=[0.95], bounds=([0], [1]), sigma=calibrated_std_devs, maxfev=5000
+        popt, pcov = curve_fit(
+            _prb_decay_model,
+            depths,
+            mean_purities,
+            p0=p0,
+            sigma=std_errors,
+            absolute_sigma=True,
+            bounds=bounds,
+            maxfev=10000,
+            check_finite=True
         )
-        alpha = params[0]
-        # For calibrated data, the ideal A is 1 and B is 0.
-        A, B = 1.0, 0.0
-        fit_successful = True
-    except RuntimeError:
-        A, B, alpha = 0, 0, 0
-        fit_successful = False
+        A, B, alpha = popt
+        param_errors = np.sqrt(np.diag(pcov))
+        
+        # --- Post-Fit Calibration (for visualization) ---
+        # Calibrated purity y' = (y - B_fit) / A_fit, which should approximate alpha^m.
+        # This isolates the decay from SPAM-related offsets and scaling.
+        if abs(A) < 1e-9:  # Avoid division by zero if amplitude is negligible.
+            calibrated_purities = mean_purities
+            calibrated_std_errors = std_errors
+        else:
+            calibrated_purities = (mean_purities - B) / A
+            calibrated_std_errors = std_errors / abs(A)
 
-    return {
-        'fit_successful': fit_successful,
-        'A': A, 'B': B, 'alpha': alpha,
-        'depths': depths.tolist(),
-        'mean_purities': calibrated_purities.tolist(),
-        'std_devs': calibrated_std_devs.tolist(),
-        'raw_purities_mean': avg_purities.tolist(), # Keep raw data for inspection
-    }
+        return {
+            'fit_successful': True,
+            'A': A, 'B': B, 'alpha': alpha,
+            'params': tuple(popt),
+            'param_errors': tuple(param_errors),
+            'depths': depths.tolist(),
+            'calibrated_mean_purities': calibrated_purities.tolist(),
+            'calibrated_std_errors': calibrated_std_errors.tolist(),
+            'raw_mean_purities': mean_purities.tolist(),
+        }
 
-def calculate_prb_gate_error(results_std: Dict, results_int: Dict) -> Dict:
-    """Calculates the interleaved gate error from standard and interleaved PRB results."""
-    if results_std.get('fit_successful') and results_int.get('fit_successful'):
-        alpha_std = results_std['alpha']
-        alpha_int = results_int['alpha']
-        # The factor is 0.5 for 1Q, (d^2-1)/d^2 for d-dimensional system
-        # For now, we use the simple 1/2 factor which is common.
-        gate_error = (1 - alpha_int / alpha_std) / 2
+    except (RuntimeError, ValueError):
+        # Fit failed, return a structured failure response.
+        return _create_prb_failure_result(purities, valid_depths)
+
+def calculate_prb_gate_error(
+    std_results: PRBFitResult,
+    int_results: PRBFitResult,
+    num_qubits: int
+) -> GateErrorResult:
+    """
+    Calculates the interleaved gate error from standard and interleaved PRB results.
+
+    The error of the interleaved gate is determined by comparing the decay rates
+    of the standard and interleaved experiments.
+    Formula: r_g = ((d-1)/d) * (1 - alpha_interleaved / alpha_standard)
+
+    Args:
+        std_results: The PRBFitResult from the standard RB experiment.
+        int_results: The PRBFitResult from the interleaved RB experiment.
+        num_qubits: The number of qubits.
+
+    Returns:
+        A GateErrorResult dictionary with the calculated error and success status.
+    """
+    if std_results.get('fit_successful') and int_results.get('fit_successful'):
+        alpha_std = std_results['alpha']
+        alpha_int = int_results['alpha']
+        
+        dimension = 2**num_qubits
+        error_factor = (dimension - 1) / dimension
+        
+        # Prevent division by zero if standard decay is zero or fit is bad.
+        if abs(alpha_std) < 1e-9:
+            return {'gate_error': np.nan, 'calculation_successful': False}
+
+        gate_error = error_factor * (1 - alpha_int / alpha_std)
         return {'gate_error': gate_error, 'calculation_successful': True}
-    return {'gate_error': -1.0, 'calculation_successful': False}
+        
+    return {'gate_error': np.nan, 'calculation_successful': False}
 
-def plot_prb_single(results: Dict, num_qubits: int):
-    """Plots a single PRB decay curve using calibrated data."""
+# --- Plotting Functions ---
+
+def plot_prb_single(results: PRBFitResult, num_qubits: int):
+    """
+    Plots a single PRB decay curve using calibrated data and the fit.
+
+    Args:
+        results: A PRBFitResult dictionary from a single PRB experiment.
+        num_qubits: The number of qubits, for titling.
+    """
+    plt.style.use('seaborn-v0_8-whitegrid')
     plt.figure(figsize=(10, 6))
     
     plt.errorbar(
-        results['depths'], results['mean_purities'], yerr=results['std_devs'],
-        fmt='o', color='steelblue', capsize=5, label='Purity Data (Calibrated)'
+        results['depths'], results['calibrated_mean_purities'],
+        yerr=results['calibrated_std_errors'],
+        fmt='o', color='steelblue', ecolor='lightsteelblue', capsize=5,
+        label='Purity Data (Calibrated)'
     )
+    
     if results['fit_successful']:
         alpha = results['alpha']
-        fine_depths = np.linspace(0, max(results['depths']), 200)
-        fit_curve = prb_decay_model(fine_depths, results['A'], results['B'], alpha)
-        plt.plot(fine_depths, fit_curve, color='orangered', linestyle='--', label=f'Fit (α = {alpha:.3f})')
+        # For calibrated data, the fit curve is simply y = alpha^m.
+        fine_depths = np.linspace(0, max(results['depths']) if results['depths'] else 0, 200)
+        fit_curve = alpha**fine_depths
+        plt.plot(fine_depths, fit_curve, color='orangered', linestyle='--',
+                 label=f'Fit: $y = \\alpha^m$\n$\\alpha$ = {alpha:.4f}')
 
     plt.xlabel("Clifford Depth (m)", fontsize=12)
-    plt.ylabel("Calibrated State Purity", fontsize=12)
-    plt.title(f"Standard {num_qubits}-Qubit Purity RB", fontsize=14)
-    plt.legend()
-    plt.grid(True, linestyle=':', alpha=0.7)
+    plt.ylabel("Calibrated Purity: (Purity - B) / A", fontsize=12)
+    plt.title(f"Standard {num_qubits}-Qubit Purity RB", fontsize=14, pad=15)
+    plt.legend(fontsize=11)
     plt.ylim(-0.1, 1.1)
+    plt.tight_layout()
+    plt.show()
 
-def plot_prb_comparison(results_std: Dict, results_int: Dict, num_qubits: int, target_gate_name: str):
-    """Plots both standard and interleaved PRB decay curves on the same axes."""
+def plot_prb_comparison(
+    std_results: PRBFitResult,
+    int_results: PRBFitResult,
+    num_qubits: int,
+    target_gate_name: str
+):
+    """
+    Plots standard and interleaved PRB decay curves on the same axes.
+
+    Args:
+        std_results: The PRBFitResult from the standard RB experiment.
+        int_results: The PRBFitResult from the interleaved RB experiment.
+        num_qubits: The number of qubits.
+        target_gate_name: The name of the interleaved gate for the plot title.
+    """
+    plt.style.use('seaborn-v0_8-whitegrid')
     plt.figure(figsize=(10, 6))
-    gate_error = calculate_prb_gate_error(results_std, results_int).get('gate_error', -1)
+    
+    gate_error_results = calculate_prb_gate_error(std_results, int_results, num_qubits)
+    gate_error = gate_error_results['gate_error']
     
     # Plot Standard PRB data and fit
     plt.errorbar(
-        results_std['depths'], results_std['mean_purities'], yerr=results_std['std_devs'],
-        fmt='o', color='blue', capsize=5, label='Standard Data'
+        std_results['depths'], std_results['calibrated_mean_purities'],
+        yerr=std_results['calibrated_std_errors'],
+        fmt='o', color='blue', ecolor='lightblue', capsize=5, label='Standard Data'
     )
-    if results_std['fit_successful']:
-        fine_depths = np.linspace(0, max(results_std['depths']), 200)
-        fit_curve = prb_decay_model(fine_depths, 1.0, 0.0, results_std['alpha'])
-        plt.plot(fine_depths, fit_curve, color='blue', linestyle='--', label=f'Standard Fit (α={results_std["alpha"]:.3f})')
+    if std_results['fit_successful']:
+        fine_depths = np.linspace(0, max(std_results['depths']) if std_results['depths'] else 0, 200)
+        fit_curve = std_results['alpha']**fine_depths
+        plt.plot(fine_depths, fit_curve, color='blue', linestyle='--',
+                 label=f'Standard Fit ($\\alpha_{{std}}$={std_results["alpha"]:.4f})')
 
     # Plot Interleaved PRB data and fit
     plt.errorbar(
-        results_int['depths'], results_int['mean_purities'], yerr=results_int['std_devs'],
-        fmt='o', color='red', capsize=5, label='Interleaved Data'
+        int_results['depths'], int_results['calibrated_mean_purities'],
+        yerr=int_results['calibrated_std_errors'],
+        fmt='s', color='red', ecolor='lightcoral', capsize=5, label='Interleaved Data'
     )
-    if results_int['fit_successful']:
-        fine_depths = np.linspace(0, max(results_int['depths']), 200)
-        fit_curve = prb_decay_model(fine_depths, 1.0, 0.0, results_int['alpha'])
-        plt.plot(fine_depths, fit_curve, color='red', linestyle='--', label=f'Interleaved Fit (α={results_int["alpha"]:.3f})')
+    if int_results['fit_successful']:
+        fine_depths = np.linspace(0, max(int_results['depths']) if int_results['depths'] else 0, 200)
+        fit_curve = int_results['alpha']**fine_depths
+        plt.plot(fine_depths, fit_curve, color='red', linestyle='--',
+                 label=f'Interleaved Fit ($\\alpha_{{int}}$={int_results["alpha"]:.4f})')
 
     plt.xlabel("Clifford Depth (m)", fontsize=12)
-    plt.ylabel("Calibrated State Purity", fontsize=12)
+    plt.ylabel("Calibrated Purity: (Purity - B) / A", fontsize=12)
+    
     title = f"Interleaved Purity RB: '{target_gate_name.upper()}' on {num_qubits} Qubit(s)\n"
-    title += f"Estimated Gate Error = {gate_error:.3e}"
-    plt.title(title, fontsize=14)
-    plt.legend()
-    plt.grid(True, linestyle=':', alpha=0.7)
+    if gate_error_results['calculation_successful']:
+        title += f"Estimated Gate Error = {gate_error:.2e}"
+    else:
+        title += "Gate Error Calculation Failed"
+    plt.title(title, fontsize=14, pad=15)
+    
+    plt.legend(fontsize=11)
     plt.ylim(-0.1, 1.1)
+    plt.tight_layout()
+    plt.show()
+
+# --- Helper Functions ---
+
+def _create_prb_failure_result(
+    purities: Dict[int, List[float]],
+    depths: List[int]
+) -> PRBFitResult:
+    """Helper to generate a structured dictionary for a failed PRB fit."""
+    nan_tuple = (np.nan, np.nan, np.nan)
+    raw_means = [np.mean(purities[d]) for d in depths if purities.get(d)]
+    raw_stds = [np.std(purities[d], ddof=1) for d in depths if purities.get(d)]
+    
+    return {
+        'fit_successful': False,
+        'A': np.nan, 'B': np.nan, 'alpha': np.nan,
+        'params': nan_tuple,
+        'param_errors': nan_tuple,
+        'depths': depths,
+        'calibrated_mean_purities': raw_means,  # Fallback to raw data
+        'calibrated_std_errors': raw_stds, # Fallback to raw std dev
+        'raw_mean_purities': raw_means,
+    }

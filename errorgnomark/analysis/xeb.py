@@ -1,5 +1,5 @@
 # File Path: errorgnomark/analysis/xeb.py
-# [DEFINITIVE FINAL VERSION - Corrected SPB Integration]
+# [CORRECTED VERSION v2.1 - Updated Plotting Labels]
 
 import logging
 from collections import defaultdict
@@ -48,21 +48,21 @@ def _exp_decay(x: np.ndarray, A: float, p: float, B: float) -> np.ndarray:
     return A * p**x + B
 
 def fit_xeb_decay(
-    depths: List[int],
-    fidelities_by_depth: Dict[int, List[float]],
+    x_values: List[int], # Changed name from depths to be more generic
+    fidelities_by_x: Dict[int, List[float]],
     num_qubits: int
 ) -> Dict[str, Any]:
     """
-    Fits the normalized XEB fidelity: F(m) = A * p^m + B, with A≈1, B≈0.
+    Fits the normalized XEB fidelity: F(x) = A * p^x + B, with A≈1, B≈0.
     """
-    avg_fidelities = np.array([np.mean(fidelities_by_depth[d]) for d in depths], dtype=float)
-    initial_guesses = [1.0, 0.99, 0.0]
+    avg_fidelities = np.array([np.mean(fidelities_by_x[x]) for x in x_values], dtype=float)
+    initial_guesses = [1.0, 0.999, 0.0] # Adjusted initial guess for p to be closer to expected
     bounds = ([0.0, 0.0, -0.1], [1.5, 1.0, 0.3])
 
     try:
         params, _ = curve_fit(
             _exp_decay,
-            xdata=np.asarray(depths, dtype=float),
+            xdata=np.asarray(x_values, dtype=float),
             ydata=avg_fidelities,
             p0=initial_guesses,
             bounds=bounds
@@ -89,24 +89,26 @@ def plot_xeb_decay(
     else:
         show_plot = False
 
-    depths = sorted(raw_data.keys())
-    avg_fidelities = [np.mean(raw_data[d]) for d in depths]
-    err_fidelities = [sem(raw_data[d]) if len(raw_data[d]) > 1 else 0 for d in depths]
+    x_values = sorted(raw_data.keys())
+    avg_fidelities = [np.mean(raw_data[d]) for d in x_values]
+    err_fidelities = [sem(raw_data[d]) if len(raw_data[d]) > 1 else 0 for d in x_values]
 
-    ax.errorbar(depths, avg_fidelities, yerr=err_fidelities, fmt='o', capsize=5, label=plot_kwargs.get('label', 'XEB Fidelity'))
+    ax.errorbar(x_values, avg_fidelities, yerr=err_fidelities, fmt='o', capsize=5, label=plot_kwargs.get('label', 'XEB Fidelity'))
 
     A, p, B = fit_results['A'], fit_results['p'], fit_results['B']
     epc = fit_results.get('epc', 1.0 - p)
     
-    fit_depths = np.linspace(min(depths), max(depths), 200)
-    fit_fidelities = _exp_decay(fit_depths, A, p, B)
+    fit_x = np.linspace(min(x_values), max(x_values), 200)
+    fit_fidelities = _exp_decay(fit_x, A, p, B)
     
-    fit_label = f'Fit: $p={p:.3f}$, EPC$={epc:.4f}$'
-    ax.plot(fit_depths, fit_fidelities, '--', color=plot_kwargs.get('color', 'C0'), label=fit_label)
+    fit_label = f'Fit: $p={p:.4f}$, EPC$={epc:.5f}$' # Increased precision
+    ax.plot(fit_x, fit_fidelities, '--', color=plot_kwargs.get('color', 'C0'), label=fit_label)
 
-    ax.set_xlabel("Circuit Depth (m)")
+    # <<< CHANGE START: Update the x-axis label >>>
+    ax.set_xlabel("Noise Exponent (e.g., Native Gate Count)")
+    # <<< CHANGE END >>>
     ax.set_ylabel("Fidelity")
-    ax.set_title("XEB Fidelity vs. Circuit Depth")
+    ax.set_title("XEB Fidelity vs. Noise Exponent")
     ax.grid(True, linestyle=':')
     ax.legend()
 
@@ -117,47 +119,37 @@ def plot_xeb_decay(
 # --- High-Level Orchestrator ---
 
 def analyze_xeb_and_spb_from_results(
-    results_by_depth: Dict[int, List[Tuple[Dict, Dict]]],
+    results_by_x: Dict[int, List[Tuple[Dict, Dict]]], # Renamed for clarity
     num_qubits: int
 ) -> Dict[str, Any]:
     """
     Performs a full XEB and SPB analysis from raw experimental results.
-    This version correctly processes both metrics on a per-circuit basis.
     """
-    fidelities_by_depth = defaultdict(list)
-    purities_by_depth = defaultdict(list)
-    depths = sorted(results_by_depth.keys())
+    fidelities_by_x = defaultdict(list)
+    purities_by_x = defaultdict(list)
+    x_values = sorted(results_by_x.keys())
 
-    for depth in depths:
-        results_list = results_by_depth[depth]
+    for x in x_values:
+        results_list = results_by_x[x]
         
-        # Loop through each circuit's result at this depth
         for ideal_probs, noisy_counts in results_list:
-            # Calculate XEB fidelity for this circuit and append to the list for this depth
-            fidelities_by_depth[depth].append(
+            fidelities_by_x[x].append(
                 analyze_xeb_fidelity(ideal_probs, noisy_counts, num_qubits)
             )
-            
-            # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-            # [[[ KEY CHANGE: Calculate SPB purity for the SAME circuit and append ]]]
-            # This ensures a per-circuit analysis for SPB, just like for XEB.
-            purities_by_depth[depth].append(
+            purities_by_x[x].append(
                 analyze_speckle_purity(ideal_probs, noisy_counts, num_qubits)
             )
-            # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    # Fit both datasets. The fitting functions are now consistent in how they
-    # handle the data structure (Dict[int, List[float]]).
-    xeb_fit_results = fit_xeb_decay(depths, fidelities_by_depth, num_qubits)
-    spb_fit_results = fit_spb_decay(depths, purities_by_depth)
+    xeb_fit_results = fit_xeb_decay(x_values, fidelities_by_x, num_qubits)
+    spb_fit_results = fit_spb_decay(x_values, purities_by_x)
 
     return {
         'xeb_analysis': {
-            'raw_data': fidelities_by_depth,
+            'raw_data': fidelities_by_x,
             'fit_results': xeb_fit_results
         },
         'spb_analysis': {
-            'raw_data': purities_by_depth,
+            'raw_data': purities_by_x,
             'fit_results': spb_fit_results
         }
     }

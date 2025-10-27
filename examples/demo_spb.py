@@ -1,11 +1,9 @@
 # File Path: examples/demo_spb.py
 #
-# ErrorGnomark: Speckle Purity Benchmarking (SPB) Demonstration
+# [COMPATIBILITY UPDATE v3.1 - Aligned with DummyBackend v3.0]
 
 import sys
 import os
-import matplotlib
-matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 # --- Python Path Setup ---
@@ -25,54 +23,40 @@ if __name__ == "__main__":
     print("=" * 79)
     print("   Speckle Purity Benchmarking (SPB) Demonstration")
     print("=" * 79)
-    print("This demo uses default parameters for simplicity.\n")
 
     # --- 1. Framework Setup ---
-    print("[INFO] Setting up a simulated backend and quantum engine...")
+    # [FIX] Changed 'spam_error' to 'spam_error_rate' to match the new DummyBackend
     backend = DummyBackend(
         depolarizing_error_1q=0.001,
         depolarizing_error_2q=0.009,
-        spam_error=0.003
+        spam_error_rate=0.003
     )
     engine = QuantumEngine(backend=backend)
-    print(f"       Engine configured with '{backend.__class__.__name__}'")
-    print(f"       Noise: 1Q Depolarizing = {backend.depolarizing_error_1q}, 2Q Depolarizing = {backend.depolarizing_error_2q}")
+    print(f"Engine configured with '{backend.__class__.__name__}'")
     print("-" * 79 + "\n")
 
-    # --- 2. Generate and Display a Sample Circuit ---
-    print("[STEP 1] Generate a single, reproducible 1-Qubit SPB circuit.")
-    # Note: SPB circuits do not have an inverse layer.
-    demo_exp = SPBExperiment(qubits=[0], depths=[5])
-    sample_circuit = demo_exp.circuits[0]
-    print("         Sample Circuit (depth=5):")
-    print(str(sample_circuit))
+    # --- 2. One-Qubit SPB ---
+    print("[STEP 1] Run 1-Qubit Standard and Interleaved SPB.")
+    std_spb_1q_exp = SPBExperiment(qubits=[0], circuits_per_depth=25)
+    # The plot flag will now correctly generate the plot internally
+    results_std_1q = std_spb_1q_exp.run(engine, shots=4096, verbose=True, plot=True)
+    
+    int_spb_1q_exp = InterleavedSPBExperiment(qubits=[0], target_gate_name='H', circuits_per_depth=25)
+    # The plot flag now generates the comparison plot
+    int_spb_1q_exp.run(engine, shots=4096, standard_results=results_std_1q, verbose=True, plot=True)
     print("-" * 79 + "\n")
 
-    # --- 3. One-Qubit Standard SPB ---
-    print("[STEP 2] Run 1-Qubit Standard SPB.")
-    std_spb_1q = SPBExperiment(qubits=[0], circuits_per_depth=25, depths=list(range(5, 101, 10)))
-    std_spb_1q.run(engine, shots=4096, verbose=True, plot=True)
-    print("Plotting 1Q Standard SPB results... Please close the plot window to continue.")
+    # --- 3. Two-Qubit SPB ---
+    print("[STEP 2] Run 2-Qubit Standard and Interleaved SPB.")
+    std_spb_2q_exp = SPBExperiment(qubits=[0, 1], circuits_per_depth=20)
+    results_std_2q = std_spb_2q_exp.run(engine, shots=4096, verbose=True, plot=True)
     
-    # --- 4. One-Qubit Interleaved SPB ---
-    print("\n[STEP 3] Run 1-Qubit Interleaved SPB for 'H' (Hadamard) gate.")
-    int_spb_1q = InterleavedSPBExperiment(qubits=[0], target_gate_name='H', circuits_per_depth=25, depths=list(range(5, 101, 10)))
-    int_spb_1q.run(engine, shots=4096, verbose=True, plot=True)
-    print("Plotting 1Q Interleaved SPB results... Please close the plot window to continue.")
+    int_spb_2q_exp = InterleavedSPBExperiment(qubits=[0, 1], target_gate_name='CNOT', circuits_per_depth=20)
+    int_spb_2q_exp.run(engine, shots=4096, standard_results=results_std_2q, verbose=True, plot=True)
+    print("-" * 79 + "\n")
     
-    # --- 5. Two-Qubit Standard SPB ---
-    print("\n[STEP 4] Run 2-Qubit Standard SPB.")
-    std_spb_2q = SPBExperiment(qubits=[0, 1], circuits_per_depth=20, depths=list(range(4, 41, 4)))
-    std_spb_2q.run(engine, shots=4096, verbose=True, plot=True)
-    print("Plotting 2Q Standard SPB results... Please close the plot window to continue.")
-    
-    # --- 6. Two-Qubit Interleaved SPB ---
-    print("\n[STEP 5] Run 2-Qubit Interleaved SPB for 'CNOT' gate.")
-    int_spb_2q = InterleavedSPBExperiment(qubits=[0, 1], target_gate_name='CNOT', circuits_per_depth=20, depths=list(range(4, 41, 4)))
-    int_spb_2q.run(engine, shots=4096, verbose=True, plot=True)
-    print("Plotting 2Q Interleaved SPB results... Please close the plot window to continue.")
-    
-    # --- 7. Final Message ---
-    print("\n" + "=" * 79)
-    print("SPB Demonstration finished successfully.")
+    # --- 4. Final Message ---
+    print("\nSPB Demonstration finished successfully.")
+    print("[INFO] Displaying all generated plots. Please close plot windows to exit.")
+    plt.show()
     print("=" * 79)

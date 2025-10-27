@@ -1,5 +1,5 @@
 # File Path: examples/demo_tomo.py
-# [UPDATED VERSION - Removes the Ideal Rho plot from the report]
+# [ADAPTED VERSION - Now uses the FlexibleStatevectorBackend]
 
 import sys
 import os
@@ -17,7 +17,10 @@ except ImportError:
 
 # --- Framework Imports ---
 from errorgnomark.engine import QuantumEngine
-from errorgnomark.backends.dummy_backend import DummyBackend
+# =========================================================================
+# [MODIFIED CODE - CHANGE 1]
+from errorgnomark.backends.flexible_statevector_backend import FlexibleStatevectorBackend
+# =========================================================================
 from errorgnomark.circuits.circuit import QuantumCircuit, Gate
 from errorgnomark.experiments.characterization.tomography.state_tomography import StateTomographyExperiment
 from errorgnomark.analysis.reporting import generate_report, plot_density_matrix, ExcelReport
@@ -25,15 +28,17 @@ from errorgnomark.analysis.reporting import generate_report, plot_density_matrix
 if __name__ == "__main__":
     print("=" * 79)
     print("   2-Qubit Quantum State Tomography (QST) Demonstration")
+    print("   >>> Using FlexibleStatevectorBackend with Noise <<<")
     print("=" * 79)
 
     # --- 1. Framework Setup ---
     print("[INFO] Setting up a simulated backend and quantum engine...")
-    backend = DummyBackend(
+
+    backend = FlexibleStatevectorBackend(
         depolarizing_error_1q=0.005,
-        depolarizing_error_2q=0.02,
-        spam_error=0.01
+        depolarizing_error_2q=0.02
     )
+    # =========================================================================
     engine = QuantumEngine(backend=backend)
     print("-" * 79 + "\n")
 
@@ -41,8 +46,8 @@ if __name__ == "__main__":
     print("[STEP 1] Defining the state preparation circuit for a Bell state |Φ+>.")
     qubits = [0, 1]
     bell_state_circuit = QuantumCircuit(qubits)
-    bell_state_circuit.add_gate(Gate('H', (0,)))
-    bell_state_circuit.add_gate(Gate('CNOT', (0, 1)))
+    bell_state_circuit.add_gate(Gate('h', (0,)))
+    bell_state_circuit.add_gate(Gate('cx', (0, 1))) 
     print(str(bell_state_circuit))
     print("-" * 79 + "\n")
 
@@ -51,6 +56,7 @@ if __name__ == "__main__":
     shots = 8192
     tomo_exp = StateTomographyExperiment(qubits, bell_state_circuit)
     
+
     raw_results = tomo_exp.run(engine, shots=shots, verbose=True)
     print(f"\nExample raw result for 'XX' basis: {raw_results.get('XX', {})}")
     print("-" * 79 + "\n")
@@ -80,24 +86,17 @@ if __name__ == "__main__":
     if ExcelReport:
         report = ExcelReport(output_dir="reports")
         
-        # Sheet 1: Summary
         report.create_summary_sheet(
             analysis_results,
             experiment_params={"qubits": qubits, "shots_per_basis": shots, "target_state": "Bell |Φ+>"}
         )
         
-        # Sheets 2 & 3: Detailed measurement data
         report.add_counts_sheet(tomo_exp.results['raw_counts'])
         report.add_probabilities_sheet(tomo_exp.results['raw_counts'])
-
-        # =========================================================================
-        # [MODIFIED CODE]
-        # Only the Reconstructed Rho is added to the report.
-        # The lines for Ideal Rho have been removed.
-        # =========================================================================
+        
         report.add_density_matrix_plot(reconstructed_rho, sheet_name="Reconstructed Rho")
         
-        report_path = report.save("Tomography_Report_Bell_State_Simple")
+        report_path = report.save("Tomography_Report_Bell_State_Flexible_Backend")
     
     print("\n" + "=" * 79)
     print("Tomography Demonstration finished successfully.")
