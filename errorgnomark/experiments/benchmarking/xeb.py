@@ -1,11 +1,21 @@
-# [CORRECTED VERSION v2.3 - Default Depth Starts at 0]
+# [CORRECTED VERSION v2.5 - PLOTTING FIX]
 import random
 import logging
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Dict, List, Optional, Tuple, Union, Any, cast
 
 import numpy as np
 import matplotlib.pyplot as plt
+
+# --- Optional Imports for User Experience ---
+try:
+    from tqdm import tqdm
+    _TQDM_AVAILABLE = True
+except ImportError:
+    _TQDM_AVAILABLE = False
+    # Define a dummy tqdm class if the library is not available
+    def tqdm(iterator, *args, **kwargs):
+        return iterator
 
 # --- Internal Framework Imports ---
 try:
@@ -41,23 +51,16 @@ class StandardXEBExperiment:
     """
     Generates and analyzes circuits for a standard Cross-Entropy Benchmarking (XEB) experiment.
 
-    [V2.3 ChangeLog]
-    - MODIFIED: The default `depths` list now starts from 0 instead of 1.
-    - FIX: Aligns the analysis x-axis with the backend's noise model.
-    - ADD: After decomposing a circuit, it counts the number of native gates that
-      contribute to noise and stores this count in `circuit.metadata['noise_exponent']`.
-    - CHANGE: The `run` method now groups results by this `noise_exponent` instead of
-      the logical `depth`, ensuring the fit parameter `p` corresponds to the
-      per-gate fidelity of the backend.
+    This version uses traditional circuit 'depth' as the x-axis for analysis and plotting.
     """
     def __init__(self,
                  qubits: List[int],
-                 # [MODIFIED] Default depths now start from 0.
                  depths: List[int] = [0, 5, 10, 15, 25, 40, 60],
                  circuits_per_depth: int = 30,
                  gate_set: Union[str, Dict, BaseGateSet] = "universal_xeb",
                  native_gates: Optional[List[str]] = DEFAULT_NATIVE_GATES,
-                 seed: Optional[Union[int, float]] = None):
+                 seed: Optional[Union[int, float]] = None,
+                 topology: Optional[List[Tuple[int, int]]] = None):
         _validate_list_of_integers(qubits, "qubits")
         self.qubits = qubits
         self.num_qubits = len(self.qubits)
@@ -67,7 +70,11 @@ class StandardXEBExperiment:
         self.gate_set_spec = gate_set
         self.gate_set_obj = get_gate_set(self.gate_set_spec)
         
-        self.topology = self._get_default_topology()
+        if topology is not None:
+            self.topology = topology
+        else:
+            self.topology = self._get_default_topology()
+            
         self.native_gates = native_gates
         self.seed = seed
         self.results: Dict = {}
@@ -79,10 +86,7 @@ class StandardXEBExperiment:
         return list(zip(self.qubits, self.qubits[1:]))
 
     def _generate_circuit(self, depth: int, seed: Optional[Union[int, float]], interleaved_gate: Optional[Gate] = None) -> QuantumCircuit:
-        """
-        Internal helper to generate one logical XEB circuit.
-        This method is now agnostic to the specific gate set being used.
-        """
+        """Internal helper to generate one logical XEB circuit."""
         rng = random.Random(seed)
         circuit = QuantumCircuit(qubits=self.qubits)
         
@@ -118,16 +122,13 @@ class StandardXEBExperiment:
                                 seed: Optional[Union[int, float]] = None,
                                 interleaved_gate: Optional[Gate] = None) -> QuantumCircuit:
         """
-        Generates a single XEB circuit, decomposes it, and calculates the noise exponent.
+        Generates a single XEB circuit and prepares it for execution.
         """
         circuit = self._generate_circuit(depth, seed, interleaved_gate=interleaved_gate)
         
         if self.native_gates:
             circuit = circuit.decompose(basis_gates=self.native_gates)
 
-        # This is the crucial step. We count the number of operations that the backend
-        # will apply noise to. This assumes the backend applies noise per-gate and
-        # ignores measurement operations.
         noise_exponent = sum(1 for gate in circuit.gates if not gate.is_measurement)
         circuit.metadata['noise_exponent'] = noise_exponent
             
@@ -150,8 +151,10 @@ class StandardXEBExperiment:
             self._circuits = all_circuits
         return self._circuits
 
-    def run(self, engine: QuantumEngine, shots: int = 2048, plot: bool = True, axes: Optional[Tuple[plt.Axes, plt.Axes]] = None, **plot_kwargs) -> Dict[str, Any]:
-        """Executes the full experiment and returns the analysis results."""
+    def run(self, engine: QuantumEngine, shots: int = 2048, plot: bool = True, axes: Optional[Tuple[plt.Axes, plt.Axes]] = None, show_progress: bool = True, **plot_kwargs) -> Dict[str, Any]:
+        """
+        Executes the full experiment, analyzes the results against circuit depth, and returns them.
+        """
         xeb_type = "Interleaved" if isinstance(self, InterleavedXEBExperiment) else "Standard"
         logging.info(f"--- Running Dual Analysis {xeb_type} XEB on Qubits {self.qubits} ---")
         
@@ -159,21 +162,17 @@ class StandardXEBExperiment:
         
         logging.info(f"Generated {len(experiment_circuits)} circuits. Executing on backend...")
         
-        all_results_raw = engine.execute_with_ideal(experiment_circuits, shots)
+        execute_iterator = tqdm(experiment_circuits, desc=f"Executing {xeb_type} Circuits", disable=not (show_progress and _TQDM_AVAILABLE))
+        all_results_raw = engine.execute_with_ideal(execute_iterator, shots)
         
-        results_by_exponent = defaultdict(list)
+        results_by_depth = defaultdict(list)
         for i, circuit in enumerate(experiment_circuits):
-            noise_exponent = circuit.metadata.get('noise_exponent')
-            if noise_exponent is None:
-                raise ValueError(
-                    "CRITICAL: 'noise_exponent' not found in circuit metadata. "
-                    "Ensure it is calculated in `generate_single_circuit` after decomposition."
-                )
-            results_by_exponent[noise_exponent].append(all_results_raw[i])
+            depth = circuit.metadata.get('depth')
+            if depth is None:
+                raise ValueError("CRITICAL: 'depth' not found in circuit metadata.")
+            results_by_depth[depth].append(all_results_raw[i])
         
-        # The analysis function now receives data grouped by the correct x-axis unit.
-        # The keys of the dictionary will be used as the x-values for fitting.
-        self.results = analyze_xeb_and_spb_from_results(results_by_exponent, num_qubits=self.num_qubits)
+        self.results = analyze_xeb_and_spb_from_results(results_by_depth, num_qubits=self.num_qubits)
         
         if plot:
             title = f"Dual Analysis on Qubits {self.qubits}"
@@ -184,23 +183,29 @@ class StandardXEBExperiment:
         return self.results
 
     def _plot_results(self, axes, title, **kwargs):
-        """Helper method to plot both XEB and SPB decay curves."""
+        """
+        [FIXED] Helper method to plot both XEB and SPB decay curves against depth.
+        """
         logging.info("Generating dual analysis plot...")
         show_plot_at_end = axes is None
         if axes is None:
             fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
         
-        ax1, ax2 = axes
+        ax1, ax2 = cast(Tuple[plt.Axes, plt.Axes], axes)
         fig = ax1.get_figure()
         if show_plot_at_end: fig.suptitle(title, fontsize=16)
 
+        # Plot XEB decay on the top axis
         plot_xeb_decay(self.results['xeb_analysis']['raw_data'], self.results['xeb_analysis']['fit_results'], ax=ax1, **kwargs)
-        ax1.set_title("XEB Fidelity vs. Noise Exponent")
+        ax1.set_title("XEB Fidelity vs. Circuit Depth")
+        ax1.set_xlabel('')  # [FIX] Clear the x-label on the top plot
         ax1.legend()
         ax1.grid(True, which='both', linestyle='--', linewidth=0.5)
 
+        # Plot SPB decay on the bottom axis
         plot_spb_decay(self.results['spb_analysis']['raw_data'], self.results['spb_analysis']['fit_results'], ax=ax2, **kwargs)
-        ax2.set_title("Speckle Purity vs. Noise Exponent")
+        ax2.set_title("Speckle Purity vs. Circuit Depth")
+        ax2.set_xlabel("Circuit Depth")  # Set the shared x-label only on the bottom plot
         ax2.legend()
         ax2.grid(True, which='both', linestyle='--', linewidth=0.5)
 
@@ -208,23 +213,20 @@ class StandardXEBExperiment:
             fig.tight_layout(rect=[0, 0, 1, 0.96])
             plt.show()
 
-# The InterleavedXEBExperiment class inherits these changes automatically and does not
-# need to be modified itself. Its call to super().run() will now use the corrected logic.
 class InterleavedXEBExperiment(StandardXEBExperiment):
     """
-    Implements an Interleaved XEB experiment, inheriting the refactored logic.
+    Implements an Interleaved XEB experiment.
     """
-    # [FIXED] Corrected constructor name from `init` to `__init__`.
     def __init__(self,
                  qubits: List[int],
                  interleaved_gate: Gate,
-                 # [MODIFIED] Default depths now start from 0.
                  depths: List[int] = [0, 5, 10, 15, 25, 40, 60],
                  circuits_per_depth: int = 30,
                  gate_set: Union[str, Dict, BaseGateSet] = "universal_xeb",
                  native_gates: Optional[List[str]] = DEFAULT_NATIVE_GATES,
-                 seed: Optional[Union[int, float]] = None):
-        super().__init__(qubits, depths, circuits_per_depth, gate_set, native_gates, seed)
+                 seed: Optional[Union[int, float]] = None,
+                 topology: Optional[List[Tuple[int, int]]] = None):
+        super().__init__(qubits, depths, circuits_per_depth, gate_set, native_gates, seed, topology)
         self.interleaved_gate = interleaved_gate
 
     def circuits(self) -> List[QuantumCircuit]:
@@ -245,18 +247,20 @@ class InterleavedXEBExperiment(StandardXEBExperiment):
             self._circuits = all_circuits
         return self._circuits
 
-    def run(self, engine: QuantumEngine, shots: int = 2048, plot: bool = True, axes: Optional[Tuple[plt.Axes, plt.Axes]] = None) -> Dict[str, Any]:
-        """Executes reference and interleaved experiments and calculates gate error."""
+    def run(self, engine: QuantumEngine, shots: int = 2048, plot: bool = True, axes: Optional[Tuple[plt.Axes, plt.Axes]] = None, show_progress: bool = True) -> Dict[str, Any]:
+        """
+        Executes reference and interleaved experiments and calculates gate error.
+        """
         logging.info(f"--- Running Full Dual Analysis Interleaved XEB for Gate '{self.interleaved_gate.name}' ---")
         
         logging.info("[Phase 1/2] Running Reference Experiment...")
         ref_experiment = StandardXEBExperiment(
-            self.qubits, self.depths, self.circuits_per_depth, self.gate_set_spec, self.native_gates, self.seed
+            self.qubits, self.depths, self.circuits_per_depth, self.gate_set_spec, self.native_gates, self.seed, self.topology
         )
-        ref_analysis = ref_experiment.run(engine, shots=shots, plot=False)
+        ref_analysis = ref_experiment.run(engine, shots=shots, plot=False, show_progress=show_progress)
         
         logging.info("[Phase 2/2] Running Interleaved Experiment...")
-        int_analysis = super().run(engine, shots=shots, plot=False)
+        int_analysis = super().run(engine, shots=shots, plot=False, show_progress=show_progress)
 
         p_ref = ref_analysis['xeb_analysis']['fit_results']['p']
         p_int = int_analysis['xeb_analysis']['fit_results']['p']
@@ -276,13 +280,15 @@ class InterleavedXEBExperiment(StandardXEBExperiment):
         return self.results
 
     def _plot_interleaved_results(self, axes):
-        """Plots a comparison of the reference and interleaved decay curves."""
+        """
+        [FIXED] Plots a comparison of the reference and interleaved decay curves against depth.
+        """
         logging.info("Generating dual analysis comparison plot...")
         show_plot_at_end = axes is None
         if axes is None:
             fig, axes = plt.subplots(2, 1, figsize=(10, 10), sharex=True)
         
-        ax1, ax2 = axes
+        ax1, ax2 = cast(Tuple[plt.Axes, plt.Axes], axes)
         fig = ax1.get_figure()
         fig.suptitle(f"Dual Interleaved Analysis for Gate '{self.interleaved_gate.name}'", fontsize=16)
 
@@ -296,8 +302,13 @@ class InterleavedXEBExperiment(StandardXEBExperiment):
 
         ax1.legend()
         ax2.legend()
+        
         ax1.set_title("XEB Fidelity Comparison")
+        ax1.set_xlabel('')  # [FIX] Clear the x-label on the top plot
+        
         ax2.set_title("Speckle Purity Comparison")
+        ax2.set_xlabel("Circuit Depth") # Set the shared x-label only on the bottom plot
+        
         ax1.grid(True, which='both', linestyle='--', linewidth=0.5)
         ax2.grid(True, which='both', linestyle='--', linewidth=0.5)
 

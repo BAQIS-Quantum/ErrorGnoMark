@@ -26,7 +26,7 @@ CUSTOM_NATIVE_GATES = {
 # ================================================================================
 # // SETUP: INITIALIZE THE ENGINE
 # ================================================================================
-backend = DummyBackend(cycle_fidelity=0.992, spam_error=0)
+backend = DummyBackend(cycle_fidelity=0.998, spam_error=0.0001)
 engine = QuantumEngine(backend)
 print(f"Engine initialized with '{backend.name}' (Cycle Fidelity p = {backend.cycle_fidelity:.4f}). Expected EPC ≈ {1 - backend.cycle_fidelity:.5f}\n")
 
@@ -112,27 +112,17 @@ print("Running automated XEB analysis on qubits [0, 1]...")
 # understand and apply its phenomenological noise model to correctly.
 automated_exp = StandardXEBExperiment(
     qubits=[0, 1],
-    depths=np.linspace(20, 250, 8, dtype=int).tolist(),
-    circuits_per_depth=15,
-    seed=42
-    # native_gates=list(CUSTOM_NATIVE_GATES.keys()) # <-- This line was removed.
-)
+    depths=np.linspace(20, 250, 4, dtype=int).tolist(),
+    circuits_per_depth=30,
+    seed=42,
+    native_gates=None # <-- This line was removed.
+    )
 
 print("A plot window will appear. Please close it to continue the script.")
 results = automated_exp.run(engine, shots=8192, analysis_options={'dual_analysis': True})
 
 print("\n--- Analysis Complete ---")
-if 'xeb_analysis' in results and results['xeb_analysis'].get('fit_successful'):
-    epc = results['xeb_analysis']['fit_results']['epc']
-    print(f"Fitted Error Per Clifford (EPC) from XEB: {epc:.5f}")
-else:
-    print("XEB analysis or fit failed. Could not retrieve EPC.")
 
-if 'spb_analysis' in results and results['spb_analysis'].get('fit_successful'):
-    p_c_val = results['spb_analysis']['fit_results']['p_c']
-    print(f"Fitted Purity Decay Parameter (p_c) from SPB: {p_c_val:.5f}")
-else:
-    print("SPB analysis or fit failed. Could not retrieve purity decay parameter.")
 
 
 print("\n================================================================================")
