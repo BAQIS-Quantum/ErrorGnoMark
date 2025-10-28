@@ -1,10 +1,7 @@
-# File Path: errorgnomark/experiments/benchmarking/rb.py
-# [DEFINITIVE FINAL VERSION v3.7 - Patched for QuantumEngine v2 Interface]
-
 import numpy as np
 import random
 import logging
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Tuple, Protocol
 
 # --- Internal Framework Imports ---
 try:
@@ -33,6 +30,21 @@ EXAMPLE_NATIVE_GATES: List[str] = [
     'cz', 'sx', 'rz', 'h', 's'
 ]
 
+# ==============================================================================
+# ### NEW: Protocol for Clifford Factory ###
+# Defines the interface that a custom Clifford generator must follow.
+# This allows for type hinting and better static analysis.
+# ==============================================================================
+class CliffordFactory(Protocol):
+    """A protocol defining the interface for a Clifford generator."""
+    def get_random_clifford_and_inverse(
+        self, qubits: List[int], seed: Optional[Union[int, float]]
+    ) -> Tuple[List[Gate], List[Gate]]:
+        """
+        Generates a random Clifford element and its inverse as lists of gates.
+        """
+        ...
+
 class StandardRBExperiment:
     """
     Generates and analyzes circuits for a standard Randomized Benchmarking experiment.
@@ -43,15 +55,29 @@ class StandardRBExperiment:
         depths: List[int] = DEFAULT_RB_DEPTHS,
         circuits_per_depth: int = DEFAULT_CIRCUITS_PER_DEPTH,
         native_gates: Optional[List[str]] = None,
-        seed: Optional[Union[int, float]] = None
+        seed: Optional[Union[int, float]] = None,
+        clifford_factory: Optional[CliffordFactory] = None # <-- NEW: Allow custom Clifford generator
     ):
+        """
+        Initializes the RB experiment.
+
+        Args:
+            qubits: The qubit(s) to run the experiment on.
+            depths: A list of Clifford sequence depths.
+            circuits_per_depth: The number of random circuits to generate for each depth.
+            native_gates: Optional list of basis gates for decomposition. If None, circuits are logical.
+            seed: A seed for the main random number generator to ensure reproducibility.
+            clifford_factory: An optional object that provides Clifford gates. If None, the default
+                              CliffordGateSet is used. Must adhere to the CliffordFactory protocol.
+        """
         self.qubits = [qubits] if isinstance(qubits, int) else qubits
         self.num_qubits = len(self.qubits)
         self.depths = depths
         self.circuits_per_depth = circuits_per_depth
         self.native_gates = native_gates
         self.seed = seed
-        self.clifford_factory = CliffordGateSet()
+        # --- MODIFIED: Use provided factory or default. This is backward-compatible. ---
+        self.clifford_factory = clifford_factory if clifford_factory is not None else CliffordGateSet()
         self.results: Dict = {}
 
         if self.native_gates:
@@ -131,10 +157,6 @@ class StandardRBExperiment:
         circs = self.circuits()
         logging.info(f"Generated {len(circs)} circuits. Executing on backend...")
         
-        # ==============================================================================
-        # ### FIX 1: Call the correct QuantumEngine method ###
-        # The method `execute` was renamed to `execute_with_ideal` in the engine.
-        # ==============================================================================
         results_list = engine.execute_with_ideal(circs, shots=shots)
 
         ground_state_str = '0' * self.num_qubits
@@ -142,11 +164,6 @@ class StandardRBExperiment:
         
         for i, circuit in enumerate(circs):
             depth = circuit.metadata['depth']
-            # ==============================================================================
-            # ### FIX 2: Unpack the correct return tuple ###
-            # `execute_with_ideal` returns a list of (ideal_probabilities, noisy_counts).
-            # Your original code `_, noisy_counts` still works, but this is more explicit.
-            # ==============================================================================
             _ideal_probs, noisy_counts = results_list[i]
             survival_prob = noisy_counts.get(ground_state_str, 0) / shots
             survivals[depth].append(survival_prob)
@@ -187,14 +204,16 @@ class InterleavedRBExperiment(StandardRBExperiment):
         depths: List[int] = DEFAULT_RB_DEPTHS,
         circuits_per_depth: int = DEFAULT_CIRCUITS_PER_DEPTH,
         native_gates: Optional[List[str]] = None,
-        seed: Optional[Union[int, float]] = None
+        seed: Optional[Union[int, float]] = None,
+        clifford_factory: Optional[CliffordFactory] = None # <-- NEW: Accept custom factory
     ):
         super().__init__(
             qubits=qubits,
             depths=depths,
             circuits_per_depth=circuits_per_depth,
             native_gates=native_gates,
-            seed=seed
+            seed=seed,
+            clifford_factory=clifford_factory # <-- NEW: Pass factory to parent class
         )
         self.interleaved_gate = interleaved_gate
 
@@ -210,9 +229,10 @@ class InterleavedRBExperiment(StandardRBExperiment):
             depths=self.depths,
             circuits_per_depth=self.circuits_per_depth,
             native_gates=self.native_gates,
-            seed=self.seed
+            seed=self.seed,
+            clifford_factory=self.clifford_factory # <-- MODIFIED: Pass the factory for consistency
         )
-        # This call now correctly uses the patched StandardRBExperiment.run method
+        
         results_std = std_rb_exp.run(engine, shots, plot=False)
         if not results_std.get("fit_successful"):
             logging.error("Standard RB reference experiment failed. Cannot proceed with Interleaved RB.")
@@ -220,7 +240,6 @@ class InterleavedRBExperiment(StandardRBExperiment):
         logging.info(f"Standard RB Reference Fit successful. EPC = {results_std['epc']:.3e}")
 
         # --- Step 2: Run Interleaved RB ---
-        # The `super().run()` call will also use the patched run method from the base class.
         logging.info(f"\n[Step 2/3] Running Interleaved RB experiment with '{gate_name}'...")
         results_interleaved = super().run(engine, shots=shots, plot=False)
         if not results_interleaved.get("fit_successful"):
