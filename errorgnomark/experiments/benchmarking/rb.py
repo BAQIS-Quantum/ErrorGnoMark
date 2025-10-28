@@ -1,24 +1,22 @@
+# File Path: errorgnomark/experiments/benchmarking/rb.py
+
 import numpy as np
 import random
 import logging
 from typing import List, Dict, Optional, Union, Tuple, Protocol
 
-# --- Internal Framework Imports ---
-try:
-    import matplotlib.pyplot as plt
-    from errorgnomark.circuits.circuit import QuantumCircuit, Gate
-    from errorgnomark.engine import QuantumEngine
-    from errorgnomark.analysis.rb import fit_rb_data, plot_rb_single, plot_rb_comparison, calculate_epg
-    from errorgnomark.circuits.gate_sets import CliffordGateSet
-except ImportError:
-    # Fallback for standalone execution or testing
-    import sys, os
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
-    import matplotlib.pyplot as plt
-    from errorgnomark.circuits.circuit import QuantumCircuit, Gate
-    from errorgnomark.engine import QuantumEngine
-    from errorgnomark.analysis.rb import fit_rb_data, plot_rb_single, plot_rb_comparison, calculate_epg
-    from errorgnomark.circuits.gate_sets import CliffordGateSet
+# --- Internal Framework Imports (Using Absolute Paths) ---
+# The previous try-except block for handling relative vs. absolute imports
+# has been replaced with direct absolute imports. This change assumes that
+# the 'errorgnomark' package is properly installed in the Python environment
+# or is otherwise available in the PYTHONPATH.
+import matplotlib.pyplot as plt
+from errorgnomark.circuits.circuit import QuantumCircuit, Gate
+from errorgnomark.engine import QuantumEngine
+from errorgnomark.analysis.rb import fit_rb_data, plot_rb_single, plot_rb_comparison, calculate_epg
+from errorgnomark.circuits.gate_sets import CliffordGateSet
+
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')

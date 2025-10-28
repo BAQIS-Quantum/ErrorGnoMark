@@ -1,89 +1,63 @@
 # File Path: examples/demo_mrb.py
-# [DEMO ADAPTED for DummyBackend v1.2-clifford]
+# [DEFINITIVE FINAL VERSION v8 - Ultimate Simplicity]
 
 import sys
 import os
-import matplotlib
-matplotlib.use('TkAgg')
 
-# --- Python Path Setup ---
+# --- Dynamic Path Setup ---
+# Allows the script to find the 'errorgnomark' package from the 'examples' directory.
 try:
     import errorgnomark
 except ImportError:
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    if project_root not in sys.path: sys.path.insert(0, project_root)
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# --- Framework Imports ---
-from errorgnomark.engine import QuantumEngine
-from errorgnomark.backends.dummy_backend import DummyBackend
+# --- Core Library Imports ---
 from errorgnomark.experiments.benchmarking.mrb import MirrorRBExperiment
+from errorgnomark.backends.dummy_backend import DummyBackend
+from errorgnomark.engine import QuantumEngine
+# Import the NEW high-level analysis functions
+from errorgnomark.analysis.mrb import display_mrb_summary, generate_mrb_plots
+
 
 if __name__ == "__main__":
-    print("=" * 79)
-    print("   Mirror Randomized Benchmarking (MRB) Demonstration")
-    print("   (Using DummyBackend with a single 'clifford_fidelity')")
-    print("=" * 79)
+    # --- 1. Basic Setup ---
+    # All results will be saved here.
+    output_dir = "results/mrb_demo_ultimate"
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"Running Ultimate Simplicity MRB Demo. Results will be saved in '{os.path.abspath(output_dir)}'")
 
-    # --- 1. Framework Setup ---
-    print("[INFO] Setting up a simulated backend and quantum engine...")
+    # Define the backend, experiment parameters, and the experiment itself.
+    backend = DummyBackend(depolarizing_error_1q=1e-3, depolarizing_error_2q=1e-2, seed=42)
     
-    # =========================================================================
-    # [THE FIX IS HERE]
-    # We now instantiate the backend using `clifford_fidelity` and `spam_error_rate`,
-    # which are the parameters expected by your provided `dummy_backend.py`.
-    #
-    # IMPORTANT NOTE: This backend will apply the SAME fidelity (0.98) to both
-    # the 1-qubit and 2-qubit circuits. The resulting analysis will show similar
-    # EPC values for all qubit groups. This is a limitation of this specific
-    # backend model for a multi-group MRB simulation.
-    # =========================================================================
-    backend = DummyBackend(
-        clifford_fidelity=0.98, # Represents the fidelity of a Clifford operation (e.g., for the 2Q case)
-        spam_error_rate=0.005
-    )
-    engine = QuantumEngine(backend=backend)
-    print("-" * 79 + "\n")
-
-    # --- 2. Define the Experiment Parameters ---
-    print("[STEP 1] Defining the MRB experiment parameters.")
-    qubit_groups = [0, 1, (0, 1)] # 1Q on Q0, 1Q on Q1, 2Q on Q0-Q1
-    depths = [1, 10, 20, 50, 80, 120]
-    circuits_per_depth = 20
-    shots = 2048
+    qubit_groups = [
+        (0, 1),               # 2 qubits
+        (2, 3, 4, 5),         # 4 qubits
+        (6, 7, 8, 9, 10, 11), # 6 qubits
+    ]
     
-    print(f"  Qubit Groups: {qubit_groups}")
-    print(f"  Depths: {depths}")
-    print(f"  Circuits per Depth: {circuits_per_depth}")
-    print(f"  Shots per Circuit: {shots}")
-    print("-" * 79 + "\n")
-    
-    # --- 3. Initialize and Run the Experiment ---
-    # The mrb.py and rbleipzig.py files from my previous answers are robust
-    # and DO NOT need to be changed. They work correctly with this setup.
-    print("[STEP 2] Initializing and running the full MRB experiment workflow...")
-    mrb_exp = MirrorRBExperiment(
+    experiment = MirrorRBExperiment(
         qubits=qubit_groups,
-        depths=depths,
-        circuits_per_depth=circuits_per_depth
+        depths=[4, 8, 16, 32, 64],
+        circuits_per_depth=25,
+        seed=123
     )
-    
-    # Create 'reports' directory if it doesn't exist
-    report_dir = "reports"
-    if not os.path.exists(report_dir):
-        os.makedirs(report_dir)
-    report_path = os.path.join(report_dir, "MRB_Report_Clifford_Fidelity_Model.xlsx")
 
-    # The 'run' method handles everything.
-    analysis_results = mrb_exp.run(
-        engine, 
-        shots=shots, 
-        verbose=True, 
-        report=True, 
-        report_path=report_path
-    )
+    # --- 2. Run Experiment ---
+    # The engine executes the experiment circuits on the backend.
+    # The `run` method automatically handles circuit generation, execution, and analysis.
+    print("Running experiment... (This may take a moment)")
+    engine = QuantumEngine(backend=backend)
+    analysis_results = experiment.run(engine, shots=1024)
+    print("Experiment finished.")
+
+    # --- 3. Display Summary & Generate All Plots ---
+    # These new high-level functions encapsulate all post-processing, table generation, and plotting.
+    # The demo script is now clean and focuses only on running the experiment.
     
-    print("\n" + "=" * 79)
-    print("MRB Demonstration finished successfully.")
-    print(f"Check the console output and the generated report at: {report_path}")
-    print("NOTE: The EPC for 1Q and 2Q groups will be similar due to the backend model used.")
-    print("=" * 79)
+    # Call a single function to display the results table.
+    display_mrb_summary(analysis_results)
+    
+    # Call a single function to generate and save all plots.
+    generate_mrb_plots(analysis_results, output_dir=output_dir)
+    
+    print("\nDemo complete.")

@@ -1,3 +1,5 @@
+# File Path: errorgnomark/analysis/reporting.py
+
 # ==============================================================
 # [FINAL v16] Enhanced Reporting Framework
 # --------------------------------------------------------------

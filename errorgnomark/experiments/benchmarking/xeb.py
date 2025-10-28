@@ -1,38 +1,46 @@
+# File Path: errorgnomark/experiments/benchmarking/xeb.py
+
 # [CORRECTED VERSION v2.5 - PLOTTING FIX]
-import random
+
+# -------------------------------------------------------------------
+# 1. Standard Library Imports
+# -------------------------------------------------------------------
 import logging
+import random
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple, Union, Any, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
-import numpy as np
+# -------------------------------------------------------------------
+# 2. Third-Party Library Imports
+# -------------------------------------------------------------------
 import matplotlib.pyplot as plt
+import numpy as np
 
-# --- Optional Imports for User Experience ---
+# Optional import for progress bar, handled with graceful degradation.
+# This is a standard practice for non-essential user experience features.
 try:
     from tqdm import tqdm
     _TQDM_AVAILABLE = True
 except ImportError:
     _TQDM_AVAILABLE = False
-    # Define a dummy tqdm class if the library is not available
+    # Define a dummy tqdm class if the library is not available,
+    # so the rest of the code can use tqdm() without checking _TQDM_AVAILABLE.
     def tqdm(iterator, *args, **kwargs):
         return iterator
 
-# --- Internal Framework Imports ---
-try:
-    from errorgnomark.engine import QuantumEngine
-    from errorgnomark.circuits.circuit import Gate, QuantumCircuit
-    from errorgnomark.circuits.gate_sets import BaseGateSet, TwoQubitGateSet, get_gate_set
-    from errorgnomark.analysis.xeb import analyze_xeb_and_spb_from_results, plot_xeb_decay
-    from errorgnomark.analysis.spb import plot_spb_decay
-except ImportError:
-    # Fallback for standalone execution or testing
-    import sys, os
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
-    from errorgnomark.engine import QuantumEngine
-    from errorgnomark.circuits.circuit import Gate, QuantumCircuit
-    from errorgnomark.circuits.gate_sets import BaseGateSet, TwoQubitGateSet, get_gate_set
-    from errorgnomark.analysis.xeb import analyze_xeb_and_spb_from_results, plot_xeb_decay
-    from errorgnomark.analysis.spb import plot_spb_decay
+# -------------------------------------------------------------------
+# 3. Internal Framework Imports (errorgnomark)
+# -------------------------------------------------------------------
+# Direct, absolute imports are used, assuming the package is installed.
+# The previous try-except fallback for standalone execution has been removed
+# in favor of standard package dependency management.
+from errorgnomark.analysis.spb import plot_spb_decay
+from errorgnomark.analysis.xeb import analyze_xeb_and_spb_from_results, plot_xeb_decay
+from errorgnomark.circuits.circuit import Gate, QuantumCircuit
+from errorgnomark.circuits.gate_sets import BaseGateSet, TwoQubitGateSet, get_gate_set
+from errorgnomark.engine import QuantumEngine
+
+
 
 # A sentinel object to detect if an argument was provided or not.
 _sentinel = object()

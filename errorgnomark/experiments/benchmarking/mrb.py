@@ -1,168 +1,262 @@
 # File Path: errorgnomark/experiments/benchmarking/mrb.py
-# [CORRECTED VERSION v2.2 - Fixed IndentationError]
 
-import os
-from typing import List, Tuple, Dict, Union, Any
 import numpy as np
+import pandas as pd
+import random
+from typing import List, Tuple, Dict, Iterable, Optional, Any
+from itertools import chain
 
-# --- 框架内部导入 ---
-from ..base import BaseExperiment
-from ...engine import QuantumEngine
-from ...circuits.circuit import QuantumCircuit, Gate
-from ...analysis.result import ExperimentResult
-from ...analysis.mrb import fit_mrb_decay, compute_polarization
-from ...analysis.reporting import generate_report, ExcelReport
+# --- Internal Framework Imports (Using Absolute Paths) ---
+# The previous try-except block has been replaced with direct absolute imports.
+# This assumes the 'errorgnomark' package is installed or in the PYTHONPATH.
+from errorgnomark.experiments.base import BaseExperiment
+from errorgnomark.analysis.result import AnalysisResult
+from errorgnomark.circuits.circuit import QuantumCircuit, Gate
+from errorgnomark.engine import QuantumEngine
+from errorgnomark.analysis.mrb import fit_mrb_decay, MRBFitResult
+from errorgnomark.circuits.gate_sets import CliffordGateSet
+
+
+
 
 class MirrorRBExperiment(BaseExperiment):
     """
-    Implements Mirror Randomized Benchmarking (MRB).
+    Implements the Mirror Randomized Benchmarking (MRB) protocol.
+
+    [V5 ChangeLog]
+    - Best Practices: Centralized random number generation for full reproducibility.
+    - Efficiency: CliffordGateSet is now instantiated only once.
+    - Readability: Added comments to clarify complex logic.
+    - This version builds upon the correct logic and bug fixes from V4.
+
+    [V4 ChangeLog]
+    - BUG FIX: Corrected the initialization of QuantumCircuit. The constructor
+      now receives an explicit list of qubit indices (e.g., `list(qubits)`)
+      instead of an integer, resolving the `TypeError: 'int' object is not iterable`.
     """
-    # [FIX]: 确保 __init__ 方法在 class 内部正确缩进 (通常是4个空格)
+
     def __init__(
         self,
-        qubits: Union[List[int], List[Tuple[int, ...]]],
+        qubits: List[Tuple[int, ...]],
         depths: List[int],
-        circuits_per_depth: int,
-        gate_set: str = "clifford",
+        circuits_per_depth: int = 20,
+        interleaved_gate: Optional[Gate] = None,
+        seed: Optional[int] = None,
     ):
-        all_qubit_indices = sorted(list(set(q for group in qubits for q in (group if isinstance(group, tuple) else [group]))))
-        super().__init__(qubits=all_qubit_indices)
+        """
+        Initializes the Mirror RB experiment.
+
+        Args:
+            qubits (List[Tuple[int, ...]]): A list of qubit groups to benchmark.
+                Each group must contain an even number of qubits.
+            depths (List[int]): A list of circuit depths (number of random Clifford layers).
+            circuits_per_depth (int): Number of random circuits per depth.
+            interleaved_gate (Optional[Gate]): A gate to interleave for Interleaved MRB.
+            seed (Optional[int]): A seed for the random number generator to ensure reproducibility.
+        """
+        all_qubits_flat = sorted(list(set(chain.from_iterable(qubits))))
+        super().__init__(qubits=all_qubits_flat)
 
         self.qubit_groups = qubits
         self.depths = depths
         self.circuits_per_depth = circuits_per_depth
+        self.experiment_type = "MRB"
+        self.device_name = "unknown" # Initialize the attribute
 
-        from errorgnomark.circuits import gate_sets
-        self.gate_set = gate_sets.get_gate_set(gate_set)
-        self._circuits_map: Dict[str, Dict[int, List[QuantumCircuit]]] = {}
-
-    # [FIX]: 确保 @property 和 def circuits 在 class 内部正确缩进
-    @property
-    def circuits(self) -> List[QuantumCircuit]:
-        """
-        Generates all circuits for all qubit groups and depths for the MRB experiment.
-        """
-        if self._circuits_map:
-            return [circ for group_circs in self._circuits_map.values() for depth_circs in group_circs.values() for circ in depth_circs]
-
-        all_circuits = []
         for group in self.qubit_groups:
-            group_key = str(group)
-            self._circuits_map[group_key] = {}
-            for depth in self.depths:
-                circs_at_depth = [self._generate_single_circuit(group, depth) for _ in range(self.circuits_per_depth)]
-                self._circuits_map[group_key][depth] = circs_at_depth
-                all_circuits.extend(circs_at_depth)
-
-        self._circuits = all_circuits
-        return self._circuits
-
-    # [FIX]: 这一行是错误发生的地方。
-    # 确保 def run 与 def __init__ 和 @property circuits 的开头对齐。
-    # 删除这一行开头所有的多余空格或制表符。
-    def run(self, engine: QuantumEngine, shots: int = 1024, verbose: bool = False, report: bool = True, report_path: str = "MRB_Report_Adapted.xlsx") -> List[ExperimentResult]:
-        """
-        Executes the full MRB experiment: circuit generation, execution, analysis, and reporting.
-        """
-        if not self._circuits_map:
-            if verbose: print("[INFO] Generating MRB circuits...")
-            # 注意: 这里调用 self.circuits() 是正确的，因为它是一个 @property
-            self.circuits
-
-        if verbose: print("[INFO] Running circuits on the backend...")
-        survival_data = {str(g): {d: [] for d in self.depths} for g in self.qubit_groups}
-        polarization_data = {str(g): {d: [] for d in self.depths} for g in self.qubit_groups}
-
-        for i, group in enumerate(self.qubit_groups):
-            group_key = str(group)
-            num_qubits = len(group) if isinstance(group, tuple) else 1
-            if verbose: print(f"\n--- Processing group: {group} ({i+1}/{len(self.qubit_groups)}) ---")
-
-            for j, depth in enumerate(self.depths):
-                if verbose: print(f"  Depth {depth} ({j+1}/{len(self.depths)}): [", end="", flush=True)
-
-                circuits_to_run = self._circuits_map[group_key][depth]
-                
-                batch_results = engine.execute_with_ideal(circuits_to_run, shots=shots)
-
-                for _, noisy_counts in batch_results:
-                    survival_prob = self._calculate_survival_probability(noisy_counts, num_qubits)
-                    survival_data[group_key][depth].append(survival_prob)
-
-                    polarization = compute_polarization(noisy_counts, num_qubits)
-                    polarization_data[group_key][depth].append(polarization)
-
-                    if verbose: print(".", end="", flush=True)
-                if verbose: print("] Done.")
-
-        if verbose: print("\n[INFO] Analyzing collected data...")
-        analysis_results = []
-        for group in self.qubit_groups:
-            num_qubits = len(group) if isinstance(group, tuple) else 1
-            group_key = str(group)
-            fit_res = fit_mrb_decay(survival_data[group_key], num_qubits)
-            result_data = {
-                "group": group, "num_qubits": num_qubits,
-                "epc": fit_res.get('epc'), "epc_err": fit_res.get('epc_err'),
-                "fit_params": fit_res, "raw_data": survival_data[group_key]
-            }
-            analysis_results.append(ExperimentResult(name=f"MRB Decay Fit ({group})", data=result_data))
-
-        avg_polarizations = [[np.mean(polarization_data[str(g)][d]) for d in self.depths] for g in self.qubit_groups]
-        result_data = {
-            "qubit_groups": self.qubit_groups, "depths": self.depths,
-            "avg_polarizations": avg_polarizations
-        }
-        analysis_results.append(ExperimentResult(name="MRB Direct Polarization", data=result_data))
-
-        if report:
-            if verbose: print("[INFO] Generating reports...")
-            generate_report(analysis_results)
-
-            if ExcelReport:
-                excel_report = ExcelReport(output_dir=os.path.dirname(report_path) or ".")
-                excel_report.create_summary_sheet(
-                    analysis_results,
-                    experiment_params={
-                        "Experiment": "Mirror RB (Adapted)", "Qubit Groups": str(self.qubit_groups),
-                        "Depths": str(self.depths), "Circuits/Depth": self.circuits_per_depth, "Shots": shots
-                    }
+            if len(group) % 2 != 0:
+                raise ValueError(
+                    f"MirrorRBExperiment requires an even number of qubits per group. "
+                    f"Found group {group} with size {len(group)}."
                 )
-                for res in analysis_results:
-                    if "epc" in res.data: excel_report.add_mrb_decay_plot(res)
-                    elif "avg_polarizations" in res.data: excel_report.add_mrb_heatmap(res)
-                excel_report.save(os.path.basename(report_path))
 
+        self.interleaved_gate = interleaved_gate
+        if self.interleaved_gate:
+            print(f"Running Interleaved MRB with gate: {self.interleaved_gate.name}")
+
+        # Optimization: Centralize RNG and GateSet instantiation
+        self._rng = random.Random(seed)
+        self._gate_set = CliffordGateSet()
+
+    def circuits(self) -> Iterable[QuantumCircuit]:
+        """
+        Generates all quantum circuits for the MRB experiment.
+        """
+        for i, qubit_group in enumerate(self.qubit_groups):
+            for depth in self.depths:
+                for j in range(self.circuits_per_depth):
+                    # Generate a unique seed for each circuit instance for reproducibility
+                    instance_seed = self._rng.random()
+                    circuit = self._generate_single_mrb_circuit(
+                        qubits=qubit_group,
+                        depth=depth,
+                        interleaved_gate=self.interleaved_gate,
+                        seed=instance_seed
+                    )
+
+                    circuit.metadata = {
+                        "experiment_type": self.experiment_type,
+                        "qubits": qubit_group,
+                        "group_id": i,
+                        "depth": depth,
+                        "x_value": depth,
+                        "instance_id": j,
+                        "interleaved": self.interleaved_gate is not None
+                    }
+                    yield circuit
+
+    def run(self, engine: QuantumEngine, **kwargs) -> List[AnalysisResult]:
+        """
+        Executes the full end-to-end experiment using the Engine v5 architecture.
+        """
+        print(f"Starting {self.experiment_type} experiment...")
+        experiment_circuits = list(self.circuits())
+        if not experiment_circuits:
+            print("WARNING: No circuits were generated for this experiment.")
+            return []
+        
+        self.device_name = engine.backend.name
+        
+        shots = kwargs.get('shots')
+        if shots is None:
+            raise ValueError("The 'shots' argument is required for engine execution.")
+
+        print(f"Generated {len(experiment_circuits)} circuits. Executing on backend '{self.device_name}' with {shots} shots...")
+
+        raw_results = engine.execute_with_ideal(experiment_circuits, shots=shots)
+
+        results_for_df = []
+        for circuit, (ideal_probs, noisy_counts) in zip(experiment_circuits, raw_results):
+            row_data = circuit.metadata.copy()
+            row_data['ideal_probabilities'] = ideal_probs
+            row_data['counts'] = noisy_counts
+            row_data['shots'] = shots
+            results_for_df.append(row_data)
+        
+        raw_results_df = pd.DataFrame(results_for_df)
+
+        print("Execution complete. Analyzing results...")
+        analysis_results = self.analyze(raw_results_df)
+        print("Analysis complete.")
         return analysis_results
 
-    def _calculate_survival_probability(self, counts: Dict[str, int], num_qubits: int) -> float:
-        total_shots = sum(counts.values())
-        if total_shots == 0: return 0.0
-        return counts.get('0' * num_qubits, 0) / total_shots
+    def _generate_single_mrb_circuit(
+        self,
+        qubits: Tuple[int, ...],
+        depth: int,
+        interleaved_gate: Optional[Gate],
+        seed: float
+    ) -> QuantumCircuit:
+        """
+        Generates a single instance of a Mirror RB circuit using CliffordGateSet.
+        """
+        # Use a local RNG seeded for this specific instance for deterministic generation
+        rng = random.Random(seed)
 
-    def _generate_single_circuit(self, group: Union[int, Tuple[int, ...]], depth: int) -> QuantumCircuit:
-        qubits = list(group) if isinstance(group, tuple) else [group]
         num_qubits = len(qubits)
+        half_n = num_qubits // 2
+        qubits_a = qubits[:half_n]
+        qubits_b = qubits[half_n:]
+
+        # This is the V4 fix: correctly initialize QuantumCircuit with all qubits.
+        circuit = QuantumCircuit(qubits=list(qubits))
+        circuit.name = f"mrb_d{depth}_q{qubits}"
         
-        circuit = QuantumCircuit(qubits=qubits)
-        circuit.metadata = {'depth': depth, 'group': group}
+        forward_clifford_inverses: List[List[Gate]] = []
 
-        random_sequence, inverse_sequence = [], []
-
+        # 1. Build the forward random Clifford sequence on the first half of qubits (qubits_a)
         for _ in range(depth):
-            fwd_layer, inv_layer = [], []
-            if num_qubits <= 2:
-                fwd_layer, inv_layer = self.gate_set.get_random_clifford_and_inverse(qubits)
-            else:
-                fwd_1q_sublayer = self.gate_set.get_random_1q_layer(qubits)
-                fwd_cnot_sublayer = [Gate(self.gate_set.two_qubit_gate_name, (qubits[i], qubits[i+1])) for i in range(num_qubits - 1)]
-                fwd_layer = fwd_1q_sublayer + fwd_cnot_sublayer
-                inv_cnot_sublayer = list(reversed(fwd_cnot_sublayer))
-                inv_1q_sublayer = [Gate(self.gate_set._inverse_map.get(g.name), g.qubits) for g in reversed(fwd_1q_sublayer)]
-                inv_layer = inv_cnot_sublayer + inv_1q_sublayer
+            forward_gates, inverse_gates = self._gate_set.get_random_clifford_and_inverse(
+                qubits=list(qubits_a), seed=rng.random()
+            )
+            circuit.add_gates(forward_gates)
+            forward_clifford_inverses.append(inverse_gates)
 
-            random_sequence.extend(fwd_layer)
-            inverse_sequence = inv_layer + inverse_sequence
+        # 2. Add the entangling layer connecting qubits_a to qubits_b
+        for i in range(half_n):
+            circuit.add_gate(Gate('CNOT', qubits=(qubits_a[i], qubits_b[i])))
+
+        # 3. (Optional) Add the interleaved gate on qubits_a
+        if interleaved_gate:
+            if not set(interleaved_gate.qubits).issubset(set(qubits_a)):
+                raise ValueError(
+                    f"Interleaved gate {interleaved_gate} acts on qubits "
+                    f"{interleaved_gate.qubits}, which is not a subset of the "
+                    f"first half of the group: {qubits_a}."
+                )
+            circuit.add_gate(interleaved_gate)
+            circuit.add_gate(Gate("BARRIER", qubits=qubits))
+
+        # 4. Build the "mirror" part: apply inverse Cliffords in reverse order to qubits_b
+        for inverse_gate_list in reversed(forward_clifford_inverses):
+            for inv_gate in inverse_gate_list:
+                # This is the core "mirror" logic: remap the inverse gate from
+                # a qubit in `qubits_a` to its corresponding qubit in `qubits_b`.
+                remapped_inv_gate = Gate(
+                    name=inv_gate.name,
+                    qubits=tuple(qubits_b[qubits_a.index(q)] for q in inv_gate.qubits),
+                    params=inv_gate.params
+                )
+                circuit.add_gate(remapped_inv_gate)
         
-        circuit.add_gates(random_sequence + inverse_sequence)
+        # 5. Add final measurement to all qubits
+        circuit.add_gate(Gate("MEASURE", qubits=qubits, is_measurement=True))
+
         return circuit
+
+    def analyze(self, results: pd.DataFrame) -> List[AnalysisResult]:
+        """
+        Analyzes the results of the MRB experiment.
+        """
+        analysis_results = []
+        for group_id, group_data in results.groupby('group_id'):
+            qubit_group = group_data['qubits'].iloc[0]
+            num_qubits_in_group = len(qubit_group)
+            
+            device_name = self.device_name
+            
+            print(f"Analyzing MRB results for qubit group: {qubit_group}")
+
+            all_zeros_state = '0' * num_qubits_in_group
+            group_data['survival_prob'] = group_data.apply(
+                lambda row: row['counts'].get(all_zeros_state, 0) / row['shots'],
+                axis=1
+            )
+
+            survival_data_for_fit: Dict[int, List[float]] = group_data.groupby('depth')['survival_prob'].apply(list).to_dict()
+            fit_result: MRBFitResult = fit_mrb_decay(
+                survival_data=survival_data_for_fit,
+                num_qubits=num_qubits_in_group
+            )
+
+            quality_indicator_value = fit_result['epc']
+
+            detailed_data = {
+                "metrics": {
+                    "EPC": fit_result['epc'],
+                    "EPC_err": fit_result['epc_err'],
+                    "p": fit_result['params'][1],
+                    "p_err": fit_result['param_errors'][1]
+                },
+                "fit_parameters": {
+                    "A": fit_result['params'][0],
+                    "p": fit_result['params'][1],
+                    "B": fit_result['params'][2]
+                },
+                "fit_success": fit_result['fit_successful'],
+                "error_message": "Curve fitting failed." if not fit_result['fit_successful'] else None,
+                "plot_data": fit_result,
+                "raw_survival_data": survival_data_for_fit
+            }
+
+            result = AnalysisResult(
+                result_type=self.experiment_type,
+                device_name=device_name,
+                qubits=list(qubit_group),
+                quality_indicator=quality_indicator_value,
+                data=detailed_data
+            )
+            
+            analysis_results.append(result)
+
+        return analysis_results
