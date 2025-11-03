@@ -182,6 +182,11 @@ print(f"\n[Final Result] Estimated Error of 'CNOT' gate = {gate_error:.3e}")
 The project is organized to separate the core library, tests, examples, and documentation, ensuring a clean and maintainable codebase.
 
 ```text
+## 📂 File Structure
+
+Here is a detailed breakdown of the project structure, illustrating the layered architecture and the role of each component.
+
+```text
 errorgnomark/
 ├── .gitignore                     # Git ignore file
 ├── LICENSE                        # Project license (e.g., Apache-2.0)
@@ -191,28 +196,47 @@ errorgnomark/
 ├── examples/                      # Example scripts and notebooks for users
 ├── tests/                         # Unit and integration tests for all modules
 └── errorgnomark/                  # Core library source code
-    ├── __init__.py                # Makes 'errorgnomark' a Python package
-    ├── api.py                     # Public-facing, simplified API for common tasks
-    ├── analysis/                  # Module: Data processing, fitting, and plotting
-    ├── backends/                  # Module: Interfaces for quantum hardware & simulators
+    ├── __init__.py                # Makes 'errorgnomark' a Python package and exposes top-level API
+    ├── api.py                     # Public-facing, simplified API interface (Facade pattern)
+    ├── planner/                   # "Expert system" for generating complete experiment plans
+    │   ├── __init__.py            # Exposes core plan generator functions
+    │   ├── core.py                # Core logic for parsing strategies and generating structured "Experiment Plans"
+    │   ├── schemas.py             # Defines standardized data structures like "ExperimentPlan"
+    │   └── strategies/            # Contains various preset "expert strategies"
+    │       ├── __init__.py
+    │       ├── base_strategy.py   # Abstract base class for strategies
+    │       └── predefined.py      # Predefined strategies, e.g., FullChipBenchmark, DailyHealthCheck
+    ├── engine/                    # Core experiment orchestration engine
+    │   ├── __init__.py
+    │   └── orchestrator.py        # Contains the Orchestrator class, responsible for receiving and executing "Experiment Plans"
+    ├── datastore/                 # Handles persistence (storage and retrieval) of all data
+    │   ├── __init__.py            # Exposes core save/load interfaces
+    │   ├── models.py              # Defines core data models (e.g., BenchmarkRun, ExperimentResult)
+    │   └── storage/               # (Renamed) Pluggable storage drivers
+    │       ├── __init__.py
+    │       ├── base_storage.py    # Abstract base class for storage drivers
+    │       ├── file_system.py     # File system-based storage implementation (JSON/YAML)
+    │       └── sqlite.py          # SQLite-based storage implementation
+    ├── analysis/                  # Module: Data post-processing, fitting, and visualization
+    ├── backends/                  # Module: Unified interfaces for quantum hardware & simulators
     ├── circuits/                  # Module: Quantum circuit construction & manipulation
-    ├── engine/                    # Module: Core experiment orchestration engine
-    ├── simulators/                # (说明) 此处缺少描述，可根据功能自行补充
+    ├── simulators/                # Module: Built-in noise simulators for testing and validation
+    │   ├── __init__.py
+    │   ├── noise_models.py        # Defines various noise models (e.g., depolarizing, amplitude/phase damping)
+    │   └── device_simulator.py    # Builds a simulated device with configurable noise models to test the analysis workflow
     └── experiments/               # Module: Definitions of all experiment "blueprints"
         ├── __init__.py
         ├── base.py                # Abstract base class for all experiments
-        ├── benchmarking/          # Layer 1: Protocol-Level Benchmarking
+        ├── benchmarking/          # Protocol-Level Benchmarking
         │   ├── __init__.py
         │   ├── rb.py              # e.g., Randomized Benchmarking
         │   ├── xeb.py             # e.g., Cross-Entropy Benchmarking
-        │   ├── spb.py
-        │   ├── prb.py
-        │   ├── mrb.py
-        │   ├── qv.py
-        │   ├── csb.py
-        │   ├── clops.py
+        │   ├── mrb.py             # e.g., Mirror Randomized Benchmarking
+        │   ├── qv.py              # e.g., Quantum Volumn
+        │   ├── csb.py             # e.g., Channel Spectrum Benchmarking
+        │   ├── clops.py           # e.g., Circuit Layer Operations Per Second
         │   └── ...
-        ├── characterization/      # Layer 2: Physics-Level Characterization
+        ├── characterization/      # Physics-Level Characterization
         │   ├── __init__.py
         │   ├── coherent/          # Coherent error experiments (e.g., Rabi, Ramsey)
         │   ├── crosstalk/         # Crosstalk measurement protocols
@@ -223,7 +247,7 @@ errorgnomark/
         │       ├── __init__.py
         │       ├── process_tomography.py
         │       └── state_tomography.py
-        └── algorithmic/           # Layer 3: Application-Level Benchmarking
+        └── algorithmic/           # Application-Level Benchmarking
             ├── __init__.py
             ├── variational/       # e.g., VQE, QAOA benchmarks
             ├── algebraic/         # e.g., Grover's Search, QPE benchmarks
