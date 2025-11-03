@@ -186,50 +186,50 @@ Here is a detailed breakdown of the project structure, illustrating the layered 
 
 errorgnomark/
 ├── .gitignore                     # Git ignore file
-├── LICENSE                        # Project license (e.g., Apache-2.0)
-├── README.md                      # Project overview and user guide
-├── pyproject.toml                 # Project metadata and dependency management
-├── docs/                          # Documentation files (e.g., for Sphinx)
-├── examples/                      # Example scripts and notebooks for users
-├── tests/                         # Unit and integration tests for all modules
-└── errorgnomark/                  # Core library source code
-    ├── __init__.py                # Makes 'errorgnomark' a Python package and exposes top-level API
-    ├── api.py                     # Public-facing, simplified API interface (Facade pattern)
-    ├── planner/                   # "Expert system" for generating complete experiment plans
-    │   ├── __init__.py            # Exposes core plan generator functions
-    │   ├── core.py                # Core logic for parsing strategies and generating structured 
-    │   ├── schemas.py             # Defines standardized data structures like "ExperimentPlan"
-    │   └── strategies/            # Contains various preset "expert strategies"
-    ├── engine/                    # Core experiment orchestration engine
-    ├── datastore/                 # Handles persistence (storage and retrieval) of all data
-    │   ├── __init__.py            # Exposes core save/load interfaces
-    │   ├── models.py              # Defines core data models (e.g., BenchmarkRun), 
-    │   └── storage/               # (Renamed) Pluggable storage drivers
-    ├── analysis/                  # Module: Data post-processing, fitting, and visualization
-    ├── backends/                  # Module: Unified interfaces for quantum hardware & simulators
-    ├── circuits/                  # Module: Quantum circuit construction & manipulation
-    ├── simulators/                # Module: Built-in noise simulators for testing and validation
-    └── experiments/               # Module: Definitions of all experiment "blueprints"
+├── LICENSE                        # Project license
+├── README.md                      # Project overview & guide
+├── pyproject.toml                 # Project config & dependencies
+├── docs/                          # Documentation (Sphinx)
+├── examples/                      # Usage examples & notebooks
+├── tests/                         # Unit & integration tests
+└── errorgnomark/                  # Core source code
+    ├── __init__.py                # Package initializer & API
+    ├── api.py                     # Simplified public API (Facade)
+    ├── planner/                   # Expert system for experiment planning
+    │   ├── __init__.py            # Expose plan generators
+    │   ├── core.py                # Core planning & strategy logic
+    │   ├── schemas.py             # Data schemas (e.g., ExperimentPlan)
+    │   └── strategies/            # Preset planning strategies
+    ├── engine/                    # Experiment orchestration engine
+    ├── datastore/                 # Data persistence & retrieval
+    │   ├── __init__.py            # Expose save/load API
+    │   ├── models.py              # Data models (e.g., BenchmarkRun)
+    │   └── storage/               # Pluggable storage drivers
+    ├── analysis/                  # Data analysis & visualization
+    ├── backends/                  # Interfaces for hardware & simulators
+    ├── circuits/                  # Quantum circuit construction
+    ├── simulators/                # Built-in noise simulators
+    └── experiments/               # Experiment definitions (blueprints)
         ├── __init__.py
-        ├── base.py                # Abstract base class for all experiments
+        ├── base.py                # Base class for experiments
         ├── benchmarking/          # Protocol-Level Benchmarking
         │   ├── __init__.py
-        │   ├── rb.py              # e.g., Randomized Benchmarking
-        │   ├── xeb.py             # e.g., Cross-Entropy Benchmarking
+        │   ├── rb.py              # Randomized Benchmarking (RB)
+        │   ├── xeb.py             # Cross-Entropy Benchmarking (XEB)
         │   └── ...
         ├── characterization/      # Physics-Level Characterization
         │   ├── __init__.py
-        │   ├── coherent/          # Coherent error experiments (e.g., Rabi, Ramsey)
-        │   ├── crosstalk/         # Crosstalk measurement protocols
-        │   ├── entanglement/      # Entangled state fidelity validation (e.g., Bell, GHZ)
-        │   ├── incoherent/        # Incoherent error experiments (e.g., T1, T2)
-        │   ├── spam/              # State Preparation and Measurement (SPAM) errors
-        │   └── tomography/        # State and process tomography
+        │   ├── coherent/          # Coherent errors (Rabi, Ramsey)
+        │   ├── crosstalk/         # Crosstalk measurements
+        │   ├── entanglement/      # Entanglement fidelity (Bell, GHZ)
+        │   ├── incoherent/        # Incoherent errors (T1, T2)
+        │   ├── spam/              # SPAM errors
+        │   └── tomography/        # State & process tomography
         └── algorithmic/           # Application-Level Benchmarking
             ├── __init__.py
-            ├── variational/       # e.g., VQE, QAOA benchmarks
-            ├── algebraic/         # e.g., Grover's Search, QPE benchmarks
-            └── simulation/        # e.g., Quantum dynamics simulation benchmarks
+            ├── variational/       # Variational benchmarks (VQE, QAOA)
+            ├── algebraic/         # Algebraic benchmarks (Grover, QPE)
+            └── simulation/        # Simulation benchmarks
 ```                         
 
 ## 7. Contributing
