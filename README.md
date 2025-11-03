@@ -187,37 +187,44 @@ errorgnomark/
 ├── LICENSE                        # Project license (e.g., Apache-2.0)
 ├── README.md                      # Project overview and user guide
 ├── pyproject.toml                 # Project metadata and dependency management
-│
 ├── docs/                          # Documentation files (e.g., for Sphinx)
 ├── examples/                      # Example scripts and notebooks for users
 ├── tests/                         # Unit and integration tests for all modules
-│
 └── errorgnomark/                  # Core library source code
     ├── __init__.py                # Makes 'errorgnomark' a Python package
     ├── api.py                     # Public-facing, simplified API for common tasks
-    │
     ├── analysis/                  # Module: Data processing, fitting, and plotting
     ├── backends/                  # Module: Interfaces for quantum hardware & simulators
     ├── circuits/                  # Module: Quantum circuit construction & manipulation
     ├── engine/                    # Module: Core experiment orchestration engine
-    │
+    ├── simulators/                # (说明) 此处缺少描述，可根据功能自行补充
     └── experiments/               # Module: Definitions of all experiment "blueprints"
+        ├── __init__.py
         ├── base.py                # Abstract base class for all experiments
-        │
         ├── benchmarking/          # Layer 1: Protocol-Level Benchmarking
+        │   ├── __init__.py
         │   ├── rb.py              # e.g., Randomized Benchmarking
         │   ├── xeb.py             # e.g., Cross-Entropy Benchmarking
+        │   ├── spb.py
+        │   ├── prb.py
+        │   ├── mrb.py
+        │   ├── qv.py
+        │   ├── csb.py
+        │   ├── clops.py
         │   └── ...
-        │
         ├── characterization/      # Layer 2: Physics-Level Characterization
+        │   ├── __init__.py
         │   ├── coherent/          # Coherent error experiments (e.g., Rabi, Ramsey)
         │   ├── crosstalk/         # Crosstalk measurement protocols
         │   ├── entanglement/      # Entangled state fidelity validation (e.g., Bell, GHZ)
         │   ├── incoherent/        # Incoherent error experiments (e.g., T1, T2)
         │   ├── spam/              # State Preparation and Measurement (SPAM) errors
         │   └── tomography/        # State and process tomography
-        │
+        │       ├── __init__.py
+        │       ├── process_tomography.py
+        │       └── state_tomography.py
         └── algorithmic/           # Layer 3: Application-Level Benchmarking
+            ├── __init__.py
             ├── variational/       # e.g., VQE, QAOA benchmarks
             ├── algebraic/         # e.g., Grover's Search, QPE benchmarks
             └── simulation/        # e.g., Quantum dynamics simulation benchmarks
