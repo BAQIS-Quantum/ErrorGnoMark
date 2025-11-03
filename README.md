@@ -182,8 +182,6 @@ print(f"\n[Final Result] Estimated Error of 'CNOT' gate = {gate_error:.3e}")
 The project is organized to separate the core library, tests, examples, and documentation, ensuring a clean and maintainable codebase.
 
 ```text
-## 📂 File Structure
-
 Here is a detailed breakdown of the project structure, illustrating the layered architecture and the role of each component.
 
 errorgnomark/
