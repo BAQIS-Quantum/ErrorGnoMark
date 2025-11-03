@@ -186,7 +186,6 @@ The project is organized to separate the core library, tests, examples, and docu
 
 Here is a detailed breakdown of the project structure, illustrating the layered architecture and the role of each component.
 
-```text
 errorgnomark/
 ├── .gitignore                     # Git ignore file
 ├── LICENSE                        # Project license (e.g., Apache-2.0)
@@ -200,30 +199,18 @@ errorgnomark/
     ├── api.py                     # Public-facing, simplified API interface (Facade pattern)
     ├── planner/                   # "Expert system" for generating complete experiment plans
     │   ├── __init__.py            # Exposes core plan generator functions
-    │   ├── core.py                # Core logic for parsing strategies and generating structured "Experiment Plans"
+    │   ├── core.py                # Core logic for parsing strategies and generating structured 
     │   ├── schemas.py             # Defines standardized data structures like "ExperimentPlan"
     │   └── strategies/            # Contains various preset "expert strategies"
-    │       ├── __init__.py
-    │       ├── base_strategy.py   # Abstract base class for strategies
-    │       └── predefined.py      # Predefined strategies, e.g., FullChipBenchmark, DailyHealthCheck
     ├── engine/                    # Core experiment orchestration engine
-    │   ├── __init__.py
-    │   └── orchestrator.py        # Contains the Orchestrator class, responsible for receiving and executing "Experiment Plans"
     ├── datastore/                 # Handles persistence (storage and retrieval) of all data
     │   ├── __init__.py            # Exposes core save/load interfaces
-    │   ├── models.py              # Defines core data models (e.g., BenchmarkRun, ExperimentResult)
+    │   ├── models.py              # Defines core data models (e.g., BenchmarkRun), 
     │   └── storage/               # (Renamed) Pluggable storage drivers
-    │       ├── __init__.py
-    │       ├── base_storage.py    # Abstract base class for storage drivers
-    │       ├── file_system.py     # File system-based storage implementation (JSON/YAML)
-    │       └── sqlite.py          # SQLite-based storage implementation
     ├── analysis/                  # Module: Data post-processing, fitting, and visualization
     ├── backends/                  # Module: Unified interfaces for quantum hardware & simulators
     ├── circuits/                  # Module: Quantum circuit construction & manipulation
     ├── simulators/                # Module: Built-in noise simulators for testing and validation
-    │   ├── __init__.py
-    │   ├── noise_models.py        # Defines various noise models (e.g., depolarizing, amplitude/phase damping)
-    │   └── device_simulator.py    # Builds a simulated device with configurable noise models to test the analysis workflow
     └── experiments/               # Module: Definitions of all experiment "blueprints"
         ├── __init__.py
         ├── base.py                # Abstract base class for all experiments
@@ -231,10 +218,6 @@ errorgnomark/
         │   ├── __init__.py
         │   ├── rb.py              # e.g., Randomized Benchmarking
         │   ├── xeb.py             # e.g., Cross-Entropy Benchmarking
-        │   ├── mrb.py             # e.g., Mirror Randomized Benchmarking
-        │   ├── qv.py              # e.g., Quantum Volumn
-        │   ├── csb.py             # e.g., Channel Spectrum Benchmarking
-        │   ├── clops.py           # e.g., Circuit Layer Operations Per Second
         │   └── ...
         ├── characterization/      # Physics-Level Characterization
         │   ├── __init__.py
@@ -244,9 +227,6 @@ errorgnomark/
         │   ├── incoherent/        # Incoherent error experiments (e.g., T1, T2)
         │   ├── spam/              # State Preparation and Measurement (SPAM) errors
         │   └── tomography/        # State and process tomography
-        │       ├── __init__.py
-        │       ├── process_tomography.py
-        │       └── state_tomography.py
         └── algorithmic/           # Application-Level Benchmarking
             ├── __init__.py
             ├── variational/       # e.g., VQE, QAOA benchmarks
