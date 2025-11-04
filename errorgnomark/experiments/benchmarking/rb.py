@@ -12,7 +12,7 @@ from typing import List, Dict, Optional, Union, Tuple, Protocol
 # or is otherwise available in the PYTHONPATH.
 import matplotlib.pyplot as plt
 from errorgnomark.circuits.circuit import QuantumCircuit, Gate
-from errorgnomark.engine import QuantumEngine
+from errorgnomark.engine.executor import QuantumEngine
 from errorgnomark.analysis.rb import fit_rb_data, plot_rb_single, plot_rb_comparison, calculate_epg
 from errorgnomark.circuits.gate_sets import CliffordGateSet
 

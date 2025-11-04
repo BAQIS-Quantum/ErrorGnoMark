@@ -14,7 +14,7 @@ except ImportError:
 # --- Core Library Imports ---
 from errorgnomark.experiments.benchmarking.mrb import MirrorRBExperiment
 from errorgnomark.backends.dummy_backend import DummyBackend
-from errorgnomark.engine import QuantumEngine
+from errorgnomark.engine.executor import QuantumEngine
 # Import the NEW high-level analysis functions
 from errorgnomark.analysis.mrb import display_mrb_summary, generate_mrb_plots
 

@@ -16,7 +16,7 @@ except ImportError:
     if project_root not in sys.path: sys.path.insert(0, project_root)
 
 # --- Framework Imports ---
-from errorgnomark.engine import QuantumEngine
+from errorgnomark.engine.executor import QuantumEngine
 # =========================================================================
 # [MODIFIED CODE - CHANGE 1]
 from errorgnomark.backends.flexible_statevector_backend import FlexibleStatevectorBackend

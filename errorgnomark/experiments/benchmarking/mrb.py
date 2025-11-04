@@ -12,7 +12,7 @@ from itertools import chain
 from errorgnomark.experiments.base import BaseExperiment
 from errorgnomark.analysis.result import AnalysisResult
 from errorgnomark.circuits.circuit import QuantumCircuit, Gate
-from errorgnomark.engine import QuantumEngine
+from errorgnomark.engine.executor import QuantumEngine
 from errorgnomark.analysis.mrb import fit_mrb_decay, MRBFitResult
 from errorgnomark.circuits.gate_sets import CliffordGateSet
 

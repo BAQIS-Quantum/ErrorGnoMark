@@ -38,7 +38,7 @@ from errorgnomark.analysis.spb import plot_spb_decay
 from errorgnomark.analysis.xeb import analyze_xeb_and_spb_from_results, plot_xeb_decay
 from errorgnomark.circuits.circuit import Gate, QuantumCircuit
 from errorgnomark.circuits.gate_sets import BaseGateSet, TwoQubitGateSet, get_gate_set
-from errorgnomark.engine import QuantumEngine
+from errorgnomark.engine.executor import QuantumEngine
 
 
 

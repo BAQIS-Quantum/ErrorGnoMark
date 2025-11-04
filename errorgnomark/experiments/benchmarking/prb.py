@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 
 # --- Existing imports remain the same ---
-from errorgnomark.engine import QuantumEngine
+from errorgnomark.engine.executor import QuantumEngine
 from errorgnomark.circuits.circuit import Gate, QuantumCircuit
 from errorgnomark.experiments.base import BaseExperiment
 from errorgnomark.circuits.gate_sets import CliffordGateSet, get_gate_set

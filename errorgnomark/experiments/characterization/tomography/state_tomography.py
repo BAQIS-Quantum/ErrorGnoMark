@@ -5,7 +5,7 @@ import itertools
 from typing import List, Dict, Any, Optional
 import numpy as np
 
-from errorgnomark.engine import QuantumEngine
+from errorgnomark.engine.executor import QuantumEngine
 from errorgnomark.circuits.circuit import QuantumCircuit, Gate
 from errorgnomark.experiments.base import BaseExperiment
 from errorgnomark.analysis.tomography import StateTomographyAnalysis

@@ -7,7 +7,7 @@ import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # --- Imports are kept exactly as in the user's provided file ---
-from errorgnomark.engine import QuantumEngine
+from errorgnomark.engine.executor import QuantumEngine
 from errorgnomark.backends.dummy_backend_xeb import DummyBackend
 from errorgnomark.experiments.benchmarking.xeb import StandardXEBExperiment, InterleavedXEBExperiment
 from errorgnomark.circuits.circuit import Gate

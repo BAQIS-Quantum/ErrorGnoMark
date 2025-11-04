@@ -8,7 +8,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 # --- Framework Imports ---
-from errorgnomark.engine import QuantumEngine
+from errorgnomark.engine.executor import QuantumEngine
 from errorgnomark.circuits.circuit import QuantumCircuit, Gate
 from errorgnomark.experiments.characterization.tomography.process_tomography import ProcessTomographyExperiment
 from errorgnomark.backends.flexible_statevector_backend import FlexibleStatevectorBackend

@@ -15,7 +15,7 @@ except ImportError:
         sys.path.insert(0, project_root)
 
 # --- Framework Imports ---
-from errorgnomark.engine import QuantumEngine
+from errorgnomark.engine.executor import QuantumEngine
 from errorgnomark.backends.dummy_backend import DummyBackend
 from errorgnomark.experiments.benchmarking.spb import SPBExperiment, InterleavedSPBExperiment
 

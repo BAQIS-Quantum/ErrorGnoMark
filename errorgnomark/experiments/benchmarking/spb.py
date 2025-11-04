@@ -10,7 +10,7 @@ import numpy as np
 from collections import defaultdict
 from typing import List, Dict, Optional, Any
 
-from errorgnomark.engine import QuantumEngine
+from errorgnomark.engine.executor import QuantumEngine
 from errorgnomark.circuits.circuit import QuantumCircuit, Gate
 from errorgnomark.experiments.base import BaseExperiment
 from errorgnomark.circuits.gate_sets import CliffordGateSet, get_gate_set
