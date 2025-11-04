@@ -184,52 +184,62 @@ The project is organized to separate the core library, tests, examples, and docu
 ```text
 Here is a detailed breakdown of the project structure, illustrating the layered architecture and the role of each component.
 
+
 errorgnomark/
-├── .gitignore                     # Git ignore file
+├── .gitignore                     # Git ignore configuration
 ├── LICENSE                        # Project license
-├── README.md                      # Project overview & guide
-├── pyproject.toml                 # Project config & dependencies
-├── docs/                          # Documentation (Sphinx)
-├── examples/                      # Usage examples & notebooks
-├── tests/                         # Unit & integration tests
-└── errorgnomark/                  # Core source code
-    ├── __init__.py                # Package initializer & API
-    ├── api.py                     # Simplified public API (Facade)
-    ├── planner/                   # Expert system for experiment planning
-    │   ├── __init__.py            # Expose plan generators
-    │   ├── core.py                # Core planning & strategy logic
-    │   ├── schemas.py             # Data schemas (e.g., ExperimentPlan)
-    │   └── strategies/            # Preset planning strategies
-    ├── engine/                    # Experiment orchestration engine
-    ├── datastore/                 # Data persistence & retrieval
-    │   ├── __init__.py            # Expose save/load API
-    │   ├── models.py              # Data models (e.g., BenchmarkRun)
-    │   └── storage/               # Pluggable storage drivers
-    ├── analysis/                  # Data analysis & visualization
-    ├── backends/                  # Interfaces for hardware & simulators
-    ├── circuits/                  # Quantum circuit construction
-    ├── simulators/                # Built-in noise simulators
-    └── experiments/               # Experiment definitions (blueprints)
-        ├── __init__.py
-        ├── base.py                # Base class for experiments
-        ├── benchmarking/          # Protocol-Level Benchmarking
-        │   ├── __init__.py
-        │   ├── rb.py              # Randomized Benchmarking (RB)
-        │   ├── xeb.py             # Cross-Entropy Benchmarking (XEB)
-        │   └── ...
-        ├── characterization/      # Physics-Level Characterization
-        │   ├── __init__.py
-        │   ├── coherent/          # Coherent errors (Rabi, Ramsey)
-        │   ├── crosstalk/         # Crosstalk measurements
-        │   ├── entanglement/      # Entanglement fidelity (Bell, GHZ)
-        │   ├── incoherent/        # Incoherent errors (T1, T2)
-        │   ├── spam/              # SPAM errors
-        │   └── tomography/        # State & process tomography
-        └── algorithmic/           # Application-Level Benchmarking
-            ├── __init__.py
-            ├── variational/       # Variational benchmarks (VQE, QAOA)
-            ├── algebraic/         # Algebraic benchmarks (Grover, QPE)
-            └── simulation/        # Simulation benchmarks
+├── README.md                      # Project overview and guide
+├── pyproject.toml                 # Project config, dependencies, and build settings
+├── docs/                          # Project documentation
+├── examples/                      # Example code and notebooks
+├── tests/                         # Unit and integration tests
+└── errorgnomark/                  # Core source code package
+    ├── __init__.py                # Package initializer, exposes public API
+    ├── api.py                     # High-level, user-facing API
+    ├── analysis/                  # Data analysis and post-processing
+    │   ├── rb.py                  # Randomized Benchmarking (RB) analysis
+    │   ├── tomography.py          # Tomography data processing
+    │   ├── reporting.py           # Report generation tools
+    │   └── ...                    # Other analysis scripts (XEB, SPB, etc.)
+    ├── backends/                  # Hardware and simulator backends
+    │   ├── base_backend.py        # Base class for all backends
+    │   ├── ideal_backend.py       # Ideal, noiseless simulator
+    │   ├── quafu_cloud.py         # Quafu cloud platform backend
+    │   └── ...
+    ├── circuits/                  # Circuit construction, compilation & visualization
+    │   ├── circuit.py             # Core circuit object definition
+    │   ├── gate_sets.py           # Gate sets and transpilation
+    │   ├── operations.py          # Quantum gate and operation definitions
+    │   └── visualization.py       # Circuit visualization tools
+    ├── datastore/                 # Data storage and retrieval
+    │   ├── models.py              # Data models for results
+    │   └── storage/               # Pluggable storage drivers (HDF5, JSON)
+    ├── diagnostics/               # High-level diagnostic tools
+    │   ├── crosstalk_analyzer.py  # Crosstalk analysis
+    │   ├── error_budget_analyzer.py # Error budget analysis
+    │   └── health_assessor.py     # System health assessment
+    ├── engine/                    # Experiment execution engine
+    │   └── executor.py            # Schedules and runs experiment tasks
+    ├── experiments/               # Experiment protocol definitions
+    │   ├── base.py                # Base class for all experiments
+    │   ├── benchmarking/          # Protocol-Level Benchmarking
+    │   │   ├── rb.py              # Randomized Benchmarking (RB)
+    │   │   ├── xeb.py             # Cross-Entropy Benchmarking (XEB)
+    │   │   ├── qv.py              # Quantum Volume (QV)
+    │   │   └── ...                # Other protocols (MRB, PRB, SPB)
+    │   └── characterization/      # Physics-Level Characterization
+    │       ├── coherent/          # Coherent errors (Rabi, Ramsey)
+    │       ├── crosstalk/         # Crosstalk measurement
+    │       ├── incoherent/        # Incoherent errors (T1, T2)
+    │       ├── spam/              # State Prep & Measurement (SPAM) errors
+    │       └── tomography/        # State and Process Tomography
+    ├── simulators/                # Classical circuit simulators
+    │   └── statevector_simulator.py # Statevector-based simulator
+    └── workflows/                 # High-level experiment workflows
+        ├── base.py                # Base class for all workflows
+        ├── parameter_strategies.py  # Parameter sweeping strategies
+        ├── preset_protocols.py    # Pre-configured experiment protocols
+        └── schemas.py             # Data schemas for workflow I/O
 ```                         
 
 ## 7. Contributing
