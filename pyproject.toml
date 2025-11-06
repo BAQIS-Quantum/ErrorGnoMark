@@ -1,102 +1,126 @@
+# ===================================================================
 # pyproject.toml
+#
+# PEP 621: Standard for modern Python project metadata.
+# For more information, see: https://peps.python.org/pep-0621/
+# ===================================================================
 
-# PEP 621: Standard for project metadata
 [project]
-name = "ErrorGnoMark"  # [修正] 移除了末尾的空格
-version = "0.2.0"
-description = "ErrorGnoMark diagnoses and benchmarks quantum chip errors, focusing on scalability, quality, and speed across all layers of the quantum operating system." # [优化] 更新为更详细的描述
+# --- Core Metadata ---
+name = "ErrorGnoMark"
+version = "2.0.0"
+description = "A comprehensive and modular software suite for the full-stack benchmarking and characterization of quantum computing systems, from physical hardware to application-level performance."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "Apache-2.0" } # [修正] 根据 GitHub 仓库信息，将许可证从 MIT 更改为 Apache-2.0
+license = { text = "MIT" }
 
-# List of authors and their contact information
+# --- People ---
+# A list of authors and their contact information.
 authors = [
   { name = "Chai Xudan", email = "chaixd@baqis.ac.cn" },
-  # Add other contributors here if any
+  { name = "Qingyuan Wu (Intern)" },
+  { name = "Xingyan Fan (Intern)" },
 ]
 
-# PEP 639: Standard for license trove classifiers
-keywords = ["quantum", "benchmarking", "characterization", "quantum computing", "qiskit", "qcvv"]
+# --- Classifiers & Keywords ---
+# Keywords help users discover your project on PyPI.
+keywords = [
+    "quantum computing",
+    "benchmarking",
+    "characterization",
+    "qcvv",
+    "error budget",
+]
 
-# PEP 301: Standard for package classifiers
+# Classifiers help users filter projects on PyPI.
+# Full list: https://pypi.org/classifiers/
 classifiers = [
-    # Development Status
+    # 1. Development Status: Indicates the project's maturity level.
+    #    - 3 - Alpha: Unstable, features may change significantly.
+    #    - 4 - Beta:  Mostly stable, but may still contain bugs.
+    #    - 5 - Production/Stable: Production-ready and very stable.
     "Development Status :: 3 - Alpha",
 
-    # Intended Audience
-    "Intended Audience :: Science/Research",
+    # 2. Intended Audience: Specifies the target user base.
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
 
-    # License
-    "License :: OSI Approved :: Apache Software License", # [修正] 更改为与 Apache-2.0 对应的分类器
+    # 3. License: Specifies the project license (must match the LICENSE file).
+    "License :: OSI Approved :: MIT License",
 
-    # Supported Python Versions
+    # 4. Operating System: Indicates OS compatibility.
+    "Operating System :: OS Independent", # "OS Independent" means the project is cross-platform.
+
+    # 5. Supported Python Versions: Declares which Python versions are supported.
+    #    It is a best practice to list each supported minor version.
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 
-    # Topic
+    # 6. Topic: Categorizes the project's subject matter.
+    "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
 # -------------------------------------------------------------------
-# Core Dependencies - What the project needs to run
-# Using compatible release specifiers (e.g., ~=) is a best practice.
-# It allows for bug fixes and security patches but prevents breaking changes.
+# Core Dependencies - What the project needs to run.
+# Using compatible release specifiers (e.g., "~=") is a best practice.
+# It allows for bug fixes but prevents breaking changes.
 # -------------------------------------------------------------------
 dependencies = [
-    # Core scientific computing stack
-    "numpy>=2.0",             # NumPy 2.0 is a major release with API cleanups. Targeting it is forward-looking.
-    "scipy~=1.13",            # Compatible with SciPy 1.13.x, allows updates within the 1.x series.
-    
+    # Core scientific computing and data manipulation
+    "numpy~=2.3",
+    "scipy~=1.16",
+    "pandas~=2.3",
+
     # Data I/O and Visualization
-    "matplotlib~=3.8",        # Compatible with Matplotlib 3.8.x.
-    "openpyxl~=3.1",          # For reading/writing Excel files.
-    
-    # Quantum Computing Framework
-    "qiskit~=0.46.0"          # Pinning to a recent, stable version of Qiskit.
-                              # Note: Qiskit 1.0 has been released, which is a major breaking change.
-                              # If your code is not updated for Qiskit 1.0, using ~=0.46.0 is critical.
+    "matplotlib~=3.10",
+    "seaborn~=0.13",
+    "openpyxl~=3.1", # For reading/writing Excel files
+
+    # Database and Data Validation
+    "SQLAlchemy~=2.0",
+    "pydantic~=2.12",
+
+    # Utilities
+    "tqdm~=4.67", # For progress bars
 ]
 
 # -------------------------------------------------------------------
-# Optional Dependencies - For developers, testing, and documentation
-# Users can install these via `pip install .[dev,docs]`
+# Optional Dependencies - For developers, testing, and documentation.
+# Users can install these via `pip install .[dev, docs]`.
 # -------------------------------------------------------------------
 [project.optional-dependencies]
 dev = [
     # Code Quality & Formatting
     "black~=24.4",
     "ruff~=0.4.0",
-    
+
     # Testing Framework
     "pytest~=8.0",
-    "pytest-cov~=5.0", # For checking test coverage
-    
-    # Dependency Analysis
-    "pipreqs~=0.4.13",
-    "pip-tools~=7.4",  # Excellent tool for compiling requirements files
+    "pytest-cov~=5.0",
+
+    # Dependency Management & Analysis
+    "pip-tools~=7.4",   # For compiling requirements.txt from pyproject.toml
+    "deptry~=0.17",     # Checks for obsolete, missing, and transitive dependencies
 ]
 
-docs = [
-    # Documentation Generator
-    "sphinx~=7.3",
-    "furo~=2024.5.6", # A clean, modern Sphinx theme
-    "myst-parser~=3.0", # For writing docs in Markdown
-]
-
-# Project URLs to display on PyPI
+# -------------------------------------------------------------------
+# Project URLs - Displayed on the PyPI project page.
+# -------------------------------------------------------------------
 [project.urls]
-# [优化] 使用标准键名，使 PyPI 页面显示更规范
 Homepage = "https://github.com/BAQIS-Quantum/ErrorGnoMark"
 Repository = "https://github.com/BAQIS-Quantum/ErrorGnoMark"
-Gitee-Mirror = "https://gitee.com/xdchai/errorgnomark" # Gitee 镜像
+Bug-Tracker = "https://github.com/BAQIS-Quantum/ErrorGnoMark/issues"
+Gitee-Mirror = "https://gitee.com/xdchai/errorgnomark"
 
-
-# Build system configuration (standard for setuptools)
+# -------------------------------------------------------------------
+# Build System - Tells pip how to build the project.
+# This is standard for setuptools and should generally not be changed.
+# -------------------------------------------------------------------
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
