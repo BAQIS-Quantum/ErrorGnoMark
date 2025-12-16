@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 
 # --- Import necessary components from the library ---
 # Assume these paths are correct relative to the project root
-from errorgnomark.engine.executor import QuantumEngine
-from errorgnomark.backends.dummy_backend import DummyBackend
-from errorgnomark.experiments.benchmarking.prb import (
+from egm.engine.executor import QuantumEngine
+from egm.core.backends.dummy_backend import DummyBackend
+from egm.experiments.benchmarking.prb import (
     StandardPRBExperiment,
     InterleavedPRBExperiment
 )

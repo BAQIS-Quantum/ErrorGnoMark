@@ -5,17 +5,28 @@
 # For more information, see: https://peps.python.org/pep-0621/
 # ===================================================================
 
+[build-system]
+# Defines the dependencies needed to build the project.
+requires = ["setuptools>=61.0"]
+# Specifies the backend tool used to build the project.
+build-backend = "setuptools.build_meta"
+
+
+# ===================================================================
+# Project Metadata (PEP 621)
+# ===================================================================
 [project]
 # --- Core Metadata ---
-name = "ErrorGnoMark"
+name = "errorgnomark"
 version = "2.0.0"
 description = "A comprehensive and modular software suite for the full-stack benchmarking and characterization of quantum computing systems, from physical hardware to application-level performance."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+# [CONSISTENCY FIX] While using a file is good practice, we ensure the classifier is correct for clarity.
+# Please ensure the LICENSE file in the root directory contains the full Apache 2.0 license text.
+license = { file = "LICENSE" }
 
 # --- People ---
-# A list of authors and their contact information.
 authors = [
   { name = "Chai Xudan", email = "chaixd@baqis.ac.cn" },
   { name = "Qingyuan Wu (Intern)" },
@@ -23,76 +34,71 @@ authors = [
 ]
 
 # --- Classifiers & Keywords ---
-# Keywords help users discover your project on PyPI.
+# Helps users discover your project on PyPI.
 keywords = [
+    "quantum",
     "quantum computing",
     "benchmarking",
     "characterization",
-    "qcvv (Quantum Characterization, Verification, and Validation)",
+    "qcvv",
+    "Quantum Characterization, Verification, and Validation",
     "error budget",
 ]
 
-# Classifiers help users filter projects on PyPI.
+# Helps users filter projects on PyPI.
 # Full list: https://pypi.org/classifiers/
 classifiers = [
-    # 1. Development Status: Indicates the project's maturity level.
-    #    - 3 - Alpha: Unstable, features may change significantly.
-    #    - 4 - Beta:  Mostly stable, but may still contain bugs.
-    #    - 5 - Production/Stable: Production-ready and very stable.
+    # 1. Development Status
     "Development Status :: 3 - Alpha",
 
-    # 2. Intended Audience: Specifies the target user base.
+    # 2. Intended Audience
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
 
-    # 3. License: Specifies the project license (must match the LICENSE file).
-    "License :: OSI Approved :: MIT License",
+    # 3. License
+    # [CONSISTENCY FIX] Based on your GitHub repository, the license should be Apache 2.0.
+    "License :: OSI Approved :: Apache Software License",
 
-    # 4. Operating System: Indicates OS compatibility.
-    "Operating System :: OS Independent", # "OS Independent" means the project is cross-platform.
+    # 4. Operating System
+    "Operating System :: OS Independent",
 
-    # 5. Supported Python Versions: Declares which Python versions are supported.
-    #    It is a best practice to list each supported minor version.
+    # 5. Supported Python Versions
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 
-    # 6. Topic: Categorizes the project's subject matter.
+    # 6. Topic
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Quantum Computing",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-# -------------------------------------------------------------------
-# Core Dependencies - What the project needs to run.
-# Using compatible release specifiers (e.g., "~=") is a best practice.
-# It allows for bug fixes but prevents breaking changes.
-# -------------------------------------------------------------------
+# --- Core Dependencies ---
+# Dependencies required for the project to run.
 dependencies = [
-    # Core scientific computing and data manipulation
-    "numpy~=2.3",
-    "scipy~=1.16",
-    "pandas~=2.3",
+    # Core scientific computing and data processing
+    "numpy~=2.0",
+    "scipy~=1.13",
+    "pandas~=2.2",
 
     # Data I/O and Visualization
-    "matplotlib~=3.10",
+    "matplotlib~=3.9",
     "seaborn~=0.13",
-    "openpyxl~=3.1", # For reading/writing Excel files
+    "openpyxl~=3.1",
 
     # Database and Data Validation
     "SQLAlchemy~=2.0",
-    "pydantic~=2.12",
+    "pydantic~=2.7",
 
     # Utilities
-    "tqdm~=4.67", # For progress bars
+    "tqdm~=4.67",
 ]
 
-# -------------------------------------------------------------------
-# Optional Dependencies - For developers, testing, and documentation.
-# Users can install these via `pip install .[dev, docs]`.
-# -------------------------------------------------------------------
+# --- Optional Dependencies ---
+# For development, testing, and documentation.
 [project.optional-dependencies]
 dev = [
     # Code Quality & Formatting
@@ -104,23 +110,32 @@ dev = [
     "pytest-cov~=5.0",
 
     # Dependency Management & Analysis
-    "pip-tools~=7.4",   # For compiling requirements.txt from pyproject.toml
-    "deptry~=0.17",     # Checks for obsolete, missing, and transitive dependencies
+    "pip-tools~=7.4",
+    "deptry~=0.17",
 ]
 
-# -------------------------------------------------------------------
-# Project URLs - Displayed on the PyPI project page.
-# -------------------------------------------------------------------
-[project.urls]
-Homepage = "https://github.com/BAQIS-Quantum/ErrorGnoMark"
-Repository = "https://github.com/BAQIS-Quantum/ErrorGnoMark"
-Bug-Tracker = "https://github.com/BAQIS-Quantum/ErrorGnoMark/issues"
-Gitee-Mirror = "https://gitee.com/xdchai/errorgnomark"
+docs = [
+    "sphinx~=7.3",
+    "sphinx-rtd-theme~=2.0",
+    "myst-parser~=3.0",
+    "sphinx-copybutton~=0.5",
+]
 
-# -------------------------------------------------------------------
-# Build System - Tells pip how to build the project.
-# This is standard for setuptools and should generally not be changed.
-# -------------------------------------------------------------------
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+# --- Project URLs ---
+# Displayed on the PyPI project page.
+[project.urls]
+homepage = "https://github.com/BAQIS-Quantum/ErrorGnoMark"
+repository = "https://github.com/BAQIS-Quantum/ErrorGnoMark"
+documentation = "https://errorgnomark.readthedocs.io"
+"bug-tracker" = "https://github.com/BAQIS-Quantum/ErrorGnoMark/issues"
+# [OPTIMIZATION] Added Gitee mirror link for more access options.
+"gitee-mirror" = "https://gitee.com/xdchai/errorgnomark"
+
+
+# ===================================================================
+# Setuptools-Specific Configuration
+# ===================================================================
+[tool.setuptools.packages.find]
+# [CRITICAL FIX] Tell setuptools to find packages in the 'src' directory.
+# This configuration resolves the ImportError caused by the 'src' layout.
+where = ["src"]

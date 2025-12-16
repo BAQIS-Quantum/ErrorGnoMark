@@ -15,9 +15,9 @@ except ImportError:
         sys.path.insert(0, project_root)
 
 # --- Framework Imports ---
-from errorgnomark.engine.executor import QuantumEngine
-from errorgnomark.backends.dummy_backend import DummyBackend
-from errorgnomark.experiments.benchmarking.spb import SPBExperiment, InterleavedSPBExperiment
+from egm.engine.executor import QuantumEngine
+from egm.core.backends.dummy_backend import DummyBackend
+from egm.experiments.benchmarking.spb import SPBExperiment, InterleavedSPBExperiment
 
 if __name__ == "__main__":
     print("=" * 79)

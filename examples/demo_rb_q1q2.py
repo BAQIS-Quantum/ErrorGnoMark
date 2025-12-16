@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 # --- Framework Imports ---
 # This script assumes the library `errorgnomark` has been corrected.
 try:
-    from errorgnomark.experiments.benchmarking.rb import StandardRBExperiment, InterleavedRBExperiment
-    from errorgnomark.engine.executor import QuantumEngine
-    from errorgnomark.backends.dummy_backend import DummyBackend
-    from errorgnomark.circuits.circuit import Gate
-    from errorgnomark.analysis.rb import fit_rb_data, plot_rb_single
+    from egm.experiments.benchmarking.rb import StandardRBExperiment, InterleavedRBExperiment
+    from egm.engine.executor import QuantumEngine
+    from egm.core.backends.dummy_backend import DummyBackend
+    from egm.core.circuits.circuit import Gate
+    from egm.analysis.rb import fit_rb_data, plot_rb_single
 except ImportError as e:
     print(f"ImportError: {e}")
     print("Please ensure you run this script from the project's root directory,")

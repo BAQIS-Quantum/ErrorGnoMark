@@ -12,11 +12,11 @@ except ImportError:
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # --- Core Library Imports ---
-from errorgnomark.experiments.benchmarking.mrb import MirrorRBExperiment
-from errorgnomark.backends.dummy_backend import DummyBackend
-from errorgnomark.engine.executor import QuantumEngine
+from egm.experiments.benchmarking.mrb import MirrorRBExperiment
+from egm.core.backends.dummy_backend import DummyBackend
+from egm.engine.executor import QuantumEngine
 # Import the NEW high-level analysis functions
-from errorgnomark.analysis.mrb import display_mrb_summary, generate_mrb_plots
+from egm.analysis.mrb import display_mrb_summary, generate_mrb_plots
 
 
 if __name__ == "__main__":

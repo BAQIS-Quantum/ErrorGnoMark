@@ -16,14 +16,14 @@ except ImportError:
     if project_root not in sys.path: sys.path.insert(0, project_root)
 
 # --- Framework Imports ---
-from errorgnomark.engine.executor import QuantumEngine
+from egm.engine.executor import QuantumEngine
 # =========================================================================
 # [MODIFIED CODE - CHANGE 1]
-from errorgnomark.backends.flexible_statevector_backend import FlexibleStatevectorBackend
+from egm.core.backends.flexible_statevector_backend import FlexibleStatevectorBackend
 # =========================================================================
-from errorgnomark.circuits.circuit import QuantumCircuit, Gate
-from errorgnomark.experiments.characterization.tomography.state_tomography import StateTomographyExperiment
-from errorgnomark.analysis.reporting import generate_report, plot_density_matrix, ExcelReport
+from egm.core.circuits.circuit import QuantumCircuit, Gate
+from egm.experiments.characterization.tomography.state_tomography import StateTomographyExperiment
+from egm.analysis.reporting import generate_report, plot_density_matrix, ExcelReport
 
 if __name__ == "__main__":
     print("=" * 79)

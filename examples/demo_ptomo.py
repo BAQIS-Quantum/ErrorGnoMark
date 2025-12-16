@@ -8,14 +8,14 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 # --- Framework Imports ---
-from errorgnomark.engine.executor import QuantumEngine
-from errorgnomark.circuits.circuit import QuantumCircuit, Gate
-from errorgnomark.experiments.characterization.tomography.process_tomography import ProcessTomographyExperiment
-from errorgnomark.backends.flexible_statevector_backend import FlexibleStatevectorBackend
+from egm.engine.executor import QuantumEngine
+from egm.core.circuits.circuit import QuantumCircuit, Gate
+from egm.experiments.characterization.tomography.process_tomography import ProcessTomographyExperiment
+from egm.core.backends.flexible_statevector_backend import FlexibleStatevectorBackend
 
 # --- Reporting and Visualization Imports ---
-from errorgnomark.analysis.reporting import ExcelReport, generate_report
-from errorgnomark.analysis.process_tomography import compare_pauli_transfer_matrices
+from egm.analysis.reporting import ExcelReport, generate_report
+from egm.analysis.process_tomography import compare_pauli_transfer_matrices
 
 # =======================================================
 def demo_qpt_cnot():

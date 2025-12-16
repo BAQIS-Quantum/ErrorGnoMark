@@ -7,10 +7,10 @@ import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # --- Imports are kept exactly as in the user's provided file ---
-from errorgnomark.engine.executor import QuantumEngine
-from errorgnomark.backends.dummy_backend_xeb import DummyBackend
-from errorgnomark.experiments.benchmarking.xeb import StandardXEBExperiment, InterleavedXEBExperiment
-from errorgnomark.circuits.circuit import Gate
+from egm.engine.executor import QuantumEngine
+from egm.core.backends.dummy_backend_xeb import DummyBackend
+from egm.experiments.benchmarking.xeb import StandardXEBExperiment, InterleavedXEBExperiment
+from egm.core.circuits.circuit import Gate
 
 # ================================================================================
 # // DEFINING THE NATIVE GATE SET FROM THE PROVIDED IMAGE

@@ -116,8 +116,8 @@ The following example demonstrates how to measure the error of a CNOT gate using
 ```python
 # Import necessary classes
 import numpy as np
-from errorgnomark.backends.dummy_backend import DummyBackend
-from errorgnomark.experiments.benchmarking.rb import InterleavedRBExperiment
+from egm.core.backends.dummy_backend import DummyBackend
+from egm.experiments.benchmarking.rb import InterleavedRBExperiment
 
 # 1. Setup: Instantiate a simulated backend.
 # Here, we define a backend with a 1.5% per-gate depolarizing error
