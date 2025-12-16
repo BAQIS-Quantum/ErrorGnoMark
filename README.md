@@ -187,59 +187,145 @@ Here is a detailed breakdown of the project structure, illustrating the layered 
 
 errorgnomark/
 ├── .gitignore                     # Git ignore configuration
-├── LICENSE                        # Project license
-├── README.md                      # Project overview and guide
-├── pyproject.toml                 # Project config, dependencies, and build settings
-├── docs/                          # Project documentation
-├── examples/                      # Example code and notebooks
-├── tests/                         # Unit and integration tests
-└── errorgnomark/                  # Core source code package
-    ├── __init__.py                # Package initializer, exposes public API
-    ├── api.py                     # High-level, user-facing API
-    ├── analysis/                  # Data analysis and post-processing
-    │   ├── rb.py                  # Randomized Benchmarking (RB) analysis
-    │   ├── tomography.py          # Tomography data processing
-    │   ├── reporting.py           # Report generation tools
-    │   └── ...                    # Other analysis scripts (XEB, SPB, etc.)
-    ├── backends/                  # Hardware and simulator backends
-    │   ├── base_backend.py        # Base class for all backends
-    │   ├── ideal_backend.py       # Ideal, noiseless simulator
-    │   ├── quafu_cloud.py         # Quafu cloud platform backend
-    │   └── ...
-    ├── circuits/                  # Circuit construction, compilation & visualization
-    │   ├── circuit.py             # Core circuit object definition
-    │   ├── gate_sets.py           # Gate sets and transpilation
-    │   ├── operations.py          # Quantum gate and operation definitions
-    │   └── visualization.py       # Circuit visualization tools
-    ├── datastore/                 # Data storage and retrieval
-    │   ├── models.py              # Data models for results
-    │   └── storage/               # Pluggable storage drivers (HDF5, JSON)
-    ├── diagnostics/               # High-level diagnostic tools
-    │   ├── crosstalk_analyzer.py  # Crosstalk analysis
-    │   ├── error_budget_analyzer.py # Error budget analysis
-    │   └── health_assessor.py     # System health assessment
-    ├── engine/                    # Experiment execution engine
-    │   └── executor.py            # Schedules and runs experiment tasks
-    ├── experiments/               # Experiment protocol definitions
-    │   ├── base.py                # Base class for all experiments
-    │   ├── benchmarking/          # Protocol-Level Benchmarking
-    │   │   ├── rb.py              # Randomized Benchmarking (RB)
-    │   │   ├── xeb.py             # Cross-Entropy Benchmarking (XEB)
-    │   │   ├── qv.py              # Quantum Volume (QV)
-    │   │   └── ...                # Other protocols (MRB, PRB, SPB)
-    │   └── characterization/      # Physics-Level Characterization
-    │       ├── coherent/          # Coherent errors (Rabi, Ramsey)
-    │       ├── crosstalk/         # Crosstalk measurement
-    │       ├── incoherent/        # Incoherent errors (T1, T2)
-    │       ├── spam/              # State Prep & Measurement (SPAM) errors
-    │       └── tomography/        # State and Process Tomography
-    ├── simulators/                # Classical circuit simulators
-    │   └── statevector_simulator.py # Statevector-based simulator
-    └── workflows/                 # High-level experiment workflows
-        ├── base.py                # Base class for all workflows
-        ├── parameter_strategies.py  # Parameter sweeping strategies
-        ├── preset_protocols.py    # Pre-configured experiment protocols
-        └── schemas.py             # Data schemas for workflow I/O
+├── LICENSE                        # Open-source license
+├── README.md                      # Project overview and usage guide
+├── pyproject.toml                 # Build system / dependency configuration
+├── docs/                          # Documentation (guides, tutorials, API docs)
+│   ├── index.md
+│   └── tutorials/
+│       └── ...
+├── examples/                      # Example scripts / user demos
+│   ├── quick_health_scan.py
+│   ├── compiler_noise_profile.py
+│   └── ...
+├── tests/                         # Unit & integration tests
+│   ├── core/
+│   ├── suites/
+│   └── reporting/
+└── src/
+    └── egm/
+        ├── __init__.py
+
+        # ==============================================================
+        # 0. SCHEMAS — Domain Models Layer
+        # ==============================================================
+        ├── schemas/
+        │   ├── __init__.py
+        │   ├── plan.py             # ExperimentPlan / Step definitions
+        │   ├── configs.py          # Experiment configuration objects
+        │   └── results/            # Scientific result schemas
+        │       ├── __init__.py
+        │       ├── base.py         # FitResult, BaseAnalysisResult
+        │       ├── rb.py           # RBAnalysisResult, RBSequenceDataPoint
+        │       └── ...
+        #
+        # Defines physical & logical entities shared by Core/Server/SDK.
+        #
+
+        # ==============================================================
+        # 1. CORE — Physical Engine & Atomic Experiments
+        # ==============================================================
+        ├── core/
+        │   ├── __init__.py
+        │   ├── circuits/           # Circuit IR & gate definitions
+        │   │   ├── circuit.py
+        │   │   ├── gate_sets.py
+        │   │   ├── visualization.py
+        │   │   └── ...
+        │   ├── backends/           # Hardware abstraction layer
+        │   │   ├── base_backend.py
+        │   │   ├── ideal_backend.py
+        │   │   ├── dummy_backend.py
+        │   │   └── ...
+        │   ├── engine/
+        │   │   └── executor.py     # Unified execution controller
+        │   ├── analysis/           # Mathematical fitting & statistics
+        │   │   ├── rb.py
+        │   │   ├── fitting.py
+        │   │   ├── statistics.py
+        │   │   └── visualization.py
+        │   └── experiments/        # Atomic experiment definitions
+        │       ├── benchmarking/
+        │       │   ├── rb.py       # Standard RB
+        │       │   ├── irb.py      # Interleaved RB
+        │       │   ├── xeb.py      # Cross‑Entropy Benchmarking
+        │       │   └── ...
+        │       ├── characterization/
+        │       │   ├── incoherent/ # T1 / T2 / T2*
+        │       │   ├── coherent/   # Rabi / Ramsey / DRAG
+        │       │   ├── spam/       # Readout calibration
+        │       │   └── crosstalk/  # Simultaneous RB, etc.
+        │       └── error_budget/
+        │           └── simple_model.py  # Theoretical error‑limit models
+
+        # ==============================================================
+        # 1.5 REPORTING — Analysis Report Generation Subsystem
+        # ==============================================================
+        ├── reporting/
+        │   ├── __init__.py
+        │   ├── formatters/         # Text & table formatting
+        │   │   └── table_formatter.py
+        │   ├── generators/         # Report generators (HTML / Terminal)
+        │   │   ├── html_generator.py
+        │   │   └── terminal_generator.py
+        │   ├── visualizers/        # Publication‑style plotting tools
+        │   │   └── rb_plotter.py
+        │   └── templates/          # Jinja2 templates & stylesheets
+        │       ├── html/
+        │       │   ├── rb_report.jinja2
+        │       │   └── styles.css
+        │       └── ...
+        #
+        # Converts analysis outputs into visual or textual reports.
+        #
+
+        # ==============================================================
+        # 2. SUITES — Workflow Composition & Logical Orchestration
+        # ==============================================================
+        ├── suites/
+        │   ├── __init__.py
+        │   ├── base.py              # Abstract Suite base class
+        │   ├── calibration.py       # Automated calibration routines
+        │   ├── health_check.py      # Quick health scan logic
+        │   └── report_gen.py        # Report generation workflow
+        #
+        # Encapsulates business logic and standardized experiment pipelines.
+        #
+
+        # ==============================================================
+        # 3. SERVER — Multi‑user Web Service Interface (FastAPI)
+        # ==============================================================
+        ├── server/
+        │   ├── __init__.py
+        │   ├── main.py              # Entry point (FastAPI app)
+        │   ├── database.py          # Persistence layer (SQL / ORM)
+        │   ├── tasks.py             # Asynchronous task management
+        │   ├── models/              # Database ORM models
+        │   │   ├── user.py
+        │   │   ├── job.py
+        │   │   └── result.py
+        │   ├── api_models/          # Request / Response DTOs
+        │   │   ├── request.py
+        │   │   └── response.py
+        │   └── routers/             # REST/HTTP route handlers
+        │       ├── auth.py
+        │       ├── experiments.py
+        │       └── devices.py
+        #
+        # Enables scalable deployment, job management, and data persistence.
+        #
+
+        # ==============================================================
+        # 4. SDK — Client Toolkit
+        # ==============================================================
+        └── sdk/
+            ├── __init__.py
+            ├── client.py            # HTTP client for server interaction
+            ├── account.py           # Authentication utilities
+            ├── builder.py           # PlanBuilder for building ExperimentPlan
+            └── facade.py            # Top‑level user entry (egm.connect)
+            #
+            # Provides user‑facing APIs for remote experiment execution.
 ```                         
 
 ## 7. Contributing
