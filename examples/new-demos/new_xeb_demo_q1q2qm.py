@@ -1,13 +1,13 @@
-# File Path: examples/demo_xeb_q1q2qm.py
-# [EGM v4.3 – Unified/Modernized Cross‑Entropy Benchmarking Demo]
+# File: examples/demo_xeb_q1q2qm.py
+# [EGM v4.5 – Unified/Modernized Cross‑Entropy Benchmarking Demo]
 # ---------------------------------------------------------------------
-# Demonstrates the complete XEB workflow using the updated v4 architecture.
+# Demonstrates the complete XEB workflow using the v4.5 architecture.
 # Features:
 #   • Compatible with DummyBackend (XEB‑specific noise model)
 #   • Circuit generation & compilation showcase
 #   • Bulk circuit production
 #   • Automated dual‑mode (Engine & User‑Data) analysis
-#   • Consistent with RB Demo reporting/visualization style
+#   • Visualization separated from experiment class (RB‑style)
 # ---------------------------------------------------------------------
 
 import sys, os, logging
@@ -146,9 +146,29 @@ def main():
         seed=DEMO_SEED,
     )
 
-    print("[Running] Automated XEB execution... (plot will appear)")
-    results_auto = auto_exp.run(engine=engine, shots=NUM_SHOTS, plot=True)
+    print("[Running] Automated XEB execution... (external plots will be displayed)")
+    results_auto = auto_exp.run(engine=engine, shots=NUM_SHOTS)
     print("\n[Result] Engine‑mode XEB complete.")
+
+    # -------------------- Visualization (explicit) --------------------
+    fig, axes = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
+    plot_xeb_decay(
+        results_auto["xeb_analysis"]["raw_data"],
+        results_auto["xeb_analysis"]["fit_results"],
+        ax=axes[0],
+        label="Engine‑mode XEB Fidelity",
+    )
+    plot_spb_decay(
+        results_auto["spb_analysis"]["raw_data"],
+        results_auto["spb_analysis"]["fit_results"],
+        ax=axes[1],
+        label="Engine‑mode SPB Purity",
+    )
+    axes[0].set_title("XEB Fidelity vs Circuit Depth")
+    axes[1].set_title("SPB Purity vs Circuit Depth")
+    axes[1].set_xlabel("Circuit Depth")
+    plt.tight_layout()
+    plt.show()
 
     # ================================================================
     # PART 4 — USER EXPERIMENT DATA MODE
@@ -165,10 +185,29 @@ def main():
     results_user = auto_exp.run(
         engine=engine,
         shots=NUM_SHOTS,
-        plot=True,
         experimental_results=simulated_user,
     )
-    print("\ User‑data analysis finished successfully.\n")
+    print("\n[Result] User‑data XEB analysis complete.")
+
+    # -------------------- Visualization (explicit) --------------------
+    fig, axes = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
+    plot_xeb_decay(
+        results_user["xeb_analysis"]["raw_data"],
+        results_user["xeb_analysis"]["fit_results"],
+        ax=axes[0],
+        label="User‑Data XEB Fidelity",
+    )
+    plot_spb_decay(
+        results_user["spb_analysis"]["raw_data"],
+        results_user["spb_analysis"]["fit_results"],
+        ax=axes[1],
+        label="User‑Data SPB Purity",
+    )
+    axes[0].set_title("XEB Fidelity (User Data Mode)")
+    axes[1].set_title("SPB Purity (User Data Mode)")
+    axes[1].set_xlabel("Circuit Depth")
+    plt.tight_layout()
+    plt.show()
 
     # ================================================================
     # PART 5 — REPORT GENERATION
@@ -187,9 +226,8 @@ def main():
         ],
     )
 
-    # Package results in generic RBAnalysisResult schema (used as stand‑in for XEB)
     report_obj = RBAnalysisResult(
-        analyzer_version="4.3",
+        analyzer_version="4.5",
         qubits=auto_exp.qubits,
         plan_id=uuid4(),
         raw_data_ids=[uuid4() for _ in auto_exp.depths],
