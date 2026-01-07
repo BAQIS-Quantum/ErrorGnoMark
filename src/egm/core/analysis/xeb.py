@@ -1,210 +1,286 @@
-# File: egm/core/analysis/xeb.py
-# [v3.0 Re‑Architected – RB‑Style Modular Layout]
-# -------------------------------------------------------------------
-# Cross‑Entropy Benchmarking (XEB) & Speckle Purity Benchmarking (SPB)
-# -------------------------------------------------------------------
-# Responsibilities:
-#   • Compute XEB linear fidelity per circuit
-#   • Fit fidelity decay to exponential model F(d) = A · p^d + B
-#   • Integrate SPB purity analysis & combined decay fitting
-#   • Expose structured results for experiment orchestration
-#
-# Visualization:
-#   All plotting functions are delegated to
-#   egm.reporting.visualizers.xeb_plotter
-# -------------------------------------------------------------------
+# =============================================================================
+# File    : egm/core/analysis/xeb.py
+# Version : v5.2.0 – RB-Schema + SISQ-Enhanced Error-Bar Edition
+# Author  : OpenAI-Assistant
+# =============================================================================
+"""
+Cross-Entropy Benchmarking (XEB) Analysis and Unified SPB Integration
+=====================================================================
 
-import logging
+Integrates normalized Google-style fidelity analysis (SISQ logic)
+with the EGM v5 RB-schema exponential-decay fitting.
+
+✓ RB-schema compatible outputs (A, B, p, epc, r_squared)
+✓ Unified joint analysis with SPB using egm.core.analysis.spb
+✓ Fully modular — for both simulation and experimental data
+✓ SISQ-EGM style selectable error-bar computation:
+  "sem", "std", "range", "bootstrap", "none"
+"""
+
+from __future__ import annotations
 import numpy as np
-from scipy.optimize import curve_fit
-from scipy.stats import sem
+import logging
+import warnings
 from collections import defaultdict
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Dict, Any, List, Tuple, Optional
+from scipy.optimize import curve_fit, OptimizeWarning
 
-from egm.core.analysis.spb import analyze_speckle_purity, fit_spb_decay
+from egm.core.analysis.spb import analyze_speckle_purity, fit_spb_data
 
+# -------------------------------------------------------------------------
+# Logging
+# -------------------------------------------------------------------------
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
+_MAX_EVALS = 10000
+_DEFAULT_P_GUESS = 0.995
 
-# ===================================================================
-#  SECTION 1.  XEB FIDELITY CALCULATION
-# ===================================================================
-
+# =============================================================================
+# 1. Normalized Cross-Entropy Fidelity
+# =============================================================================
 def analyze_xeb_fidelity(
-    ideal_probabilities: Dict[str, float],
+    ideal_probs: Dict[str, float],
     noisy_counts: Dict[str, float],
-    num_qubits: int
+    num_qubits: int,
 ) -> float:
     """
-    Compute the normalized linear XEB fidelity for a single circuit.
+    Compute normalized XEB fidelity following Google's definition:
 
-    Args:
-        ideal_probabilities (Dict[str, float]):
-            The theoretical outcome probabilities for each bitstring.
-        noisy_counts (Dict[str, float]):
-            Measured experimental data; can be raw counts or normalized probabilities.
-        num_qubits (int):
-            Number of qubits in the circuit.
-
-    Returns:
-        float: The normalized XEB fidelity value for this circuit.
+        F_XEB = (Σ_x p_ideal(x)p_exp(x) - 1/2ⁿ)
+                / (Σ_x p_ideal(x)² - 1/2ⁿ)
     """
-    total = sum(noisy_counts.values())
-    if total == 0:
+    if not ideal_probs or not noisy_counts:
         return 0.0
 
-    xeb_sum = 0.0
-    for bitstring, count in noisy_counts.items():
-        p_meas = count / total
-        p_ideal = ideal_probabilities.get(bitstring, 0.0)
-        xeb_sum += p_ideal * p_meas
+    total = float(sum(noisy_counts.values()))
+    if total <= 0.0:
+        return 0.0
 
     d = 2 ** num_qubits
-    raw = d * xeb_sum - 1.0
-    fidelity = ((d + 1) / (d - 1)) * raw
-    return max(0.0, min(fidelity, 1.0))
+
+    # Normalize noisy counts to probabilities if necessary
+    if total > 1.0 + 1e-9:
+        p_exp = {k: v / total for k, v in noisy_counts.items()}
+    else:
+        p_exp = noisy_counts
+
+    exp_dot = sum(ideal_probs.get(k, 0.0) * p_exp.get(k, 0.0) for k in ideal_probs.keys())
+    exp_ideal = sum(p ** 2 for p in ideal_probs.values())
+
+    denom = exp_ideal - 1 / d
+    if denom <= 0.0:
+        return 0.0
+
+    f_xeb = (exp_dot - 1 / d) / denom
+    return float(np.clip(f_xeb, -0.2, 1.0))
+
+# =============================================================================
+# 2. Exponential Decay Fit (RB-Schema + Error Bar Support)
+# =============================================================================
+def _xeb_decay_function(x: np.ndarray, A: float, p: float, B: float) -> np.ndarray:
+    """Exponential model f(x) = A * p^x + B."""
+    return A * (p ** x) + B
 
 
-# ===================================================================
-#  SECTION 2.  FITTING OF FIDELITY DECAY
-# ===================================================================
+def _compute_error(values: List[float], mode: str = "sem") -> float:
+    """
+    Compute SISQ-EGM style error bar for a list of fidelities.
+    Modes: 'sem' / 'std' / 'range' / 'bootstrap' / 'none'
+    """
+    arr = np.asarray(values, float)
+    n = len(arr)
+    if n <= 1:
+        return 0.0
 
-def _exp_decay(x: np.ndarray, A: float, p: float, B: float) -> np.ndarray:
-    """Exponential decay model: F(x) = A * p^x + B."""
-    return A * np.power(p, x) + B
+    if mode == "sem":
+        return float(np.std(arr, ddof=1) / np.sqrt(n))
+    if mode == "std":
+        return float(np.std(arr, ddof=1))
+    if mode == "range":
+        return float((np.max(arr) - np.min(arr)) / 2.0)
+    if mode == "bootstrap":
+        rng = np.random.default_rng(42)
+        boots = [np.mean(rng.choice(arr, n, replace=True)) for _ in range(800)]
+        low, high = np.percentile(boots, [16, 84])
+        return float((high - low) / 2.0)
+    return 0.0
 
 
-def fit_xeb_decay(
-    x_values: List[int],
-    fidelities_by_x: Dict[int, List[float]],
-    num_qubits: int
+def fit_xeb_data(
+    fidelities: Optional[Dict[int, List[float]]] = None,
+    depths: Optional[List[int]] = None,
+    means: Optional[List[float]] = None,
+    stds: Optional[List[float]] = None,
+    num_qubits: int = 1,
+    error_bar_mode: str = "sem",
 ) -> Dict[str, Any]:
     """
-    Fit the averaged XEB fidelity data to an exponential decay model.
-
-    Returns:
-        dict: {'A', 'p', 'B', 'epc'} where 'epc' is the error per cycle.
+    Fit XEB data to f(x) = A * p^x + B (EGM RB-schema),
+    with optional SISQ-EGM style error-bar support.
     """
-    avg_fidelities = np.array([np.mean(fidelities_by_x[x]) for x in x_values])
-    initial = [1.0, 0.999, 0.0]
-    bounds = ([0.0, 0.0, -0.1], [1.5, 1.0, 0.3])
-
-    try:
-        params, _ = curve_fit(
-            _exp_decay,
-            np.asarray(x_values, dtype=float),
-            avg_fidelities,
-            p0=initial,
-            bounds=bounds
+    if fidelities is not None:
+        depths_arr = np.array(sorted(fidelities.keys()), dtype=float)
+        means_arr = np.array([np.mean(fidelities[d]) for d in depths_arr])
+        stds_arr = np.array(
+            [_compute_error(fidelities[d], error_bar_mode) for d in depths_arr],
+            dtype=float,
         )
-    except RuntimeError:
-        logger.warning("XEB exponential decay fit failed; using default parameters.")
-        params = initial
+    else:
+        depths_arr = np.array(depths or [], dtype=float)
+        means_arr = np.array(means or [], dtype=float)
+        stds_arr = np.array(stds or [1.0] * len(means_arr), dtype=float)
 
-    A, p, B = params
-    epc = 1.0 - p
-    return {'A': A, 'p': p, 'B': B, 'epc': epc}
+    if len(depths_arr) < 3:
+        return _result_failure("Insufficient points (<3) for XEB fit.")
 
+    d = 2 ** num_qubits
+    result = _init_result(depths_arr, means_arr, stds_arr)
 
-# ===================================================================
-#  SECTION 3.  XEB + SPB ORCHESTRATION
-# ===================================================================
+    init = [1 - 1 / d, _DEFAULT_P_GUESS, 1 / d]
+    bounds = ([0, 0, -0.5], [2, 1, 0.5])
 
-def analyze_xeb_and_spb_from_results(
-    results_by_x: Dict[int, List[Tuple[Dict, Dict]]],
-    num_qubits: int
-) -> Dict[str, Any]:
-    """
-    Perform unified analysis combining XEB and SPB on the same dataset.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", OptimizeWarning)
+        try:
+            popt, _ = curve_fit(
+                _xeb_decay_function,
+                depths_arr,
+                means_arr,
+                p0=init,
+                sigma=np.maximum(stds_arr, 1e-6),
+                bounds=bounds,
+                absolute_sigma=True,
+                maxfev=_MAX_EVALS,
+            )
+            A, p, B = popt
+            epc = ((d - 1) / d) * (1 - p)
 
-    The function adaptively handles both count-based and probability-based
-    inputs, ensuring numerical stability across different user data formats.
+            residuals = means_arr - _xeb_decay_function(depths_arr, *popt)
+            ss_res = np.sum(residuals ** 2)
+            ss_tot = np.sum((means_arr - np.mean(means_arr)) ** 2)
+            r_sq = 1 - ss_res / ss_tot if ss_tot > 1e-12 else np.nan
 
-    Args:
-        results_by_x (Dict[int, List[Tuple[Dict, Dict]]]):
-            Dictionary mapping circuit depth (or noise exponent)
-            to a list of tuples containing:
-              (ideal_probabilities, measured_counts_or_probabilities)
-        num_qubits (int):
-            Number of qubits in the circuit.
+            fit_x = np.linspace(min(depths_arr), max(depths_arr), 200)
+            fit_y = _xeb_decay_function(fit_x, *popt)
 
-    Returns:
-        dict: Combined results structured as:
-            {
-              "xeb_analysis": {"raw_data": ..., "fit_results": ...},
-              "spb_analysis": {"raw_data": ..., "fit_results": ...}
-            }
-    """
-
-    fidelities_by_x = defaultdict(list)
-    purities_by_x = defaultdict(list)
-    x_values = sorted(results_by_x.keys())
-
-    for depth in x_values:
-        samples = results_by_x[depth]
-        for ideal_probs, noisy in samples:
-            # Compute XEB fidelity — valid for both counts or probabilities
-            fidelities_by_x[depth].append(
-                analyze_xeb_fidelity(ideal_probs, noisy, num_qubits)
+            result.update(
+                {
+                    "fit_successful": True,
+                    "A": float(A),
+                    "B": float(B),
+                    "p": float(p),
+                    "epc": float(epc),
+                    "r_squared": float(r_sq),
+                    "fit_x": fit_x.tolist(),
+                    "fit_y": fit_y.tolist(),
+                    "message": "Fit successful.",
+                }
+            )
+            logger.info(
+                f"[XEB-FIT] A={A:.3f}, p={p:.6f}, B={B:.3f}, "
+                f"EPC={epc:.3e}, R²={r_sq:.4f}"
             )
 
-            # --- Smart detection: determine whether `noisy` is counts or probabilities ---
-            if not noisy:
-                purities_by_x[depth].append(np.nan)
-                continue
+        except Exception as exc:
+            logger.warning(f"[XEB-FIT] Fit failed: {exc!s}")
+            result["message"] = f"Fit failed: {exc!s}"
 
-            values = np.array(list(noisy.values()))
-            is_prob_dist = (
-                np.all((values >= 0) & (values <= 1))
-                and abs(np.sum(values) - 1.0) < 1e-3
-            )
+    return result
 
-            if is_prob_dist:
-                # Convert probabilities to pseudo-counts
-                N = 4096  # Default pseudo number of shots (can be adjusted or linked to experiment shots)
-                pseudo_counts = {k: int(round(v * N)) for k, v in noisy.items()}
-                if sum(pseudo_counts.values()) < 2:
-                    # Ensure nonzero denominator in unbiased purity estimator
-                    pseudo_counts = {k: max(1, int(round(v * N))) for k, v in noisy.items()}
-                noisy_for_spb = pseudo_counts
-            else:
-                noisy_for_spb = {k: int(v) for k, v in noisy.items()}
 
-            purity_val = analyze_speckle_purity(ideal_probs, noisy_for_spb, num_qubits)
-            purities_by_x[depth].append(purity_val)
-
-    xeb_fit_results = fit_xeb_decay(x_values, fidelities_by_x, num_qubits)
-    spb_fit_results = fit_spb_decay(x_values, purities_by_x)
-
+def _init_result(depths, means, stds):
+    """Initialize RB-schema result field layout."""
     return {
-        "xeb_analysis": {"raw_data": fidelities_by_x, "fit_results": xeb_fit_results},
-        "spb_analysis": {"raw_data": purities_by_x, "fit_results": spb_fit_results},
+        "fit_successful": False,
+        "A": np.nan,
+        "B": np.nan,
+        "p": np.nan,
+        "epc": np.nan,
+        "r_squared": np.nan,
+        "depths": depths.tolist(),
+        "means": means.tolist(),
+        "std_errors": stds.tolist(),
+        "fit_x": [],
+        "fit_y": [],
+        "message": "Not fitted.",
     }
 
 
-# ===================================================================
-#  SECTION 4.  VISUALIZATION ADAPTERS  (OPTIONAL LINK)
-# ===================================================================
-# This section simply re‑exports plotting functions for convenience.
-# These functions are defined in `egm.reporting.visualizers.xeb_plotter`
-# so that users can directly do:
-#   from egm.core.analysis.xeb import plot_xeb_decay
-# without needing to know internal module paths.
+def _result_failure(msg: str) -> Dict[str, Any]:
+    """Return standardized failure result dictionary."""
+    return {
+        "fit_successful": False,
+        "A": np.nan,
+        "B": np.nan,
+        "p": np.nan,
+        "epc": np.nan,
+        "r_squared": np.nan,
+        "depths": [],
+        "means": [],
+        "std_errors": [],
+        "fit_x": [],
+        "fit_y": [],
+        "message": msg,
+    }
 
-try:
-    from egm.reporting.visualizers.xeb_plotter import plot_xeb_decay, plot_spb_decay
-    __all__ = [
-        "analyze_xeb_fidelity",
-        "fit_xeb_decay",
-        "analyze_xeb_and_spb_from_results",
-        "plot_xeb_decay",
-        "plot_spb_decay",
-    ]
-except ImportError:
-    __all__ = [
-        "analyze_xeb_fidelity",
-        "fit_xeb_decay",
-        "analyze_xeb_and_spb_from_results",
-    ]
-    logger.warning("xeb_plotter not found — visualization features disabled.")
+# =============================================================================
+# 3. Unified Joint XEB + SPB Analysis (With Error Bars)
+# =============================================================================
+def analyze_xeb_and_spb_from_results(
+    results_by_depth: Dict[int, List[Tuple[Dict[str, float], Dict[str, float]]]],
+    num_qubits: int,
+    circuits: Optional[List[Any]] = None,
+    axis_mode: str = "depth",
+    error_bar_mode: str = "sem",
+) -> Dict[str, Any]:
+    """
+    Perform unified XEB + SPB analysis (SISQ-enhanced).
+
+    Parameters
+    ----------
+    results_by_depth : Dict[int, List[Tuple[Dict, Dict]]]
+        {depth: [(ideal_probs, noisy_counts), ...]}.
+    num_qubits : int
+        Number of qubits (circuit width).
+    circuits : List[Any], optional
+        Circuits (for gate-count mapping, if needed).
+    axis_mode : str
+        "depth" or "gate_count".
+    error_bar_mode : str
+        "sem" / "std" / "range" / "bootstrap" / "none".
+
+    Returns
+    -------
+    Dict[str, Any]
+        {
+          "xeb_analysis": {"raw_data": fidelities_by_x, "fit_results": fit_dict},
+          "spb_analysis": {"raw_data": purities_by_x, "fit_results": fit_dict},
+          "axis_mode": axis_mode
+        }
+    """
+    remap = {d: d for d in results_by_depth.keys()}
+    fidelities_by_x, purities_by_x = defaultdict(list), defaultdict(list)
+
+    # Compute per-circuit XEB & SPB values
+    for depth, pairs in results_by_depth.items():
+        x_val = remap.get(depth, depth)
+        for ideal, noisy in pairs:
+            f_val = analyze_xeb_fidelity(ideal, noisy, num_qubits)
+            p_val = analyze_speckle_purity(ideal, noisy, num_qubits)
+            fidelities_by_x[x_val].append(f_val)
+            purities_by_x[x_val].append(p_val)
+
+    # Fit both datasets with error-bar aware fitting
+    xeb_fit = fit_xeb_data(
+        fidelities=fidelities_by_x,
+        num_qubits=num_qubits,
+        error_bar_mode=error_bar_mode,
+    )
+    spb_fit = fit_spb_data(purities=purities_by_x, num_qubits=num_qubits)
+
+    return {
+        "xeb_analysis": {"raw_data": fidelities_by_x, "fit_results": xeb_fit},
+        "spb_analysis": {"raw_data": purities_by_x, "fit_results": spb_fit},
+        "axis_mode": axis_mode,
+    }

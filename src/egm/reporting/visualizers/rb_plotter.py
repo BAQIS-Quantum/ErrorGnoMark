@@ -1,254 +1,282 @@
-# File: errorgnomark/reporting/visualizers/rb_plotter.py
-# ---------------------------------------------------------------------
-# Module: Randomized Benchmarking (RB) Data Visualizer
-# ---------------------------------------------------------------------
-# Provides plotting functions for Standard and Interleaved RB analyses.
-# Figures are rendered in a Nature/Science publication–style layout:
-#   • Times New Roman serif font
-#   • Subtle gray gridlines
-#   • Colorblind‑friendly palette
-#   • Clean legends and no background fills
-#
-# Integration:
-#   - Used by automated HTML reports and end‑to‑end demos.
-# ---------------------------------------------------------------------
+# =============================================================================
+# File: src/egm/reporting/visualizers/rb_plotter.py
+# Version: v5.3 – Unified RB Visualizer (Full Border, PRB‑Matched Style)
+# Author : OpenAI‑Assistant
+# =============================================================================
+"""
+Randomized Benchmarking (RB) Data Visualizer
+
+Description
+-----------
+Provides publication‑grade visualization for Standard and Interleaved RB results.
+Matches the visual style of PRB (Purity RB) plots to ensure consistent appearance.
+
+Key Features
+-------------
+- Serif fonts and fine gray grid (Nature/Science style)
+- Color‑blind safe palette
+- Unified dashed fit lines
+- Consistent figure dimensions with PRB
+- Full four‑side borders
+- Backward‑compatible with previous v5.x interfaces
+"""
 
 from __future__ import annotations
-from typing import Dict, Any, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
+from typing import Dict, Any, Optional
 
 # ---------------------------------------------------------------------
-# Matplotlib Configuration (Nature/Science Aesthetic)
+# Global Configuration
 # ---------------------------------------------------------------------
 plt.rcParams.update({
     "font.family": "serif",
-    "font.serif": ["Times New Roman"],
+    "font.serif": ["Times New Roman", "DejaVu Serif"],
     "mathtext.fontset": "cm",
-    "axes.linewidth": 1.0,
-    "axes.labelsize": 15,
-    "axes.titlesize": 15,
-    "xtick.labelsize": 13,
-    "ytick.labelsize": 13,
-    "legend.fontsize": 12,
-    "grid.color": "#b0b0b0",
-    "grid.linestyle": "-",
-    "grid.linewidth": 0.6,
-    "grid.alpha": 0.5,
+    "axes.linewidth": 1.1,
+    "axes.labelsize": 14,
+    "axes.titlesize": 14,
+    "xtick.labelsize": 12.5,
+    "ytick.labelsize": 12.5,
+    "legend.fontsize": 11,
+    "grid.color": "#c0c0c0",
+    "grid.linestyle": "--",
+    "grid.linewidth": 0.5,
+    "grid.alpha": 0.35,
     "axes.grid": True,
     "figure.dpi": 150,
     "savefig.dpi": 300,
     "xtick.direction": "in",
     "ytick.direction": "in",
+    "axes.spines.top": True,
+    "axes.spines.right": True,
 })
 
 # ---------------------------------------------------------------------
-# Color Palette (Balanced, Colorblind Compatible)
+# Color Palette
 # ---------------------------------------------------------------------
-COLOR_PALETTE = {
-    "data": "#0072B2",        # Oxford Blue
-    "fit": "#D55E00",         # Burnt Orange
-    "std": "#009E73",         # Emerald Green
-    "interleaved": "#CC79A7", # Magenta
-    "black": "#000000",
+COLOR = {
+    "data": "#0072B2",        # Oxford blue
+    "fit": "#E69F00",         # Golden orange
+    "std": "#009E73",         # Emerald green
+    "interleaved": "#D55E00", # Burnt orange
 }
 
+
 # ---------------------------------------------------------------------
-# Helper Functions
+# Helper Function
 # ---------------------------------------------------------------------
-def _rb_decay_function(m: np.ndarray, A: float, p: float, B: float) -> np.ndarray:
-    """Exponential RB decay function f(m) = A * p^m + B."""
+def _decay(m: np.ndarray, A: float, p: float, B: float) -> np.ndarray:
+    """Exponential RB decay function: f(m) = A * p^m + B."""
     return A * (p ** m) + B
 
 
 # ---------------------------------------------------------------------
-# Plot Single RB Dataset
+# Plot a Single RB Decay
 # ---------------------------------------------------------------------
 def plot_rb_data(
     results: Dict[str, Any],
     ax: Optional[Axes] = None,
     title: str = "Randomized Benchmarking",
+    x_axis_mode: str = "gate_count",
     label: Optional[str] = None,
     color: Optional[str] = None,
     show_epc: bool = True,
-) -> None:
+) -> Axes:
     """
-    Plot a single RB dataset (data + fit curve) using publication style.
+    Render a single RB dataset in publication‑style.
 
-    Args:
-        results: Dictionary output from the RB fitting routine.
-        ax: Optional Matplotlib Axes to draw on (creates new if None).
-        title: Plot title.
-        label: Legend label for the dataset.
-        color: Optional custom color for the dataset points.
-        show_epc: If True, annotate the calculated EPC in the figure corner.
+    Parameters
+    ----------
+    results : dict
+        Dictionary containing RB results and fit parameters.
+    ax : matplotlib.axes.Axes, optional
+        Existing axis to draw on.
+    title : str
+        Figure title.
+    x_axis_mode : str
+        "depth" or "gate_count" to choose x‑axis scaling.
+    label : str, optional
+        Legend label.
+    color : str, optional
+        Color override for data points.
+    show_epc : bool
+        Whether to display the extracted EPC value.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axis object with the rendered plot.
     """
-    if not results.get("fit_successful"):
-        print(f"[Warning] Skipping failed fit plot for '{label or 'series'}'.")
-        return
+    if not results.get("fit_successful", False):
+        print(f"[Warn] Fit unsuccessful, skipping plot for {label or 'dataset'}.")
+        return ax or plt.gca()
 
     if ax is None:
-        _, ax = plt.subplots(figsize=(6.0, 4.2))
+        _, ax = plt.subplots(figsize=(5.0, 3.6))  # unified with PRB
 
-    depths = np.array(results["x_data"])
-    probs = np.array(results["y_data"])
-    errs = np.array(results["y_err"])
-    params = results.get("params", {})
+    depths = np.array(results.get("depths", []))
+    gates = np.array(results.get("gate_counts", []))
+    means = np.array(results.get("means", []))
+    errs = np.array(results.get("std_errors", []))
+    A, B, p = results.get("A"), results.get("B"), results.get("p")
 
-    color_data = color or COLOR_PALETTE["data"]
-    color_fit = COLOR_PALETTE["fit"]
+    x_vals, xlabel = depths, "Clifford Depth (m)"
+    if x_axis_mode.lower() == "gate_count" and not np.all(np.isnan(gates)):
+        x_vals = gates
+        xlabel = "Total Gate Count"
 
-    # -----------------------------------------------------------------
-    # Experimental Data Points
-    # -----------------------------------------------------------------
+    c_data = color or COLOR["data"]
+    c_fit = COLOR["fit"]
+
+    # Plot data points with error bars
     ax.errorbar(
-        depths,
-        probs,
-        yerr=errs,
-        fmt="o",
-        markersize=5,
-        mfc="white",
-        mec=color_data,
-        mew=1.2,
-        ecolor=color_data,
-        elinewidth=1,
-        capthick=1,
-        capsize=3,
-        label=label or "Experimental Data",
+        x_vals, means, yerr=errs,
+        fmt="o", mfc="white", mec=c_data, mew=1.0,
+        ecolor=c_data, elinewidth=0.8, capsize=3,
+        markersize=4.5, label=label or "RB Data",
     )
 
-    # -----------------------------------------------------------------
-    # Fit Curve
-    # -----------------------------------------------------------------
-    fit_depths = np.array(results.get("fit_x", []))
-    fit_probs = np.array(results.get("fit_y", []))
-    p = params.get("p", np.nan)
+    # Fit curve (dashed line, unified with PRB)
+    fit_x = np.linspace(np.min(depths), np.max(depths), 250)
+    fit_y = _decay(fit_x, A, p, B)
+    if x_axis_mode.lower() == "gate_count" and not np.all(np.isnan(gates)):
+        from scipy.interpolate import interp1d
+        valid = ~np.isnan(gates)
+        fit_x_plot = interp1d(depths[valid], gates[valid], fill_value="extrapolate")(fit_x)
+    else:
+        fit_x_plot = fit_x
+    ax.plot(fit_x_plot, fit_y, "--", color=c_fit, lw=1.6, label=f"Fit (p={p:.4f})")
 
-    if fit_depths.size and fit_probs.size:
-        ax.plot(
-            fit_depths,
-            fit_probs,
-            color=color_fit,
-            linewidth=2.0,
-            label=f"Fit (p = {p:.4f})",
-        )
-
-    # -----------------------------------------------------------------
-    # Optional EPC Text Box
-    # -----------------------------------------------------------------
+    # Add EPC annotation
     if show_epc and "epc" in results:
         ax.text(
-            0.98,
-            0.92,
+            0.97, 0.93,
             f"EPC = {results['epc']:.2e}",
             transform=ax.transAxes,
-            fontsize=12.5,
-            va="top",
-            ha="right",
-            bbox=dict(
-                boxstyle="round,pad=0.3",
-                facecolor="none",
-                edgecolor="black",
-                linewidth=0.7,
-            ),
+            fontsize=11,
+            va="top", ha="right",
+            color="#202020",
+            bbox=dict(boxstyle="round,pad=0.25",
+                      facecolor="white",
+                      edgecolor="#808080",
+                      linewidth=0.6),
         )
 
-    # -----------------------------------------------------------------
-    # Axes and Formatting
-    # -----------------------------------------------------------------
-    ax.set_xlabel("Clifford Depth (m)")
+    # Axis formatting
+    ax.set_xlabel(xlabel)
     ax.set_ylabel("Ground‑State Survival Probability")
-    ax.set_title(title, fontweight="bold", pad=6)
-    ax.set_ylim(0.0, 1.05)
-    ax.set_xlim(left=-max(depths) * 0.05)
+    ax.set_title(title, fontweight="bold", pad=5)
+    ax.set_ylim(0, 1.05)
+    ax.tick_params(width=1.0, length=4)
 
-    ax.grid(True, which="major", alpha=0.45, linewidth=0.6)
-    ax.grid(True, which="minor", alpha=0.25, linewidth=0.4)
-    ax.tick_params(top=True, right=True, width=1.0, length=4)
-
+    # Ensure all four spines are visible and styled uniformly
     for spine in ax.spines.values():
-        spine.set_linewidth(1.0)
+        spine.set_visible(True)
+        spine.set_linewidth(1.1)
 
-    ax.legend(frameon=False, loc="best")
+    ax.legend(frameon=False, loc="lower right")
     plt.tight_layout()
+    return ax
 
 
 # ---------------------------------------------------------------------
-# Plot Comparison (Standard vs Interleaved)
+# Plot Standard vs. Interleaved RB Comparison
 # ---------------------------------------------------------------------
 def plot_rb_comparison(
-    std_results: Dict[str, Any],
-    interleaved_results: Dict[str, Any],
+    results_std: Dict[str, Any],
+    results_int: Dict[str, Any],
+    num_qubits: int,
     target_gate_name: str,
     ax: Optional[Axes] = None,
-) -> None:
+    x_axis_mode: str = "gate_count",
+) -> Axes:
     """
     Overlay two RB datasets (Standard and Interleaved) for comparison.
 
-    Args:
-        std_results: Fit dictionary for the Standard RB experiment.
-        interleaved_results: Fit dictionary for the Interleaved RB experiment.
-        target_gate_name: Name of the interleaved gate.
-        ax: Optional Matplotlib Axes (creates new if None).
+    Parameters
+    ----------
+    results_std : dict
+        Standard RB results.
+    results_int : dict
+        Interleaved RB results.
+    num_qubits : int
+        Number of qubits involved.
+    target_gate_name : str
+        Name of the interleaved gate.
+    ax : matplotlib.axes.Axes, optional
+        Existing axis.
+    x_axis_mode : str
+        "depth" or "gate_count".
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axis object with the rendered plot.
     """
     if ax is None:
-        _, ax = plt.subplots(figsize=(6.0, 4.2))
+        _, ax = plt.subplots(figsize=(5.0, 3.6))
 
-    # Plot standard RB
     plot_rb_data(
-        std_results,
+        results_std,
         ax=ax,
+        title="",
+        x_axis_mode=x_axis_mode,
         label="Standard RB",
-        color=COLOR_PALETTE["std"],
+        color=COLOR["std"],
         show_epc=False,
     )
 
-    # Plot interleaved RB
     plot_rb_data(
-        interleaved_results,
+        results_int,
         ax=ax,
-        label=f"Interleaved RB ({target_gate_name})",
-        color=COLOR_PALETTE["interleaved"],
+        title="",
+        x_axis_mode=x_axis_mode,
+        label="Interleaved RB",
+        color=COLOR["interleaved"],
         show_epc=False,
     )
 
-    # -----------------------------------------------------------------
-    # Annotation Box (Summary Text)
-    # -----------------------------------------------------------------
-    if std_results.get("epc") and interleaved_results.get("epg"):
-        summary_text = (
-            f"Reference EPC: {std_results['epc']:.3e}\n"
-            f"Interleaved EPC: {interleaved_results['epc']:.3e}\n"
-            f"Gate EPG ({target_gate_name}): {interleaved_results['epg']:.3e}"
-        )
-        ax.text(
-            0.03,
-            0.95,
-            summary_text,
-            transform=ax.transAxes,
-            fontsize=12,
-            va="top",
-            ha="left",
-            bbox=dict(
-                boxstyle="round,pad=0.3",
-                facecolor="none",
-                edgecolor="black",
-                linewidth=0.7,
-            ),
-        )
+    epc_ref = results_std.get("epc", np.nan)
+    epc_int = results_int.get("epc", np.nan)
+    epg = results_int.get("epg", np.nan)
 
-    # -----------------------------------------------------------------
-    # Axes Finalization
-    # -----------------------------------------------------------------
-    ax.set_title(
-        f"Interleaved RB Comparison for Gate '{target_gate_name}'",
-        fontweight="bold",
-        pad=6,
+    summary = (
+        f"Reference EPC: {epc_ref:.3e}\n"
+        f"Interleaved EPC: {epc_int:.3e}\n"
+        f"Gate EPG ({target_gate_name}): {epg:.3e}"
     )
-    ax.tick_params(top=True, right=True, width=1.0, length=4)
-    for spine in ax.spines.values():
-        spine.set_linewidth(1.0)
+    ax.text(
+        0.03, 0.95,
+        summary,
+        transform=ax.transAxes,
+        fontsize=11,
+        va="top", ha="left",
+        color="#202020",
+        bbox=dict(boxstyle="round,pad=0.25",
+                  facecolor="white",
+                  edgecolor="#808080",
+                  linewidth=0.6),
+    )
 
-    ax.legend(frameon=False)
+    ax.set_title(
+        f"Interleaved RB for '{target_gate_name}' ({num_qubits}Q)",
+        fontweight="bold",
+        pad=5,
+    )
+    ax.set_xlabel("Clifford Depth / Gate Count")
+    ax.set_ylabel("Ground‑State Survival Probability")
+
+    for spine in ax.spines.values():
+        spine.set_visible(True)
+        spine.set_linewidth(1.1)
+
+    ax.legend(frameon=False, loc="lower right")
     plt.tight_layout()
+    return ax
+
+
+# =============================================================================
+# End of File
+# =============================================================================

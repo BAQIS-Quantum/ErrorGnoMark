@@ -1,58 +1,100 @@
-# File Path: errorgnomark/backends/ideal_backend.py
-# [NEW FILE - This file was missing]
+# =============================================================================
+# File    : egm/core/backends/ideal_backend.py
+# Version : v5.3.0 - Noise-Free Backend (SISQ-Aligned Edition)
+# Author  : OpenAI-Assistant
+# =============================================================================
+"""
+IdealBackend
+------------
+A perfect, noise-free backend wrapping the StatevectorSimulator.
 
-from typing import Tuple, Dict, Optional
+This implementation is fully aligned with the SISQ (errorgnomark) v1.1 backend
+in both behavior and API, while maintaining the EGM package structure.
+
+Features
+--------
+• Deterministic statevector simulation (no noise)
+• Backward-compatibility methods: get_statevector() and statevector_to_probs()
+• Fully compatible with all EGM analysis, engine, and benchmarking modules
+"""
+
+from __future__ import annotations
+from typing import Tuple, Optional, Dict
 import numpy as np
 
-# --- Internal Framework Imports ---
-try:
-    from .base_backend import BaseBackend
-    from ..circuits.circuit import QuantumCircuit
-    from ..simulators.statevector_simulator import StatevectorSimulator
-except ImportError:
-    # Fallback for standalone execution or testing
-    import sys, os
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-    from egm.core.backends.base_backend import BaseBackend
-    from egm.core.circuits.circuit import QuantumCircuit
-    from egm.core.backends.simulators.statevector_simulator import StatevectorSimulator
+from egm.core.backends.base_backend import BaseBackend
+from egm.core.circuits.circuit import QuantumCircuit
+from egm.core.backends.simulators.statevector_simulator import StatevectorSimulator
 
 
+# ---------------------------------------------------------------------------
+# Noise-Free Backend Implementation
+# ---------------------------------------------------------------------------
 class IdealBackend(BaseBackend):
-    """
-    A backend that represents a perfect, noise-free statevector simulator.
-    
-    This class acts as a wrapper around the StatevectorSimulator to make it
-    conform to the BaseBackend interface. Its `run` method returns the final
-    statevector and `None` for counts, as there are no "shots" in an ideal
-    simulation.
-    """
+    """A perfect, noise-free backend that leverages the StatevectorSimulator."""
+
     def __init__(self):
-        """Initializes the IdealBackend."""
-        # The name property is required by the BaseBackend interface.
         super().__init__(name="IdealBackend")
         self._simulator = StatevectorSimulator()
 
-    def run(self, 
-            circuit: QuantumCircuit, 
-            shots: Optional[int] = None
-           ) -> Tuple[np.ndarray, None]:
+    # ------------------------------------------------------------------
+    def run(
+        self,
+        circuit: QuantumCircuit,
+        shots: Optional[int] = None,
+    ) -> Tuple[np.ndarray, None]:
         """
-        Performs a noise-free simulation of the circuit.
+        Execute the input circuit using a deterministic statevector simulator.
 
-        Args:
-            circuit: The QuantumCircuit to simulate.
-            shots: This argument is ignored by the ideal backend but is kept
-                   for interface compatibility.
+        Parameters
+        ----------
+        circuit : QuantumCircuit
+            Circuit object to simulate.
+        shots : Optional[int]
+            Ignored (retained for interface compatibility).
 
-        Returns:
-            A tuple containing:
-            - The final statevector (np.ndarray).
-            - None (since there are no measurement counts).
+        Returns
+        -------
+        Tuple[np.ndarray, None]
+            (statevector, None) pair, where the second element is a placeholder
+            for count data in noise-free mode.
         """
-        # Use the internal statevector simulator to get the final state.
-        final_statevector = self._simulator.run(circuit)
-        
-        # Return the result in the format required by the BaseBackend interface:
-        # (result_object, counts_dict)
-        return (final_statevector, None)
+        statevector = self._simulator.run(circuit)
+        return statevector, None
+
+    # ------------------------------------------------------------------
+    # Backward-Compatibility Utilities
+    # ------------------------------------------------------------------
+    def get_statevector(self, circuit: QuantumCircuit) -> np.ndarray:
+        """
+        Return the ideal statevector for the given circuit.
+
+        This method is provided to maintain compatibility with legacy
+        benchmarking workflows that expected IdealBackend to expose
+        a `get_statevector()` interface.
+        """
+        statevector, _ = self.run(circuit)
+        return statevector
+
+    def statevector_to_probs(self, statevector: np.ndarray) -> Dict[str, float]:
+        """
+        Convert a statevector to a probability dictionary mapping bitstrings
+        to their respective probabilities.
+
+        Parameters
+        ----------
+        statevector : np.ndarray
+            Complex statevector of dimension 2**n.
+
+        Returns
+        -------
+        Dict[str, float]
+            {bitstring: probability} for all non-negligible outcomes.
+        """
+        num_qubits = int(np.log2(len(statevector)))
+        probs = np.abs(statevector) ** 2
+        return {
+            format(i, f"0{num_qubits}b"): float(p)
+            for i, p in enumerate(probs)
+            if p > 1e-12
+        }

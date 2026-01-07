@@ -1,379 +1,47 @@
-# # File: errorgnomark/experiments/benchmarking/rb.py
-# # ---------------------------------------------------------------------
-# # Module: Randomized Benchmarking (RB) Experiment Definitions
-# # ---------------------------------------------------------------------
-# # This module defines the base classes for performing Standard
-# # and Interleaved Randomized Benchmarking experiments within the
-# # ErrorGnoMark framework.
-# #
-# # It supports:
-# #   - Circuit generation using a configurable Clifford factory.
-# #   - Data aggregation and survival probability computation.
-# #   - Automated RB fitting through the analysis module.
-# #   - Optional visualization of fitted RB decay curves.
-# # ---------------------------------------------------------------------
 
-# from __future__ import annotations
-# import numpy as np
-# import random
-# import logging
-# from typing import List, Dict, Optional, Union, Tuple, Protocol, Any, NamedTuple
-# import matplotlib.pyplot as plt
+# =============================================================================
+# File: src/egm/core/experiments/benchmarking/rb.py
+# Version: v5.4 – Unified Standard/Interleaved/Purity RB (EGM + SISQ Compatible + Modular PRB)
+# Author : OpenAI‑Assistant
+# =============================================================================
+"""
+Randomized Benchmarking (RB) Experiments – Unified Controller
 
-# # ---------------------------------------------------------------------
-# # Internal Framework Imports
-# # ---------------------------------------------------------------------
-# from egm.core.circuits.circuit import QuantumCircuit, Gate
-# from egm.core.engine.executor import QuantumEngine
-# from egm.core.analysis.rb import fit_rb_data, calculate_epg
-# from egm.reporting.visualizers.rb_plotter import plot_rb_data as plot_rb_single
-# from egm.reporting.visualizers.rb_plotter import plot_rb_comparison
-# from egm.core.circuits.gate_sets import CliffordGateSet
-
-# # ---------------------------------------------------------------------
-# # Logging Configuration
-# # ---------------------------------------------------------------------
-# logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
-
-# # ---------------------------------------------------------------------
-# # Default Parameter Values
-# # ---------------------------------------------------------------------
-# DEFAULT_RB_DEPTHS: List[int] = [1, 10, 20, 40, 60, 80, 100, 125]
-# DEFAULT_CIRCUITS_PER_DEPTH: int = 25
-# EXAMPLE_NATIVE_GATES: List[str] = ["cz", "sx", "rz", "h", "s"]
-
-# # ---------------------------------------------------------------------
-# # Protocols and Data Containers
-# # ---------------------------------------------------------------------
-# class CliffordFactory(Protocol):
-#     """Interface for generating random Clifford sequences."""
-
-#     def get_random_clifford_and_inverse(
-#         self, qubits: List[int], seed: Optional[Union[int, float]]
-#     ) -> Tuple[List[Gate], List[Gate]]:
-#         ...
-
-
-# class AggregatedRBData(NamedTuple):
-#     """Aggregated statistics for RB survival probabilities."""
-
-#     depths: List[int]
-#     means: List[float]
-#     stds: List[float]
-
-
-# # ---------------------------------------------------------------------
-# # Standard Randomized Benchmarking Experiment
-# # ---------------------------------------------------------------------
-# class StandardRBExperiment:
-#     """Implements a standard Clifford-based Randomized Benchmarking protocol."""
-
-#     def __init__(
-#         self,
-#         qubits: Union[int, List[int]],
-#         depths: List[int] = DEFAULT_RB_DEPTHS,
-#         circuits_per_depth: int = DEFAULT_CIRCUITS_PER_DEPTH,
-#         native_gates: Optional[List[str]] = None,
-#         seed: Optional[Union[int, float]] = None,
-#         clifford_factory: Optional[CliffordFactory] = None,
-#     ):
-#         self.qubits = [qubits] if isinstance(qubits, int) else qubits
-#         self.num_qubits = len(self.qubits)
-#         self.depths = sorted(set(depths))
-#         self.circuits_per_depth = circuits_per_depth
-#         self.native_gates = native_gates
-#         self.seed = seed
-#         self.clifford_factory = clifford_factory or CliffordGateSet()
-#         self.results: Optional[Dict[str, Any]] = None
-
-#         if self.native_gates:
-#             logging.info(
-#                 f"RB experiment configured for PHYSICAL representation. "
-#                 f"Using native gates: {self.native_gates}"
-#             )
-#         else:
-#             logging.info(
-#                 "RB experiment configured for LOGICAL representation (no gate decomposition)."
-#             )
-
-#     # -----------------------------------------------------------------
-#     # Circuit Generation
-#     # -----------------------------------------------------------------
-#     def _generate_circuit(
-#         self,
-#         depth: int,
-#         seed: Optional[Union[int, float]],
-#         interleaved_gate: Optional[Gate] = None,
-#     ) -> QuantumCircuit:
-#         """Generate a single randomized benchmarking circuit."""
-
-#         rng = random.Random(seed)
-#         circuit = QuantumCircuit(qubits=self.qubits)
-#         inverse_gate_sequences = []
-
-#         for _ in range(depth):
-#             fwd_gates, inv_gates = self.clifford_factory.get_random_clifford_and_inverse(
-#                 self.qubits, seed=rng.random()
-#             )
-#             circuit.add_gates(fwd_gates)
-#             if interleaved_gate:
-#                 circuit.add_gate(interleaved_gate)
-#             inverse_gate_sequences.append(inv_gates)
-
-#         # Append inverses in reverse order to invert total sequence
-#         for inv_gates in reversed(inverse_gate_sequences):
-#             circuit.add_gates(inv_gates)
-
-#         circuit.measure_all()
-#         circuit.metadata["depth"] = depth
-#         circuit.metadata["seed"] = seed
-#         if interleaved_gate:
-#             circuit.metadata["interleaved_gate_name"] = interleaved_gate.name
-
-#         return circuit
-
-#     def generate_single_circuit(
-#         self, depth: int, seed: Optional[Union[int, float]] = None
-#     ) -> QuantumCircuit:
-#         """Create a single RB circuit at the specified depth."""
-#         interleaved_gate = getattr(self, "interleaved_gate", None)
-#         circuit = self._generate_circuit(depth, seed, interleaved_gate=interleaved_gate)
-#         if self.native_gates:
-#             circuit = circuit.decompose(basis_gates=self.native_gates)
-#         return circuit
-
-#     def circuits(self) -> List[QuantumCircuit]:
-#         """Generate all RB circuits for this experiment."""
-#         all_circuits: List[QuantumCircuit] = []
-#         main_rng = random.Random(self.seed)
-
-#         for depth in self.depths:
-#             for i in range(self.circuits_per_depth):
-#                 circuit_seed = main_rng.random()
-#                 circuit = self.generate_single_circuit(depth, circuit_seed)
-#                 circuit.metadata["sample_idx"] = i
-#                 all_circuits.append(circuit)
-
-#         return all_circuits
-
-#     # -----------------------------------------------------------------
-#     # Aggregation
-#     # -----------------------------------------------------------------
-#     def _aggregate_results(
-#         self,
-#         raw_results: List[Tuple[Dict[str, float], Dict[str, int]]],
-#         circuits: List[QuantumCircuit],
-#         shots: int,
-#     ) -> AggregatedRBData:
-#         """Aggregate raw counts into average survival probabilities per depth."""
-#         survivals_by_depth = {d: [] for d in self.depths}
-#         ground_state_str = "0" * self.num_qubits
-
-#         for i, circuit in enumerate(circuits):
-#             depth = circuit.metadata["depth"]
-#             _, noisy_counts = raw_results[i]
-#             survival_prob = noisy_counts.get(ground_state_str, 0) / shots
-#             survivals_by_depth[depth].append(survival_prob)
-
-#         agg_depths, agg_means, agg_stds = [], [], []
-#         for depth in self.depths:
-#             survs = survivals_by_depth[depth]
-#             agg_depths.append(depth)
-#             agg_means.append(np.mean(survs))
-#             # Standard error of the mean
-#             agg_stds.append(np.std(survs, ddof=1) / np.sqrt(len(survs)))
-
-#         return AggregatedRBData(
-#             depths=agg_depths, means=agg_means, stds=agg_stds
-#         )
-
-#     # -----------------------------------------------------------------
-#     # Execution Workflow
-#     # -----------------------------------------------------------------
-#     def run(
-#         self,
-#         engine: QuantumEngine,
-#         shots: int,
-#         plot: bool = True,
-#         axes: Optional[plt.Axes] = None,
-#     ) -> Dict[str, Any]:
-#         """Execute the full RB workflow: circuit generation, execution, fitting, and plot."""
-#         rb_type = (
-#             "Interleaved" if isinstance(self, InterleavedRBExperiment) else "Standard"
-#         )
-#         logging.info(f"--- Running {rb_type} {self.num_qubits}-Qubit RB ---")
-
-#         # 1. Generate circuits
-#         circuits = self.circuits()
-#         logging.info(f"[1/4] Generated {len(circuits)} circuits for {len(self.depths)} depths.")
-
-#         # 2. Execute circuits
-#         logging.info(f"[2/4] Executing circuits on backend ({shots} shots each)...")
-#         raw_results = engine.execute_with_ideal(circuits, shots=shots)
-
-#         # 3. Aggregate measurement results
-#         logging.info("[3/4] Aggregating survival probabilities...")
-#         agg_data = self._aggregate_results(raw_results, circuits, shots)
-
-#         # 4. Fit RB decay curve
-#         logging.info("[4/4] Performing RB fitting...")
-#         fit_results = fit_rb_data(
-#             depths=agg_data.depths,
-#             means=agg_data.means,
-#             stds=agg_data.stds,
-#             num_qubits=self.num_qubits,
-#         )
-#         self.results = fit_results
-
-#         if fit_results.get("fit_successful"):
-#             logging.info(f"Fit successful. EPC = {fit_results['epc']:.3e}")
-#         else:
-#             logging.warning("RB fitting unsuccessful.")
-
-#         # Visualization
-#         if plot:
-#             show_plot_at_end = axes is None
-#             if fit_results.get("fit_successful"):
-#                 current_ax = axes or plt.subplots(figsize=(8, 5))[1]
-#                 title = f"{rb_type} {self.num_qubits}-Qubit RB Decay"
-#                 plot_rb_single(fit_results, title=title, ax=current_ax)
-#                 if show_plot_at_end:
-#                     plt.tight_layout()
-#                     plt.show()
-#             else:
-#                 logging.warning("Skipping plot generation (fit failed).")
-
-#         return fit_results
-
-#     def aggregate(self, raw_results, shots: int) -> Dict[str, List[float]]:
-#         """Public wrapper around `_aggregate_results()` for manual workflows."""
-#         circuits = self.circuits()
-#         agg_data = self._aggregate_results(raw_results, circuits, shots)
-#         return {"depths": agg_data.depths, "means": agg_data.means, "stds": agg_data.stds}
-
-
-# # ---------------------------------------------------------------------
-# # Interleaved Randomized Benchmarking Experiment
-# # ---------------------------------------------------------------------
-# class InterleavedRBExperiment(StandardRBExperiment):
-#     """Perform Interleaved RB to extract gate-specific error probabilities."""
-
-#     def __init__(
-#         self,
-#         qubits: Union[int, List[int]],
-#         interleaved_gate: Gate,
-#         depths: List[int] = DEFAULT_RB_DEPTHS,
-#         circuits_per_depth: int = DEFAULT_CIRCUITS_PER_DEPTH,
-#         native_gates: Optional[List[str]] = None,
-#         seed: Optional[Union[int, float]] = None,
-#         clifford_factory: Optional[CliffordFactory] = None,
-#     ):
-#         super().__init__(
-#             qubits=qubits,
-#             depths=depths,
-#             circuits_per_depth=circuits_per_depth,
-#             native_gates=native_gates,
-#             seed=seed,
-#             clifford_factory=clifford_factory,
-#         )
-#         self.interleaved_gate = interleaved_gate
-
-#     def run(
-#         self,
-#         engine: QuantumEngine,
-#         shots: int,
-#         plot: bool = True,
-#         axes: Optional[plt.Axes] = None,
-#     ) -> Optional[Dict[str, Any]]:
-#         """Execute the full Interleaved RB workflow including EPG extraction."""
-#         gate_name = self.interleaved_gate.name.upper()
-#         logging.info(
-#             f"\n--- Running Interleaved {self.num_qubits}-Qubit RB for Gate '{gate_name}' ---"
-#         )
-
-#         # Step 1: Standard RB Reference
-#         logging.info("[1/3] Running standard reference RB ...")
-#         std_rb = StandardRBExperiment(
-#             qubits=self.qubits,
-#             depths=self.depths,
-#             circuits_per_depth=self.circuits_per_depth,
-#             native_gates=self.native_gates,
-#             seed=self.seed,
-#             clifford_factory=self.clifford_factory,
-#         )
-#         results_std = std_rb.run(engine, shots, plot=False)
-#         if not results_std.get("fit_successful"):
-#             logging.error("Reference fit failed; aborting Interleaved RB.")
-#             return None
-#         logging.info(f"Reference fit successful. EPC = {results_std['epc']:.3e}")
-
-#         # Step 2: Interleaved RB
-#         logging.info(f"[2/3] Running Interleaved RB with gate '{gate_name}' ...")
-#         results_irb = super().run(engine, shots=shots, plot=False)
-#         if not results_irb.get("fit_successful"):
-#             logging.error("Interleaved RB fit failed.")
-#             return None
-
-#         # Step 3: Calculate Error per Gate (EPG)
-#         logging.info("[3/3] Calculating Error Per Gate (EPG) ...")
-#         epg = calculate_epg(results_std["p"], results_irb["p"], self.num_qubits)
-
-#         logging.info(f"Reference EPC = {results_std['epc']:.3e}")
-#         logging.info(f"Interleaved EPC = {results_irb['epc']:.3e}")
-#         logging.info(f"Derived Gate EPG ({gate_name}) = {epg:.3e}")
-
-#         results_irb["epg"] = epg
-
-#         # Visualization
-#         if plot:
-#             show_plot_at_end = axes is None
-#             current_ax = axes or plt.subplots(figsize=(8, 5))[1]
-#             plot_rb_comparison(results_std, results_irb, target_gate_name=gate_name, ax=current_ax)
-#             if show_plot_at_end:
-#                 plt.tight_layout()
-#                 plt.show()
-
-#         self.results = {
-#             "epg": epg,
-#             "standard_results": results_std,
-#             "interleaved_results": results_irb,
-#         }
-#         return self.results
-
-
-# File: errorgnomark/experiments/benchmarking/rb.py
-# ---------------------------------------------------------------------
-# Module: Randomized Benchmarking (RB) Experiment Definitions
-# ---------------------------------------------------------------------
-# This module defines the base classes for performing Standard
-# and Interleaved Randomized Benchmarking experiments within the
-# ErrorGnoMark framework.
-#
-# It supports:
-#   - Circuit generation using a configurable Clifford factory.
-#   - Data aggregation and survival probability computation.
-#   - Automated RB fitting through the analysis module.
-#   - Optional visualization of fitted RB decay curves.
-#   - Dual-mode execution: QuantumEngine simulation & user-provided
-#     experimental data ingestion.
-# ---------------------------------------------------------------------
+Implements Standard, Interleaved, and Purity RB workflows with:
+    • Clifford-based circuit generation
+    • Engine or user‑data execution modes
+    • RB + PRB analysis integration (via prb.compute_purity_from_counts)
+    • Optional dual‑plot visualization
+    • Debug‑mode diagnostic outputs
+"""
 
 from __future__ import annotations
 import numpy as np
 import random
 import logging
-from typing import List, Dict, Optional, Union, Tuple, Protocol, Any, NamedTuple
 import matplotlib.pyplot as plt
+from typing import List, Dict, Optional, Union, Tuple, Protocol, Any
 
 # ---------------------------------------------------------------------
-# Internal Framework Imports
+# Internal Imports
 # ---------------------------------------------------------------------
 from egm.core.circuits.circuit import QuantumCircuit, Gate
 from egm.core.engine.executor import QuantumEngine
 from egm.core.analysis.rb import fit_rb_data, calculate_epg
-from egm.reporting.visualizers.rb_plotter import plot_rb_data as plot_rb_single
-from egm.reporting.visualizers.rb_plotter import plot_rb_comparison
-from egm.core.circuits.gate_sets import CliffordGateSet
+from egm.core.analysis.prb import (
+    fit_prb_data,
+    calculate_prb_gate_error,
+    compute_purity_from_counts,  # ✅ 新增引用，取代原 _compute_purity
+)
+from egm.reporting.visualizers.rb_plotter import (
+    plot_rb_data as plot_rb_single,
+    plot_rb_comparison,
+)
+from egm.reporting.visualizers.prb_plotter import (
+    plot_prb_single,
+    plot_prb_comparison,
+)
+from egm.core.circuits.gate_sets import CliffordGateSet, get_gate_set
 
 # ---------------------------------------------------------------------
 # Logging Configuration
@@ -381,17 +49,17 @@ from egm.core.circuits.gate_sets import CliffordGateSet
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
 # ---------------------------------------------------------------------
-# Default Parameter Values
+# Defaults
 # ---------------------------------------------------------------------
-DEFAULT_RB_DEPTHS: List[int] = [0, 1, 10, 20, 40, 60, 80, 100, 125]
+DEFAULT_RB_DEPTHS: List[int] = [0, 2, 4, 8, 12, 20, 32, 48, 64]
 DEFAULT_CIRCUITS_PER_DEPTH: int = 25
-EXAMPLE_NATIVE_GATES: List[str] = ["cz", "sx", "rz", "h", "s"]
+
 
 # ---------------------------------------------------------------------
-# Protocols and Data Containers
+# CliffordFactory Protocol
 # ---------------------------------------------------------------------
 class CliffordFactory(Protocol):
-    """Interface for generating random Clifford sequences."""
+    """Interface for Clifford circuit generation."""
 
     def get_random_clifford_and_inverse(
         self, qubits: List[int], seed: Optional[Union[int, float]]
@@ -399,236 +67,254 @@ class CliffordFactory(Protocol):
         ...
 
 
-class AggregatedRBData(NamedTuple):
-    """Aggregated statistics for RB survival probabilities."""
-
-    depths: List[int]
-    means: List[float]
-    stds: List[float]
-
-
-# ---------------------------------------------------------------------
+# =============================================================================
 # Standard Randomized Benchmarking Experiment
-# ---------------------------------------------------------------------
+# =============================================================================
 class StandardRBExperiment:
-    """Implements a standard Clifford-based Randomized Benchmarking protocol."""
+    """
+    Standard RB experiment controller supporting:
+      - RB + PRB analysis.
+      - Engine simulation / user data.
+      - Debug mode and plotting.
+    """
 
     def __init__(
         self,
         qubits: Union[int, List[int]],
-        depths: List[int] = DEFAULT_RB_DEPTHS,
+        depths: Optional[List[int]] = None,
         circuits_per_depth: int = DEFAULT_CIRCUITS_PER_DEPTH,
         native_gates: Optional[List[str]] = None,
         seed: Optional[Union[int, float]] = None,
-        clifford_factory: Optional[CliffordFactory] = None,
+        clifford_factory: Optional[Union[CliffordFactory, str]] = None,
+        x_axis_mode: str = "GATE_COUNT",
     ):
         self.qubits = [qubits] if isinstance(qubits, int) else qubits
         self.num_qubits = len(self.qubits)
-        self.depths = sorted(set(depths))
+        self.depths = depths or DEFAULT_RB_DEPTHS
         self.circuits_per_depth = circuits_per_depth
         self.native_gates = native_gates
         self.seed = seed
-        self.clifford_factory = clifford_factory or CliffordGateSet()
-        self.results: Optional[Dict[str, Any]] = None
+        self.x_axis_mode = x_axis_mode.upper()
+        if self.x_axis_mode not in ["DEPTH", "GATE_COUNT"]:
+            raise ValueError("x_axis_mode must be 'DEPTH' or 'GATE_COUNT'.")
 
-        if self.native_gates:
-            logging.info(
-                f"RB experiment configured for PHYSICAL representation. "
-                f"Using native gates: {self.native_gates}"
-            )
-        else:
-            logging.info(
-                "RB experiment configured for LOGICAL representation (no gate decomposition)."
-            )
+        # Factory auto‑resolve
+        if clifford_factory is None:
+            clifford_factory = CliffordGateSet()
+        elif isinstance(clifford_factory, str):
+            if clifford_factory.lower() in ["rb_universal", "rb_clifford"]:
+                clifford_factory = CliffordGateSet()
+            else:
+                clifford_factory = get_gate_set(clifford_factory)
+        self.clifford_factory = clifford_factory
+        self.results: Dict[str, Any] = {}
 
-    # -----------------------------------------------------------------
+        logging.info(
+            f"[RB‑Init] {self.num_qubits}Q RB initialized "
+            f"(x_axis={self.x_axis_mode}, native={'ON' if native_gates else 'OFF'})"
+        )
+
+    # -------------------------------------------------------------------------
     # Circuit Generation
-    # -----------------------------------------------------------------
+    # -------------------------------------------------------------------------
     def _generate_circuit(
         self,
         depth: int,
         seed: Optional[Union[int, float]],
         interleaved_gate: Optional[Gate] = None,
     ) -> QuantumCircuit:
-        """Generate a single randomized benchmarking circuit."""
-
+        """Generate a single RB sequence circuit."""
         rng = random.Random(seed)
-        circuit = QuantumCircuit(qubits=self.qubits)
-        inverse_gate_sequences = []
+        circ = QuantumCircuit(qubits=self.qubits)
 
+        if depth == 0:
+            circ.measure_all()
+            circ.metadata.update({"depth": 0, "gate_count": 0, "seed": seed})
+            return circ
+
+        inv_seq = []
         for _ in range(depth):
-            fwd_gates, inv_gates = self.clifford_factory.get_random_clifford_and_inverse(
-                self.qubits, seed=rng.random()
+            fwd, inv = self.clifford_factory.get_random_clifford_and_inverse(
+                self.qubits, rng.random()
             )
-            circuit.add_gates(fwd_gates)
+            circ.add_gates(fwd)
             if interleaved_gate:
-                circuit.add_gate(interleaved_gate)
-            inverse_gate_sequences.append(inv_gates)
+                circ.add_gate(interleaved_gate)
+            inv_seq.append(inv)
 
-        # Append inverses in reverse order to invert total sequence
-        for inv_gates in reversed(inverse_gate_sequences):
-            circuit.add_gates(inv_gates)
+        for invs in reversed(inv_seq):
+            circ.add_gates(invs)
 
-        circuit.measure_all()
-        circuit.metadata["depth"] = depth
-        circuit.metadata["seed"] = seed
-        if interleaved_gate:
-            circuit.metadata["interleaved_gate_name"] = interleaved_gate.name
+        circ.measure_all()
+        circ.metadata.update({"depth": depth, "gate_count": len(circ.gates), "seed": seed})
+        return circ
 
-        return circuit
-
-    def generate_single_circuit(
-        self, depth: int, seed: Optional[Union[int, float]] = None
-    ) -> QuantumCircuit:
-        """Create a single RB circuit at the specified depth."""
-        interleaved_gate = getattr(self, "interleaved_gate", None)
-        circuit = self._generate_circuit(depth, seed, interleaved_gate=interleaved_gate)
+    def generate_single_circuit(self, depth: int, seed: Optional[Union[int, float]] = None) -> QuantumCircuit:
+        """Return one RB circuit (decomposed if native_gates provided)."""
+        circ = self._generate_circuit(depth, seed, getattr(self, "interleaved_gate", None))
         if self.native_gates:
-            circuit = circuit.decompose(basis_gates=self.native_gates)
-        return circuit
+            circ = circ.decompose(basis_gates=self.native_gates)
+        return circ
 
     def circuits(self) -> List[QuantumCircuit]:
-        """Generate all RB circuits for this experiment."""
-        all_circuits: List[QuantumCircuit] = []
-        main_rng = random.Random(self.seed)
-        for depth in self.depths:
-            for i in range(self.circuits_per_depth):
-                circuit_seed = main_rng.random()
-                if depth == 0:
-                    circuit = QuantumCircuit(qubits=self.qubits)
-                    circuit.measure_all()
-                    circuit.metadata["depth"] = 0
-                    circuit.metadata["seed"] = circuit_seed
-                else:
-                    circuit = self.generate_single_circuit(depth, circuit_seed)
-                circuit.metadata["sample_idx"] = i
-                all_circuits.append(circuit)
+        """Generate the full set of RB circuits."""
+        rng = random.Random(self.seed)
+        all_circuits = []
+        for d in self.depths:
+            for _ in range(self.circuits_per_depth):
+                all_circuits.append(self.generate_single_circuit(d, rng.random()))
         return all_circuits
 
-    # -----------------------------------------------------------------
-    # Aggregation
-    # -----------------------------------------------------------------
-    def _aggregate_results(
-        self,
-        raw_results: List[Tuple[Dict[str, float], Dict[str, int]]],
-        circuits: List[QuantumCircuit],
-        shots: int,
-    ) -> AggregatedRBData:
-        """Aggregate raw counts into average survival probabilities per depth."""
-        survivals_by_depth = {d: [] for d in self.depths}
-        ground_state_str = "0" * self.num_qubits
-
-        for i, circuit in enumerate(circuits):
-            depth = circuit.metadata["depth"]
-            _, noisy_counts = raw_results[i]
-            survival_prob = noisy_counts.get(ground_state_str, 0) / shots
-            survivals_by_depth[depth].append(survival_prob)
-
-        agg_depths, agg_means, agg_stds = [], [], []
-        for depth in self.depths:
-            survs = survivals_by_depth[depth]
-            agg_depths.append(depth)
-            agg_means.append(np.mean(survs))
-            agg_stds.append(np.std(survs, ddof=1) / np.sqrt(len(survs)))
-
-        return AggregatedRBData(depths=agg_depths, means=agg_means, stds=agg_stds)
-
-    # -----------------------------------------------------------------
-    # Execution Workflow (Enhanced Dual-Mode)
-    # -----------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Execution Workflow
+    # -------------------------------------------------------------------------
     def run(
         self,
+        circuits: Optional[List[QuantumCircuit]] = None,
         engine: Optional[QuantumEngine] = None,
-        shots: Optional[int] = None,
+        shots: int = 2048,
         plot: bool = True,
-        axes: Optional[plt.Axes] = None,
-        experimental_results: Optional[List[Tuple[Dict[str, float], Dict[str, int]]]] = None,
+        experimental_results: Optional[List[Dict[str, float]]] = None,
+        experimental_data_by_depth: Optional[Dict[int, List[Dict[str, float]]]] = None,
+        debug: bool = False,
     ) -> Dict[str, Any]:
-        """
-        Execute the RB workflow in either Engine Simulated mode or User Data mode.
-        """
-        rb_type = (
-            "Interleaved" if isinstance(self, InterleavedRBExperiment) else "Standard"
+        """Execute RB + PRB analysis in unified workflow."""
+        rb_type = "Interleaved" if isinstance(self, InterleavedRBExperiment) else "Standard"
+        if circuits is None:
+            circuits = self.circuits()
+        mode = (
+            "Engine" if engine else
+            ("User‑Data‑Flat" if experimental_results else "User‑Data‑ByDepth")
         )
-        mode = "User Data" if experimental_results is not None else "Engine"
-        logging.info(f"--- Running {rb_type} {self.num_qubits}-Qubit RB [{mode} Mode] ---")
+        logging.info(f"=== Running {rb_type} RB [{mode}] with {len(circuits)} circuits ===")
 
-        # Step 1: Circuit Generation
-        circuits = self.circuits()
-        logging.info(f"[1/4] Prepared {len(circuits)} circuits for {len(self.depths)} depths.")
+        ground = "0" * self.num_qubits
+        survivals: Dict[int, List[float]] = {d: [] for d in self.depths}
+        purities: Dict[int, List[float]] = {d: [] for d in self.depths}
+        gate_counts_avg: Dict[int, float] = {d: 0.0 for d in self.depths}
 
-        # Step 2: Data Source (Engine or User)
-        if experimental_results is None:
-            if engine is None:
-                raise ValueError("QuantumEngine must be provided in Engine mode.")
-            if shots is None:
-                raise ValueError("Shots must be specified in Engine mode.")
-            logging.info(f"[2/4] Executing on backend ({shots} shots per circuit)...")
-            raw_results = engine.execute_with_ideal(circuits, shots=shots)
+        # Acquire data
+        if experimental_data_by_depth:
+            for circ in circuits:
+                d = circ.metadata["depth"]
+                gate_counts_avg[d] += circ.metadata.get("gate_count", 0)
+                for dat in experimental_data_by_depth.get(d, []):
+                    total = sum(dat.values())
+                    if total > 0:
+                        p0 = dat.get(ground, 0) / total
+                        survivals[d].append(p0)
+                        purities[d].append(compute_purity_from_counts(dat, self.num_qubits))
+                        if debug:
+                            print(f"[DEBUG] depth={d}, survival={p0:.5f}, purity={purities[d][-1]:.5f}")
+
+        elif experimental_results:
+            if len(experimental_results) != len(circuits):
+                raise ValueError("Mismatch between experimental_results and circuits.")
+            for circ, dat in zip(circuits, experimental_results):
+                if isinstance(dat, tuple) and len(dat) == 2:
+                    _, dat = dat
+                if not isinstance(dat, dict):
+                    raise TypeError(f"Unexpected data type for experimental result: {type(dat)}")
+                d = circ.metadata["depth"]
+                gate_counts_avg[d] += circ.metadata.get("gate_count", 0)
+                t = sum(dat.values())
+                if t > 0:
+                    p0 = dat.get(ground, 0) / t
+                    survivals[d].append(p0)
+                    purities[d].append(compute_purity_from_counts(dat, self.num_qubits))
+                    if debug:
+                        print(f"[DEBUG] depth={d}, survival={p0:.5f}, purity={purities[d][-1]:.5f}")
+
+        elif engine:
+            res = engine.execute_with_ideal(circuits, shots=shots)
+            for circ, (_, counts) in zip(circuits, res):
+                d = circ.metadata["depth"]
+                gate_counts_avg[d] += circ.metadata.get("gate_count", 0)
+                p0 = counts.get(ground, 0) / shots
+                survivals[d].append(p0)
+                purities[d].append(compute_purity_from_counts(counts, self.num_qubits))
+                if debug:
+                    print(f"[DEBUG] depth={d}, survival={p0:.5f}, purity={purities[d][-1]:.5f}")
         else:
-            logging.info("[2/4] Using user-provided experimental measurement data.")
-            raw_results = experimental_results
-            if shots is None and len(raw_results) > 0:
-                first_counts = raw_results[0][1]
-                shots = sum(first_counts.values())
-                logging.info(f"Inferred shots = {shots}")
+            raise ValueError("Must supply either engine or experimental data.")
 
-        if len(raw_results) != len(circuits):
-            logging.warning(
-                f"Result length mismatch: {len(raw_results)} vs. {len(circuits)} circuits."
-            )
+        # Normalize average gate counts
+        for d in self.depths:
+            n = max(len(survivals[d]), 1)
+            gate_counts_avg[d] /= n
 
-        # Step 3: Aggregate survival probabilities
-        logging.info("[3/4] Aggregating survival probabilities by depth...")
-        agg_data = self._aggregate_results(raw_results, circuits, shots)
-
-        # Step 4: Fit decay curve
-        logging.info("[4/4] Performing RB fitting...")
-        fit_results = fit_rb_data(
-            depths=agg_data.depths,
-            means=agg_data.means,
-            stds=agg_data.stds,
+        # Fit RB and PRB curves
+        rb_fit = fit_rb_data(
+            survivals=survivals,
+            num_qubits=self.num_qubits,
+            gate_counts=gate_counts_avg,
+        )
+        prb_fit = fit_prb_data(
+            purities=purities,
             num_qubits=self.num_qubits,
         )
-        self.results = fit_results
+        self.results = {"rb_fit": rb_fit, "prb_fit": prb_fit}
 
-        if fit_results.get("fit_successful"):
-            logging.info(f"Fit successful. EPC = {fit_results['epc']:.3e}")
-        else:
-            logging.warning("Fit failed.")
+        if debug:
+            print("[DEBUG] RB Fit:", rb_fit)
+            print("[DEBUG] PRB Fit:", prb_fit)
 
-        # Visualization
+        # Plot results
         if plot:
-            show_plot_at_end = axes is None
-            if fit_results.get("fit_successful"):
-                current_ax = axes or plt.subplots(figsize=(8, 5))[1]
-                title = f"{rb_type} {self.num_qubits}-Qubit RB Decay ({mode} Mode)"
-                plot_rb_single(fit_results, title=title, ax=current_ax)
-                if show_plot_at_end:
-                    plt.tight_layout()
-                    plt.show()
-            else:
-                logging.warning("Skipping plot generation (fit failed).")
+            try:
+                plot_rb_single(
+                    rb_fit,
+                    title=f"{rb_type} RB Decay",
+                    x_axis_mode=self.x_axis_mode
+                )
+                plot_prb_single(
+                    prb_fit,
+                    num_qubits=self.num_qubits,
+                    title=f"{rb_type} PRB Decay"
+                )
+            except Exception as e:
+                logging.warning(f"[WARN] Plot failed: {e}")
 
-        return fit_results
+        rb_fit["fit_successful"] = rb_fit.get("fit_successful", False)
+        return {"rb_fit": rb_fit, "prb_fit": prb_fit, "fit_successful": rb_fit.get("fit_successful", False)}
 
 
-# ---------------------------------------------------------------------
+# =============================================================================
 # Interleaved Randomized Benchmarking Experiment
-# ---------------------------------------------------------------------
+# =============================================================================
 class InterleavedRBExperiment(StandardRBExperiment):
-    """Perform Interleaved RB to extract gate-specific error probabilities."""
+    """Interleaved RB with per‑gate EPG and fidelity."""
+
+    _CLIFFORD_NAMES = {
+        "i", "id", "x", "y", "z", "h", "s", "sdg",
+        "sx", "sxdg", "sy", "sydg", "rx90", "ry90",
+        "cx", "cnot", "cz", "swap", "ccnot", "fredkin",
+        "cswap", "ccz", "ecr"
+    }
 
     def __init__(
         self,
         qubits: Union[int, List[int]],
         interleaved_gate: Gate,
-        depths: List[int] = DEFAULT_RB_DEPTHS,
+        depths: Optional[List[int]] = None,
         circuits_per_depth: int = DEFAULT_CIRCUITS_PER_DEPTH,
         native_gates: Optional[List[str]] = None,
         seed: Optional[Union[int, float]] = None,
-        clifford_factory: Optional[CliffordFactory] = None,
+        clifford_factory: Optional[Union[CliffordFactory, str]] = None,
+        x_axis_mode: str = "GATE_COUNT",
     ):
+        if clifford_factory is None:
+            cf = CliffordGateSet()
+            cf.two_qubit_gate_name = "cz"
+            clifford_factory = cf
+            logging.info("[IRB] Using default CZ‑based Clifford factory.")
+        elif isinstance(clifford_factory, str):
+            cf = get_gate_set(clifford_factory)
+            if isinstance(cf, CliffordGateSet) and getattr(cf, "two_qubit_gate_name", "").lower() == "cnot":
+                cf.two_qubit_gate_name = "cz"
+                logging.info("[IRB] Factory switched to CZ‑based randomization.")
+            clifford_factory = cf
+
         super().__init__(
             qubits=qubits,
             depths=depths,
@@ -636,83 +322,131 @@ class InterleavedRBExperiment(StandardRBExperiment):
             native_gates=native_gates,
             seed=seed,
             clifford_factory=clifford_factory,
+            x_axis_mode=x_axis_mode,
         )
+
         self.interleaved_gate = interleaved_gate
+        self.num_qubits = len(self.qubits)
+        self._is_clifford_gate = (
+            self.num_qubits == 1 or interleaved_gate.name.lower() in self._CLIFFORD_NAMES
+        )
+        if self._is_clifford_gate:
+            logging.info(f"[IRB] Target gate '{interleaved_gate.name}' is Clifford.")
+        else:
+            logging.warning(f"[IRB] Gate '{interleaved_gate.name}' NOT Clifford – non‑inverting.")
+
+    def _generate_single_interleaved_circuit(self, depth: int, seed: Optional[Union[int, float]] = None) -> QuantumCircuit:
+        rng = random.Random(seed)
+        circ = QuantumCircuit(qubits=self.qubits)
+        if depth == 0:
+            circ.measure_all()
+            circ.metadata.update({"depth": 0, "gate_count": 0, "seed": seed})
+            return circ
+
+        forward_seq: List[Gate] = []
+        for _ in range(depth):
+            fwd, _ = self.clifford_factory.get_random_clifford_and_inverse(self.qubits, rng.random())
+            forward_seq.extend(fwd)
+            forward_seq.append(self.interleaved_gate)
+
+        for g in forward_seq:
+            circ.add_gate(g)
+
+        if self._is_clifford_gate:
+            inv_circ = QuantumCircuit(self.qubits)
+            inv_circ.add_gates(forward_seq)
+            circ.add_gates(inv_circ.inverse().gates)
+
+        circ.measure_all()
+        circ.metadata.update({
+            "depth": depth,
+            "gate_count": len(circ.gates),
+            "seed": seed,
+            "mode": "interleaved",
+            "interleaved_gate": self.interleaved_gate.name,
+        })
+        if self.native_gates:
+            circ = circ.decompose(basis_gates=self.native_gates)
+        return circ
+
+    def circuits(self) -> List[QuantumCircuit]:
+        rng = random.Random(self.seed)
+        return [self._generate_single_interleaved_circuit(d, rng.random()) for d in self.depths for _ in range(self.circuits_per_depth)]
 
     def run(
         self,
+        circuits_ref: Optional[List[QuantumCircuit]] = None,
+        circuits_int: Optional[List[QuantumCircuit]] = None,
         engine: Optional[QuantumEngine] = None,
-        shots: Optional[int] = None,
+        shots: int = 2048,
         plot: bool = True,
-        axes: Optional[plt.Axes] = None,
-        experimental_results_ref: Optional[List[Tuple[Dict[str, float], Dict[str, int]]]] = None,
-        experimental_results_int: Optional[List[Tuple[Dict[str, float], Dict[str, int]]]] = None,
-    ) -> Optional[Dict[str, Any]]:
-        """Execute the full Interleaved RB workflow (dual-mode)."""
-        gate_name = self.interleaved_gate.name.upper()
-        mode = (
-            "User Data"
-            if (experimental_results_ref is not None or experimental_results_int is not None)
-            else "Engine"
+        experimental_data_by_depth_ref: Optional[Dict[int, List[Dict[str, float]]]] = None,
+        experimental_data_by_depth_int: Optional[Dict[int, List[Dict[str, float]]]] = None,
+        experimental_results_ref: Optional[List[Dict[str, float]]] = None,
+        experimental_results_int: Optional[List[Dict[str, float]]] = None,
+        debug: bool = False,
+    ) -> Dict[str, Any]:
+
+        gname = self.interleaved_gate.name.upper()
+        logging.info(f"=== Interleaved RB for gate '{gname}' ===")
+
+        # Generate circuits automatically if needed
+        if engine and (circuits_ref is None or circuits_int is None):
+            ref_exp = StandardRBExperiment(
+                self.qubits, self.depths, self.circuits_per_depth,
+                self.native_gates, self.seed, self.clifford_factory, self.x_axis_mode,
+            )
+            circuits_ref = ref_exp.circuits()
+            circuits_int = self.circuits()
+            logging.info("[IRB] Auto‑generated reference and interleaved circuits.")
+
+        ref_exp = StandardRBExperiment(
+            self.qubits, self.depths, self.circuits_per_depth,
+            self.native_gates, self.seed, self.clifford_factory, self.x_axis_mode,
         )
-        logging.info(
-            f"--- Running Interleaved {self.num_qubits}-Qubit RB for Gate '{gate_name}' [{mode} Mode] ---"
-        )
+        ref_res = ref_exp.run(circuits_ref, engine, shots, plot=False,
+                              experimental_results=experimental_results_ref,
+                              experimental_data_by_depth=experimental_data_by_depth_ref,
+                              debug=debug)
 
-        # Step 1: Reference RB
-        if experimental_results_ref is None:
-            std_rb = StandardRBExperiment(
-                qubits=self.qubits,
-                depths=self.depths,
-                circuits_per_depth=self.circuits_per_depth,
-                native_gates=self.native_gates,
-                seed=self.seed,
-                clifford_factory=self.clifford_factory,
-            )
-            results_std = std_rb.run(engine=engine, shots=shots, plot=False)
-        else:
-            std_rb = StandardRBExperiment(self.qubits, self.depths, self.circuits_per_depth)
-            results_std = std_rb.run(
-                shots=shots, plot=False, experimental_results=experimental_results_ref
-            )
+        int_res = StandardRBExperiment.run(
+            self, circuits_int, engine, shots, plot=False,
+            experimental_results=experimental_results_int,
+            experimental_data_by_depth=experimental_data_by_depth_int,
+            debug=debug)
 
-        if not results_std.get("fit_successful"):
-            logging.error("Reference RB fit failed; aborting Interleaved RB.")
-            return None
+        epg = calculate_epg(ref_res["rb_fit"]["p"], int_res["rb_fit"]["p"], self.num_qubits)
+        fidelity = 1.0 - epg
+        gate_err_prb = calculate_prb_gate_error(ref_res["prb_fit"], int_res["prb_fit"], self.num_qubits)
 
-        # Step 2: Interleaved RB
-        if experimental_results_int is None:
-            results_irb = super().run(engine=engine, shots=shots, plot=False)
-        else:
-            results_irb = super().run(
-                shots=shots, plot=False, experimental_results=experimental_results_int
-            )
+        print(f"\n================= Interleaved RB Result =================")
+        print(f"Target gate              : {gname.lower()}")
+        print(f"Estimated fidelity     : {fidelity:.6f}")
+        print(f"Estimated gate error    : {epg:.6e}")
+        if gate_err_prb["calculation_successful"]:
+            print(f"PRB gate error          : {gate_err_prb['gate_error']:.6e}")
+        print("==========================================================\n")
 
-        if not results_irb.get("fit_successful"):
-            logging.error("Interleaved RB fit failed.")
-            return None
+        if plot:
+            try:
+                plot_rb_comparison(ref_res["rb_fit"], int_res["rb_fit"],
+                                   target_gate_name=gname, x_axis_mode=self.x_axis_mode)
+                plot_prb_comparison(ref_res["prb_fit"], int_res["prb_fit"],
+                                    target_gate_name=gname)
+            except Exception as e:
+                logging.warning(f"[WARN] Plot comparison failed: {e}")
 
-        # Step 3: Error per Gate Calculation
-        epg = calculate_epg(results_std["p"], results_irb["p"], self.num_qubits)
-
-        logging.info(f"Reference EPC = {results_std['epc']:.3e}")
-        logging.info(f"Interleaved EPC = {results_irb['epc']:.3e}")
-        logging.info(f"Derived Gate EPG ({gate_name}) = {epg:.3e}")
-
-        results_irb["epg"] = epg
-        self.results = {
+        return {
             "epg": epg,
-            "standard_results": results_std,
-            "interleaved_results": results_irb,
+            "fidelity": fidelity,
+            "prb_gate_error": gate_err_prb,
+            "rb_fit_ref": ref_res["rb_fit"],
+            "rb_fit_int": int_res["rb_fit"],
+            "prb_fit_ref": ref_res["prb_fit"],
+            "prb_fit_int": int_res["prb_fit"],
+            "is_clifford_gate": self._is_clifford_gate,
         }
 
-        # Visualization
-        if plot:
-            show_plot_at_end = axes is None
-            current_ax = axes or plt.subplots(figsize=(8, 5))[1]
-            plot_rb_comparison(results_std, results_irb, target_gate_name=gate_name, ax=current_ax)
-            if show_plot_at_end:
-                plt.tight_layout()
-                plt.show()
-
-        return self.results
+# =============================================================================
+# End of File
+# =============================================================================
