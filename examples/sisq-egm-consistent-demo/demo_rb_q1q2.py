@@ -21,6 +21,9 @@ from uuid import uuid4
 from pathlib import Path
 import matplotlib.pyplot as plt
 import argparse
+import matplotlib
+matplotlib.use("TkAgg")  # 保证 GUI 弹窗
+import matplotlib.pyplot as plt
 
 # -------------------------------------------------------------------
 # Framework Imports
