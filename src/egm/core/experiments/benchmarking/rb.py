@@ -1,358 +1,699 @@
-# =============================================================================
-# File    : src/egm/core/experiments/benchmarking/rb.py
-# Version : v5.4 - Unified Standard/Interleaved/Purity RB (EGM + SISQ Compatible + Modular PRB)
-# Author  : OpenAI-Assistant
-# =============================================================================
-"""
-Randomized Benchmarking (RB) Experiments - Unified Controller
-
-Implements Standard, Interleaved, and Purity RB workflows with:
-    • Clifford-based circuit generation
-    • Engine or user-data execution modes
-    • RB + PRB analysis integration (via prb.compute_purity_from_counts)
-    • Optional dual-plot visualization
-    • Debug-mode diagnostic outputs
-"""
+# File: egm/core/experiments/benchmarking/rb.py
+# ---------------------------------------------------------------------
+# Module: Randomized Benchmarking (RB) - Unified & Modular Architecture
+# ---------------------------------------------------------------------
+# Architecture Overview:
+#
+# Layer 1: Core Kernel (_generate_circuit)
+#          - Pure mathematical logic (Clifford sequence generation).
+#
+# Layer 2: Single Wrappers (generate_single_...)
+#          - Business logic separation (Standard vs Interleaved).
+#          - Handles Physics INLINE (Decomposition).
+#          - Returns physical/executable circuits.
+#
+# Layer 3: Batch & Orchestration (generate_..._circuits)
+#          - Handles Batching, Topology (Merge/Remap).
+#          - Handles Measurement Strategy.
+# ---------------------------------------------------------------------
 
 from __future__ import annotations
 import random
 import logging
-from typing import List, Dict, Optional, Union, Tuple, Protocol, Any
+from typing import List, Dict, Optional, Union, Tuple, Protocol, Any, Sequence
 
-import numpy as np
-import matplotlib.pyplot as plt
-
-# ---------------------------------------------------------------------
-# Internal Imports
-# ---------------------------------------------------------------------
+# Internal Framework Imports
 from egm.core.circuits.circuit import QuantumCircuit, Gate
 from egm.core.engine.executor import QuantumEngine
-from egm.core.analysis.rb import fit_rb_data, calculate_epg
-from egm.core.analysis.prb import (
-    fit_prb_data,
-    calculate_prb_gate_error,
-    compute_purity_from_counts,  # replaces old _compute_purity
-)
-from egm.reporting.visualizers.rb_plotter import (
-    plot_rb_data as plot_rb_single,
-    plot_rb_comparison,
-)
-from egm.reporting.visualizers.prb_plotter import (
-    plot_prb_single,
-    plot_prb_comparison,
-)
-from egm.core.circuits.gate_sets import CliffordGateSet, get_gate_set
+from egm.core.analysis.rb import stitch_rb_results, analyze_rb_standard, calculate_epg
+from egm.core.circuits.gate_sets import CliffordGateSet
+from egm.core.experiments.benchmarking.tools.rb_tools import _is_measure_gate
 
-# ---------------------------------------------------------------------
-# Logging Configuration
-# ---------------------------------------------------------------------
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
 # ---------------------------------------------------------------------
-# Defaults
+# Default Configuration
 # ---------------------------------------------------------------------
-DEFAULT_RB_DEPTHS: List[int] = [0, 2, 4, 8, 12, 20, 32, 48, 64]
-DEFAULT_CIRCUITS_PER_DEPTH: int = 25
+DEFAULT_RB_DEPTHS: List[int] = [0, 2, 4, 8, 16, 32, 64, 100]
+DEFAULT_CIRCUITS_PER_DEPTH: int = 20
 
 
 # ---------------------------------------------------------------------
-# CliffordFactory Protocol
+# Protocols & Helpers
 # ---------------------------------------------------------------------
 class CliffordFactory(Protocol):
-    """Interface for Clifford circuit generation."""
-
+    """
+    Protocol defining the interface for a Clifford gate sequence generator.
+    """
     def get_random_clifford_and_inverse(
-        self, qubits: List[int], seed: Optional[Union[int, float]]
+            self, qubits: List[int], seed: Optional[Union[int, float]]
     ) -> Tuple[List[Gate], List[Gate]]:
         ...
 
 
+def remap_circuit_layer(circuit: QuantumCircuit, target_qubits: Sequence[int]) -> QuantumCircuit:
+    """
+    Maps a logical circuit template to specific target physical qubits.
+
+    [Core Utility & Why we need it]
+    -------------------------------
+    Function: Spatial Translation ("Copy Paste + Change Address").
+    Use Case: Essential for 'same_per_qubit' (Control Variable) experiments.
+              It allows us to generate ONE template logic circuit (on qubit 0),
+              and then map the exact same mathematical sequence to Qubit 1, Qubit 2, etc.
+
+    [Design Note: Why use Sequence[int] instead of list[int]?]
+    ----------------------------------------------------------
+    1. Definition Scope: 'Sequence' is broader. It accepts both [0, 1] (list) and (0, 1) (tuple).
+    2. Hashability: Tuples are hashable; lists are not. Using Sequence allows us to accept user input flexibly
+       and convert to tuple internally for storage (e.g. as dictionary keys).
+
+    Args:
+        circuit: The source logical circuit (usually defined on abstract qubits like [0]).
+        target_qubits: The physical qubits to map onto.
+
+    Returns:
+        A new QuantumCircuit instance with gates mapped to target_qubits.
+    """
+    src_qubits = sorted(list(circuit.qubits))
+    dst_qubits = list(target_qubits)
+    if len(src_qubits) != len(dst_qubits):
+        raise ValueError(f"Remap dimension mismatch: {src_qubits} -> {dst_qubits}")
+
+    mapping = dict(zip(src_qubits, dst_qubits))
+    new_gates = []
+
+    for g in circuit.gates:
+        if _is_measure_gate(g): continue
+        new_q_args = tuple(mapping.get(q, q) for q in g.qubits)
+        new_gates.append(Gate(g.name, new_q_args, params=g.params))
+
+    new_circuit = QuantumCircuit(qubits=sorted(dst_qubits), gates=new_gates)
+    new_circuit.metadata = circuit.metadata.copy()
+    new_circuit.metadata["remapped_from"] = src_qubits
+    return new_circuit
+
+
+def merge_circuits_layer(circuits_list: List[QuantumCircuit]) -> QuantumCircuit:
+    """
+    Merges multiple disjoint logical circuits into one simultaneous circuit.
+
+    [Core Utility & Why we need it]
+    -------------------------------
+    Function: Parallel Composition ("Jigsaw Puzzle").
+    Use Case: Essential for 'Simultaneous RB'. Stitch distinct circuit objects
+              into a single global circuit object before execution.
+
+    Args:
+        circuits_list: A list of independent QuantumCircuit objects.
+
+    Returns:
+        A single merged QuantumCircuit containing all gates from input circuits.
+    """
+    all_qubits = set()
+    all_gates = []
+    meta_depth = None
+
+    for qc in circuits_list:
+        all_qubits.update(qc.qubits)
+        all_gates.extend(qc.gates)
+        if meta_depth is None: meta_depth = qc.metadata.get("depth")
+
+    merged_qc = QuantumCircuit(qubits=sorted(list(all_qubits)), gates=all_gates)
+    merged_qc.metadata = {"depth": meta_depth, "mode": "simultaneous_merged"}
+    return merged_qc
+
+
 # =============================================================================
-# Standard Randomized Benchmarking Experiment
+# Level 1: Core Kernel (Pure Logic)
 # =============================================================================
+
+def _generate_circuit(
+        qubits: Sequence[int],
+        depth: int,
+        seed: Optional[Union[int, float]] = None,
+        clifford_factory: Optional[CliffordFactory] = None,
+        interleaved_gate: Optional[Gate] = None,
+) -> QuantumCircuit:
+    """
+    Internal kernel to generate a single Clifford sequence circuit of a given depth.
+    Responsibilities: Pure math (Clifford group sampling).
+    """
+    if clifford_factory is None:
+        clifford_factory = CliffordGateSet()
+
+    rng = random.Random(seed)
+    q_list = list(qubits)
+    circ = QuantumCircuit(qubits=q_list)
+
+    if depth == 0:
+        circ.metadata.update({"depth": 0, "gate_count": 0, "seed": seed})
+        return circ
+
+    inv_seq = []
+
+    # Forward sequence generation
+    for _ in range(depth):
+        fwd, inv = clifford_factory.get_random_clifford_and_inverse(
+            q_list, seed=rng.random()
+        )
+        circ.add_gates(fwd)
+        if interleaved_gate:
+            circ.add_gate(interleaved_gate)
+        inv_seq.append(inv)
+
+    # Inverse sequence appending
+    for invs in reversed(inv_seq):
+        circ.add_gates(invs)
+
+    circ.metadata.update({
+        "depth": depth,
+        "gate_count": len(circ.gates),
+        "seed": seed
+    })
+
+    return circ
+
+
+# =============================================================================
+# Level 2: Single Wrappers (Business Logic + Physics Encapsulation)
+# =============================================================================
+
+def generate_single_standard_rb_circuit(
+        qubits: Sequence[int],
+        depth: int,
+        seed: Optional[Union[int, float]] = None,
+        clifford_factory: Optional[CliffordFactory] = None,
+        native_gates: Optional[Union[List[str], str]] = None,
+) -> QuantumCircuit:
+    """Wrapper for Standard RB: Returns a single DECOMPOSED circuit."""
+    circ = _generate_circuit(
+        qubits=qubits,
+        depth=depth,
+        seed=seed,
+        clifford_factory=clifford_factory,
+        interleaved_gate=None
+    )
+    # [Logic]: Physical decomposition is encapsulated here
+    if native_gates:
+        circ = circ.decompose(basis_gates=native_gates)
+    return circ
+
+
+def generate_single_interleaved_rb_circuit(
+        qubits: Sequence[int],
+        depth: int,
+        interleaved_gate: Gate,
+        seed: Optional[Union[int, float]] = None,
+        clifford_factory: Optional[CliffordFactory] = None,
+        native_gates: Optional[Union[List[str], str]] = None,
+) -> QuantumCircuit:
+    """Wrapper for Interleaved RB: Returns a single DECOMPOSED circuit."""
+    if interleaved_gate is None:
+        raise ValueError("Interleaved RB requires a valid 'interleaved_gate'.")
+
+    circ = _generate_circuit(
+        qubits=qubits,
+        depth=depth,
+        seed=seed,
+        clifford_factory=clifford_factory,
+        interleaved_gate=interleaved_gate
+    )
+    # [Logic]: Physical decomposition is encapsulated here
+    if native_gates:
+        circ = circ.decompose(basis_gates=native_gates)
+    return circ
+
+
+# =============================================================================
+# Level 3: Batch & Orchestration
+# =============================================================================
+
+# -------------------
+# A. Standard RB Family
+# -------------------
+
+def generate_standard_rb_circuits(
+        qubits: Sequence[int],
+        depths: List[int],
+        circuits_per_depth: int,
+        seed: Optional[int] = None,
+        native_gates: Optional[Union[List[str], str]] = None,
+        clifford_factory: Optional[CliffordFactory] = None,
+        with_measurement: bool = True
+) -> List[QuantumCircuit]:
+    """
+    Generates a batch of Standard RB circuits.
+
+    [Design Note: Seed Propagation & Reproducibility]
+    -------------------------------------------------
+    1. Master Seed Mode: The user provides a single 'seed' (e.g., 42) at this top level.
+    2. Derivation Mechanism: We create `rng = random.Random(seed)`. Inside the loop,
+       we generate a derived seed using `c_seed = rng.random()` for each circuit.
+
+    Q: If I run this function twice with seed=42, will Circuit A (Run 1) be identical to Circuit A (Run 2)?
+    A: YES. The 'rng' will produce the exact same sequence of derived seeds every time.
+       This ensures FULL REPRODUCIBILITY across experiments.
+
+    Q: Will Circuit A and Circuit B in the same batch look the same?
+    A: NO. Circuit A gets the 1st number from the RNG, Circuit B gets the 2nd.
+       They are distinct, ensuring statistical randomness within the batch.
+
+    Args:
+        qubits: Target qubits for the benchmark.
+        depths: List of Clifford depths to generate.
+        circuits_per_depth: Number of random seeds per depth.
+        seed: Master seed for reproducibility.
+        native_gates: Basis gate set for decomposition (e.g., ['rz', 'sx', 'cz']).
+        clifford_factory: Custom factory for Clifford generation.
+        with_measurement: If True, appends measurement gates to all qubits.
+
+    Returns:
+        A list of generated QuantumCircuit objects.
+    """
+    rng = random.Random(seed)
+    all_circuits = []
+
+    for depth in depths:
+        for i in range(circuits_per_depth):
+            c_seed = rng.random()
+
+            # [Call]: Logic + Decomposition happens in Level 2
+            circ = generate_single_standard_rb_circuit(
+                qubits=qubits,
+                depth=depth,
+                seed=c_seed,
+                clifford_factory=clifford_factory,
+                native_gates=native_gates
+            )
+            circ.metadata["sample_idx"] = i
+
+            # [Call]: Measurement strategy is applied in Level 3
+            if with_measurement:
+                circ.measure_all()
+
+            all_circuits.append(circ)
+
+    return all_circuits
+
+
+def generate_respectively_standard_rb_circuits(
+        qubit_groups: List[Sequence[int]],
+        depths: List[int],
+        circuits_per_depth: int,
+        same_per_qubit: bool = True,
+        seed: Optional[int] = None,
+        native_gates: Optional[Union[List[str], str]] = None,
+        clifford_factory: Optional[CliffordFactory] = None,
+        with_measurement: bool = True
+) -> Dict[Tuple[int, ...], Dict[int, List[QuantumCircuit]]]:
+    """Generates independent Standard RB circuits for multiple qubit groups."""
+    rng = random.Random(seed)
+    groups = [tuple(g) for g in qubit_groups]
+    results = {g: {d: [] for d in depths} for g in groups}
+    template_qubits = list(range(len(groups[0]))) if groups else []
+
+    for d in depths:
+        for i in range(circuits_per_depth):
+            if same_per_qubit:
+                iter_seed = rng.random() if seed is None else (seed + d * 1000 + i)
+                # Template is created decomposed
+                template = generate_single_standard_rb_circuit(
+                    qubits=template_qubits,
+                    depth=d,
+                    seed=iter_seed,
+                    clifford_factory=clifford_factory,
+                    native_gates=native_gates
+                )
+                for g in groups:
+                    mapped = remap_circuit_layer(template, target_qubits=g)
+                    mapped.metadata["sample_idx"] = i
+                    if with_measurement:
+                        mapped.measure_all()
+                    results[g][d].append(mapped)
+            else:
+                for g in groups:
+                    iter_seed = rng.random()
+                    circ = generate_single_standard_rb_circuit(
+                        qubits=g,
+                        depth=d,
+                        seed=iter_seed,
+                        clifford_factory=clifford_factory,
+                        native_gates=native_gates
+                    )
+                    circ.metadata["sample_idx"] = i
+                    if with_measurement:
+                        circ.measure_all()
+                    results[g][d].append(circ)
+
+    return results
+
+
+def generate_simultaneously_standard_rb_circuits(
+        qubit_groups: List[Sequence[int]],
+        depths: List[int],
+        circuits_per_depth: int,
+        same_per_qubit: bool = True,
+        seed: Optional[int] = None,
+        native_gates: Optional[Union[List[str], str]] = None,
+        clifford_factory: Optional[CliffordFactory] = None,
+        with_measurement: bool = True
+) -> Dict[int, List[QuantumCircuit]]:
+    """Generates Standard RB circuits where all groups run simultaneously."""
+    rng = random.Random(seed)
+    groups = [tuple(g) for g in qubit_groups]
+    circuits_by_depth = {d: [] for d in depths}
+    template_qubits = list(range(len(groups[0]))) if groups else []
+
+    for d in depths:
+        for i in range(circuits_per_depth):
+            sub_circuits = []
+            if same_per_qubit:
+                iter_seed = rng.random() if seed is None else (seed + d * 1000 + i)
+                template = generate_single_standard_rb_circuit(
+                    qubits=template_qubits,
+                    depth=d,
+                    seed=iter_seed,
+                    clifford_factory=clifford_factory,
+                    native_gates=native_gates
+                )
+                for g in groups:
+                    sub_circuits.append(remap_circuit_layer(template, target_qubits=g))
+            else:
+                for g in groups:
+                    iter_seed = rng.random()
+                    circ = generate_single_standard_rb_circuit(
+                        qubits=g,
+                        depth=d,
+                        seed=iter_seed,
+                        clifford_factory=clifford_factory,
+                        native_gates=native_gates
+                    )
+                    sub_circuits.append(circ)
+
+            merged = merge_circuits_layer(sub_circuits)
+            merged.metadata["sample_idx"] = i
+            merged.metadata["groups"] = groups
+
+            if with_measurement:
+                merged.measure_all()
+
+            circuits_by_depth[d].append(merged)
+
+    return circuits_by_depth
+
+
+# -------------------
+# B. Interleaved RB Family
+# -------------------
+
+def generate_interleaved_rb_circuits(
+        qubits: Sequence[int],
+        depths: List[int],
+        circuits_per_depth: int,
+        interleaved_gate: Gate,
+        seed: Optional[int] = None,
+        native_gates: Optional[Union[List[str], str]] = None,
+        clifford_factory: Optional[CliffordFactory] = None,
+        with_measurement: bool = True
+) -> List[QuantumCircuit]:
+    """Generates a batch of Interleaved RB circuits."""
+    rng = random.Random(seed)
+    all_circuits = []
+
+    for depth in depths:
+        for i in range(circuits_per_depth):
+            c_seed = rng.random()
+
+            circ = generate_single_interleaved_rb_circuit(
+                qubits=qubits,
+                depth=depth,
+                interleaved_gate=interleaved_gate,
+                seed=c_seed,
+                clifford_factory=clifford_factory,
+                native_gates=native_gates
+            )
+            circ.metadata["sample_idx"] = i
+
+            if with_measurement:
+                circ.measure_all()
+
+            all_circuits.append(circ)
+
+    return all_circuits
+
+
+def generate_respectively_interleaved_rb_circuits(
+        qubit_groups: List[Sequence[int]],
+        depths: List[int],
+        circuits_per_depth: int,
+        interleaved_gate: Gate,
+        same_per_qubit: bool = True,
+        seed: Optional[int] = None,
+        native_gates: Optional[Union[List[str], str]] = None,
+        clifford_factory: Optional[CliffordFactory] = None,
+        with_measurement: bool = True
+) -> Dict[Tuple[int, ...], Dict[int, List[QuantumCircuit]]]:
+    """Generates independent Interleaved RB circuits (Respectively)."""
+    rng = random.Random(seed)
+    groups = [tuple(g) for g in qubit_groups]
+    results = {g: {d: [] for d in depths} for g in groups}
+    template_qubits = list(range(len(groups[0]))) if groups else []
+
+    for d in depths:
+        for i in range(circuits_per_depth):
+            if same_per_qubit:
+                iter_seed = rng.random() if seed is None else (seed + d * 1000 + i)
+                template = generate_single_interleaved_rb_circuit(
+                    qubits=template_qubits,
+                    depth=d,
+                    interleaved_gate=interleaved_gate,
+                    seed=iter_seed,
+                    clifford_factory=clifford_factory,
+                    native_gates=native_gates
+                )
+                for g in groups:
+                    mapped = remap_circuit_layer(template, target_qubits=g)
+                    mapped.metadata["sample_idx"] = i
+                    if with_measurement:
+                        mapped.measure_all()
+                    results[g][d].append(mapped)
+            else:
+                for g in groups:
+                    iter_seed = rng.random()
+                    circ = generate_single_interleaved_rb_circuit(
+                        qubits=template_qubits,
+                        depth=d,
+                        interleaved_gate=interleaved_gate,
+                        seed=iter_seed,
+                        clifford_factory=clifford_factory,
+                        native_gates=native_gates
+                    )
+                    mapped = remap_circuit_layer(circ, target_qubits=g)
+                    mapped.metadata["sample_idx"] = i
+                    if with_measurement:
+                        mapped.measure_all()
+                    results[g][d].append(mapped)
+
+    return results
+
+
+def generate_simultaneously_interleaved_rb_circuits(
+        qubit_groups: List[Sequence[int]],
+        depths: List[int],
+        circuits_per_depth: int,
+        interleaved_gate: Gate,
+        same_per_qubit: bool = True,
+        seed: Optional[int] = None,
+        native_gates: Optional[Union[List[str], str]] = None,
+        clifford_factory: Optional[CliffordFactory] = None,
+        with_measurement: bool = True
+) -> Dict[int, List[QuantumCircuit]]:
+    """Generates Interleaved RB circuits where all groups run simultaneously."""
+    rng = random.Random(seed)
+    groups = [tuple(g) for g in qubit_groups]
+    circuits_by_depth = {d: [] for d in depths}
+    template_qubits = list(range(len(groups[0]))) if groups else []
+
+    for d in depths:
+        for i in range(circuits_per_depth):
+            sub_circuits = []
+            if same_per_qubit:
+                iter_seed = rng.random() if seed is None else (seed + d * 1000 + i)
+                template = generate_single_interleaved_rb_circuit(
+                    qubits=template_qubits,
+                    depth=d,
+                    interleaved_gate=interleaved_gate,
+                    seed=iter_seed,
+                    clifford_factory=clifford_factory,
+                    native_gates=native_gates
+                )
+                for g in groups:
+                    sub_circuits.append(remap_circuit_layer(template, target_qubits=g))
+            else:
+                for g in groups:
+                    iter_seed = rng.random()
+                    circ = generate_single_interleaved_rb_circuit(
+                        qubits=template_qubits,
+                        depth=d,
+                        interleaved_gate=interleaved_gate,
+                        seed=iter_seed,
+                        clifford_factory=clifford_factory,
+                        native_gates=native_gates
+                    )
+                    sub_circuits.append(remap_circuit_layer(circ, target_qubits=g))
+
+            merged = merge_circuits_layer(sub_circuits)
+            merged.metadata["sample_idx"] = i
+            merged.metadata["groups"] = groups
+
+            if with_measurement:
+                merged.measure_all()
+
+            circuits_by_depth[d].append(merged)
+
+    return circuits_by_depth
+
+
+# =============================================================================
+# Experiment Classes (Interfaces)
+# =============================================================================
+
 class StandardRBExperiment:
     """
-    Standard RB experiment controller supporting:
-      - RB + PRB analysis
-      - Engine simulation / user data
-      - Debug mode and plotting
+    Standard Randomized Benchmarking Experiment.
+
+    This class encapsulates the configuration, circuit generation, execution,
+    and analysis of a Standard RB experiment. It adheres to industry standards
+    by providing state management (caching circuits/results) and simplified
+    method signatures.
     """
 
     def __init__(
-        self,
-        qubits: Union[int, List[int]],
-        depths: Optional[List[int]] = None,
-        circuits_per_depth: int = DEFAULT_CIRCUITS_PER_DEPTH,
-        native_gates: Optional[List[str]] = None,
-        seed: Optional[Union[int, float]] = None,
-        clifford_factory: Optional[Union[CliffordFactory, str]] = None,
-        x_axis_mode: str = "GATE_COUNT",
+            self,
+            qubits: Union[int, List[int]],
+            depths: List[int] = DEFAULT_RB_DEPTHS,
+            circuits_per_depth: int = DEFAULT_CIRCUITS_PER_DEPTH,
+            native_gates: Optional[Union[List[str], str]] = None,
+            seed: Optional[Union[int, float]] = None,
+            clifford_factory: Optional[CliffordFactory] = None,
     ):
-        self.qubits = [qubits] if isinstance(qubits, int) else qubits
+        self.qubits = [qubits] if isinstance(qubits, int) else list(qubits)
         self.num_qubits = len(self.qubits)
-        self.depths = depths or DEFAULT_RB_DEPTHS
+        self.depths = sorted(set(depths))
         self.circuits_per_depth = circuits_per_depth
         self.native_gates = native_gates
         self.seed = seed
-        self.x_axis_mode = x_axis_mode.upper()
-        if self.x_axis_mode not in ["DEPTH", "GATE_COUNT"]:
-            raise ValueError("x_axis_mode must be 'DEPTH' or 'GATE_COUNT'.")
+        self.clifford_factory = clifford_factory or CliffordGateSet()
 
-        # Factory auto-resolve
-        if clifford_factory is None:
-            clifford_factory = CliffordGateSet()
-        elif isinstance(clifford_factory, str):
-            if clifford_factory.lower() in ["rb_universal", "rb_clifford"]:
-                clifford_factory = CliffordGateSet()
-            else:
-                clifford_factory = get_gate_set(clifford_factory)
-        self.clifford_factory = clifford_factory
-        self.results: Dict[str, Any] = {}
+        # State management
+        self._circuits: Optional[List[QuantumCircuit]] = None
+        self._results: Optional[List[Dict[str, Any]]] = None
+        self._analysis_result: Optional[Any] = None
 
-        logging.info(
-            f"[RB-Init] {self.num_qubits}Q RB initialized "
-            f"(x_axis={self.x_axis_mode}, native={'ON' if native_gates else 'OFF'})"
+        logging.info(f"Standard RB Configured: Qubits={self.qubits}, Depths={self.depths}")
+
+    def generate_single_standard_rb_circuit(self, depth: int, seed: Optional[float] = None, with_measurement: bool = True) -> QuantumCircuit:
+        """Generates a SINGLE circuit for this experiment configuration."""
+        # [Call]: native_gates passed to Level 2
+        circ = generate_single_standard_rb_circuit(
+            qubits=self.qubits,
+            depth=depth,
+            seed=seed,
+            clifford_factory=self.clifford_factory,
+            native_gates=self.native_gates
         )
-
-    # -------------------------------------------------------------------------
-    def _generate_circuit(
-        self,
-        depth: int,
-        seed: Optional[Union[int, float]],
-        interleaved_gate: Optional[Gate] = None,
-    ) -> QuantumCircuit:
-        """Generate a single RB sequence circuit."""
-        rng = random.Random(seed)
-        circ = QuantumCircuit(qubits=self.qubits)
-
-        if depth == 0:
+        # [Call]: Only measurement happens here
+        if with_measurement:
             circ.measure_all()
-            circ.metadata.update({"depth": 0, "gate_count": 0, "seed": seed})
-            return circ
-
-        inv_seq = []
-        for _ in range(depth):
-            fwd, inv = self.clifford_factory.get_random_clifford_and_inverse(
-                self.qubits, rng.random()
-            )
-            circ.add_gates(fwd)
-            if interleaved_gate:
-                circ.add_gate(interleaved_gate)
-            inv_seq.append(inv)
-
-        for invs in reversed(inv_seq):
-            circ.add_gates(invs)
-
-        circ.measure_all()
-        circ.metadata.update(
-            {"depth": depth, "gate_count": len(circ.gates), "seed": seed}
-        )
         return circ
 
-    def generate_single_circuit(
-        self, depth: int, seed: Optional[Union[int, float]] = None
-    ) -> QuantumCircuit:
-        """Return one RB circuit (decomposed if native_gates provided)."""
-        circ = self._generate_circuit(
-            depth, seed, getattr(self, "interleaved_gate", None)
+    def generate_standard_rb_circuits(self, with_measurement: bool = True) -> List[QuantumCircuit]:
+        """
+        Generates the FULL batch of circuits based on init config.
+        Updates self._circuits cache.
+        """
+        logging.info("Generating RB circuit batch...")
+        self._circuits = generate_standard_rb_circuits(
+            qubits=self.qubits,
+            depths=self.depths,
+            circuits_per_depth=self.circuits_per_depth,
+            seed=self.seed,
+            native_gates=self.native_gates,
+            clifford_factory=self.clifford_factory,
+            with_measurement=with_measurement
         )
-        if self.native_gates:
-            circ = circ.decompose(basis_gates=self.native_gates)
-        return circ
+        return self._circuits
 
     def circuits(self) -> List[QuantumCircuit]:
-        """Generate the full set of RB circuits."""
-        rng = random.Random(self.seed)
-        all_circuits = []
-        for d in self.depths:
-            for _ in range(self.circuits_per_depth):
-                all_circuits.append(self.generate_single_circuit(d, rng.random()))
-        return all_circuits
+        """Accessor that employs Lazy Loading."""
+        if self._circuits is None:
+            return self.generate_standard_rb_circuits()
+        return self._circuits
 
-    # -------------------------------------------------------------------------
-    def run(
-        self,
-        circuits: Optional[List[QuantumCircuit]] = None,
-        engine: Optional[QuantumEngine] = None,
-        shots: int = 2048,
-        plot: bool = True,
-        experimental_results: Optional[List[Dict[str, float]]] = None,
-        experimental_data_by_depth: Optional[Dict[int, List[Dict[str, float]]]] = None,
-        debug: bool = False,
-    ) -> Dict[str, Any]:
-        """Execute RB + PRB analysis in unified workflow."""
-        rb_type = (
-            "Interleaved" if isinstance(self, InterleavedRBExperiment) else "Standard"
-        )
-        if circuits is None:
-            circuits = self.circuits()
-        mode = (
-            "Engine"
-            if engine
-            else ("User-Data-Flat" if experimental_results else "User-Data-ByDepth")
-        )
-        logging.info(
-            f"=== Running {rb_type} RB [{mode}] with {len(circuits)} circuits ==="
-        )
+    def run(self, engine: QuantumEngine, shots: int = 1024, plot: bool = True) -> Any:
+        """
+        Executes the experiment, stitches data, and runs analysis.
 
-        ground = "0" * self.num_qubits
-        survivals: Dict[int, List[float]] = {d: [] for d in self.depths}
-        purities: Dict[int, List[float]] = {d: [] for d in self.depths}
-        gate_counts_avg: Dict[int, float] = {d: 0.0 for d in self.depths}
+        Lifecycle:
+        1. Generate circuits (if not exists).
+        2. Execute via Engine -> get raw counts.
+        3. Stitch Results -> merge counts with circuit metadata.
+        4. Analyze -> Curve fit and fidelity calculation.
+        5. Plot (optional).
 
-        # Acquire data
-        if experimental_data_by_depth:
-            for circ in circuits:
-                d = circ.metadata["depth"]
-                gate_counts_avg[d] += circ.metadata.get("gate_count", 0)
-                for dat in experimental_data_by_depth.get(d, []):
-                    total = sum(dat.values())
-                    if total > 0:
-                        p0 = dat.get(ground, 0) / total
-                        survivals[d].append(p0)
-                        purities[d].append(
-                            compute_purity_from_counts(dat, self.num_qubits)
-                        )
-                        if debug:
-                            print(
-                                f"[DEBUG] depth={d}, survival={p0:.5f}, "
-                                f"purity={purities[d][-1]:.5f}"
-                            )
+        Args:
+            engine: The quantum execution engine.
+            shots: Number of shots per circuit.
+            plot: Whether to generate plots automatically.
 
-        elif experimental_results:
-            if len(experimental_results) != len(circuits):
-                raise ValueError(
-                    "Mismatch between experimental_results and circuits."
-                )
-            for circ, dat in zip(circuits, experimental_results):
-                if isinstance(dat, tuple) and len(dat) == 2:
-                    _, dat = dat
-                if not isinstance(dat, dict):
-                    raise TypeError(
-                        f"Unexpected data type for experimental result: {type(dat)}"
-                    )
-                d = circ.metadata["depth"]
-                gate_counts_avg[d] += circ.metadata.get("gate_count", 0)
-                t = sum(dat.values())
-                if t > 0:
-                    p0 = dat.get(ground, 0) / t
-                    survivals[d].append(p0)
-                    purities[d].append(
-                        compute_purity_from_counts(dat, self.num_qubits)
-                    )
-                    if debug:
-                        print(
-                            f"[DEBUG] depth={d}, survival={p0:.5f}, "
-                            f"purity={purities[d][-1]:.5f}"
-                        )
+        Returns:
+            The Analysis Result object (RBAnalysisResult).
+        """
+        if self._circuits is None:
+            self.generate_standard_rb_circuits()
 
-        elif engine:
-            res = engine.execute_with_ideal(circuits, shots=shots)
-            for circ, (_, counts) in zip(circuits, res):
-                d = circ.metadata["depth"]
-                gate_counts_avg[d] += circ.metadata.get("gate_count", 0)
-                p0 = counts.get(ground, 0) / shots
-                survivals[d].append(p0)
-                purities[d].append(
-                    compute_purity_from_counts(counts, self.num_qubits)
-                )
-                if debug:
-                    print(
-                        f"[DEBUG] depth={d}, survival={p0:.5f}, "
-                        f"purity={purities[d][-1]:.5f}"
-                    )
-        else:
-            raise ValueError("Must supply either engine or experimental data.")
+        logging.info(f"Executing {len(self._circuits)} circuits...")
 
-        # Normalize average gate counts
-        for d in self.depths:
-            n = max(len(survivals[d]), 1)
-            gate_counts_avg[d] /= n
+        # 1. Execution
+        execution_results = engine.execute_with_ideal(self._circuits, shots=shots)
 
-        # Fit RB and PRB curves
-        rb_fit = fit_rb_data(
-            survivals=survivals, num_qubits=self.num_qubits, gate_counts=gate_counts_avg
-        )
-        prb_fit = fit_prb_data(purities=purities, num_qubits=self.num_qubits)
-        self.results = {"rb_fit": rb_fit, "prb_fit": prb_fit}
+        # 2. Stitching (Using the independent helper function)
+        self._results = stitch_rb_results(self._circuits, execution_results)
 
-        if debug:
-            print("[DEBUG] RB Fit:", rb_fit)
-            print("[DEBUG] PRB Fit:", prb_fit)
+        # 3. Analysis
+        logging.info("Analyzing RB data...")
+        self._analysis_result = analyze_rb_standard(self._results)
 
-        # Plot results
+        # 4. Plotting
         if plot:
             try:
-                plot_rb_single(rb_fit, title=f"{rb_type} RB Decay", x_axis_mode=self.x_axis_mode)
-                plot_prb_single(prb_fit, num_qubits=self.num_qubits, title=f"{rb_type} PRB Decay")
+                from egm.reporting.visualizers.rb_plotter import plot_rb_results
+                plot_rb_results(self._analysis_result)
+            except ImportError:
+                logging.warning("Plotting skipped: 'egm.reporting.visualizers.rb_plotter' not found.")
             except Exception as e:
-                logging.warning(f"[WARN] Plot failed: {e}")
+                logging.warning(f"Plotting failed: {e}")
 
-        rb_fit["fit_successful"] = rb_fit.get("fit_successful", False)
-        return {
-            "rb_fit": rb_fit,
-            "prb_fit": prb_fit,
-            "fit_successful": rb_fit.get("fit_successful", False),
-        }
+        return self._analysis_result
 
 
-# =============================================================================
-# Interleaved Randomized Benchmarking Experiment
-# =============================================================================
 class InterleavedRBExperiment(StandardRBExperiment):
-    """Interleaved RB with per-gate EPG and fidelity."""
-
-    _CLIFFORD_NAMES = {
-        "i",
-        "id",
-        "x",
-        "y",
-        "z",
-        "h",
-        "s",
-        "sdg",
-        "sx",
-        "sxdg",
-        "sy",
-        "sydg",
-        "rx90",
-        "ry90",
-        "cx",
-        "cnot",
-        "cz",
-        "swap",
-        "ccnot",
-        "fredkin",
-        "cswap",
-        "ccz",
-        "ecr",
-    }
+    """
+    Configuration holder for Interleaved RB (IRB).
+    Generates both Reference (Standard) and Interleaved batches.
+    """
 
     def __init__(
-        self,
-        qubits: Union[int, List[int]],
-        interleaved_gate: Gate,
-        depths: Optional[List[int]] = None,
-        circuits_per_depth: int = DEFAULT_CIRCUITS_PER_DEPTH,
-        native_gates: Optional[List[str]] = None,
-        seed: Optional[Union[int, float]] = None,
-        clifford_factory: Optional[Union[CliffordFactory, str]] = None,
-        x_axis_mode: str = "GATE_COUNT",
+            self,
+            interleaved_gate: Gate,
+            qubits: Union[int, List[int]],
+            depths: List[int] = DEFAULT_RB_DEPTHS,
+            circuits_per_depth: int = DEFAULT_CIRCUITS_PER_DEPTH,
+            native_gates: Optional[Union[List[str], str]] = None,
+            seed: Optional[Union[int, float]] = None,
+            clifford_factory: Optional[CliffordFactory] = None,
     ):
-        if clifford_factory is None:
-            cf = CliffordGateSet()
-            cf.two_qubit_gate_name = "cz"
-            clifford_factory = cf
-            logging.info("[IRB] Using default CZ-based Clifford factory.")
-        elif isinstance(clifford_factory, str):
-            cf = get_gate_set(clifford_factory)
-            if isinstance(cf, CliffordGateSet) and getattr(
-                cf, "two_qubit_gate_name", ""
-            ).lower() == "cnot":
-                cf.two_qubit_gate_name = "cz"
-                logging.info("[IRB] Factory switched to CZ-based randomization.")
-            clifford_factory = cf
-
         super().__init__(
             qubits=qubits,
             depths=depths,
@@ -360,171 +701,107 @@ class InterleavedRBExperiment(StandardRBExperiment):
             native_gates=native_gates,
             seed=seed,
             clifford_factory=clifford_factory,
-            x_axis_mode=x_axis_mode,
         )
-
         self.interleaved_gate = interleaved_gate
-        self.num_qubits = len(self.qubits)
-        self._is_clifford_gate = (
-            self.num_qubits == 1 or interleaved_gate.name.lower() in self._CLIFFORD_NAMES
-        )
-        if self._is_clifford_gate:
-            logging.info(f"[IRB] Target gate '{interleaved_gate.name}' is Clifford.")
-        else:
-            logging.warning(
-                f"[IRB] Gate '{interleaved_gate.name}' NOT Clifford - non-inverting."
-            )
 
-    def _generate_single_interleaved_circuit(
-        self, depth: int, seed: Optional[Union[int, float]] = None
-    ) -> QuantumCircuit:
-        rng = random.Random(seed)
-        circ = QuantumCircuit(qubits=self.qubits)
-        if depth == 0:
+        # Internal reference experiment instance
+        self.reference_experiment = StandardRBExperiment(
+            qubits=qubits,
+            depths=depths,
+            circuits_per_depth=circuits_per_depth,
+            native_gates=native_gates,
+            seed=seed,
+            clifford_factory=clifford_factory,
+        )
+        self._int_circuits: Optional[List[QuantumCircuit]] = None
+        self._results_ref: Optional[List[Dict[str, Any]]] = None
+        self._results_int: Optional[List[Dict[str, Any]]] = None
+
+    def generate_single_interleaved_rb_circuit(self, depth: int, seed: Optional[float] = None, with_measurement: bool = True) -> QuantumCircuit:
+        """Generates a SINGLE Interleaved circuit (with inline physics)."""
+        # [Call]: native_gates passed to Level 2
+        circ = generate_single_interleaved_rb_circuit(
+            qubits=self.qubits,
+            depth=depth,
+            interleaved_gate=self.interleaved_gate,
+            seed=seed,
+            clifford_factory=self.clifford_factory,
+            native_gates=self.native_gates
+        )
+        # [Call]: Only measurement happens here
+        if with_measurement:
             circ.measure_all()
-            circ.metadata.update({"depth": 0, "gate_count": 0, "seed": seed})
-            return circ
-
-        forward_seq: List[Gate] = []
-        for _ in range(depth):
-            fwd, _ = self.clifford_factory.get_random_clifford_and_inverse(
-                self.qubits, rng.random()
-            )
-            forward_seq.extend(fwd)
-            forward_seq.append(self.interleaved_gate)
-
-        for g in forward_seq:
-            circ.add_gate(g)
-
-        if self._is_clifford_gate:
-            inv_circ = QuantumCircuit(self.qubits)
-            inv_circ.add_gates(forward_seq)
-            circ.add_gates(inv_circ.inverse().gates)
-
-        circ.measure_all()
-        circ.metadata.update(
-            {
-                "depth": depth,
-                "gate_count": len(circ.gates),
-                "seed": seed,
-                "mode": "interleaved",
-                "interleaved_gate": self.interleaved_gate.name,
-            }
-        )
-        if self.native_gates:
-            circ = circ.decompose(basis_gates=self.native_gates)
         return circ
 
-    def circuits(self) -> List[QuantumCircuit]:
-        rng = random.Random(self.seed)
-        return [
-            self._generate_single_interleaved_circuit(d, rng.random())
-            for d in self.depths
-            for _ in range(self.circuits_per_depth)
-        ]
+    def circuits(self, with_measurement: bool = True) -> Dict[str, List[QuantumCircuit]]:
+        """Generates both Reference and Interleaved circuits."""
+        ref_circuits = self.reference_experiment.circuits()
+        for c in ref_circuits: c.metadata["type"] = "reference"
 
-    def run(
-        self,
-        circuits_ref: Optional[List[QuantumCircuit]] = None,
-        circuits_int: Optional[List[QuantumCircuit]] = None,
-        engine: Optional[QuantumEngine] = None,
-        shots: int = 2048,
-        plot: bool = True,
-        experimental_data_by_depth_ref: Optional[Dict[int, List[Dict[str, float]]]] = None,
-        experimental_data_by_depth_int: Optional[Dict[int, List[Dict[str, float]]]] = None,
-        experimental_results_ref: Optional[List[Dict[str, float]]] = None,
-        experimental_results_int: Optional[List[Dict[str, float]]] = None,
-        debug: bool = False,
-    ) -> Dict[str, Any]:
-        gname = self.interleaved_gate.name.upper()
-        logging.info(f"=== Interleaved RB for gate '{gname}' ===")
-
-        # Generate circuits automatically if needed
-        if engine and (circuits_ref is None or circuits_int is None):
-            ref_exp = StandardRBExperiment(
-                self.qubits,
-                self.depths,
-                self.circuits_per_depth,
-                self.native_gates,
-                self.seed,
-                self.clifford_factory,
-                self.x_axis_mode,
+        if self._int_circuits is None:
+            self._int_circuits = generate_interleaved_rb_circuits(
+                qubits=self.qubits,
+                depths=self.depths,
+                circuits_per_depth=self.circuits_per_depth,
+                interleaved_gate=self.interleaved_gate,
+                seed=self.seed,
+                native_gates=self.native_gates,
+                clifford_factory=self.clifford_factory,
+                with_measurement=with_measurement
             )
-            circuits_ref = ref_exp.circuits()
-            circuits_int = self.circuits()
-            logging.info("[IRB] Auto-generated reference and interleaved circuits.")
+        for c in self._int_circuits: c.metadata["type"] = "interleaved"
 
-        ref_exp = StandardRBExperiment(
-            self.qubits,
-            self.depths,
-            self.circuits_per_depth,
-            self.native_gates,
-            self.seed,
-            self.clifford_factory,
-            self.x_axis_mode,
-        )
-        ref_res = ref_exp.run(
-            circuits_ref,
-            engine,
-            shots,
-            plot=False,
-            experimental_results=experimental_results_ref,
-            experimental_data_by_depth=experimental_data_by_depth_ref,
-            debug=debug,
-        )
+        return {
+            "reference": ref_circuits,
+            "interleaved": self._int_circuits
+        }
 
-        int_res = StandardRBExperiment.run(
-            self,
-            circuits_int,
-            engine,
-            shots,
-            plot=False,
-            experimental_results=experimental_results_int,
-            experimental_data_by_depth=experimental_data_by_depth_int,
-            debug=debug,
-        )
+    def run(self, engine: QuantumEngine, shots: int = 1024, plot: bool = True) -> Dict[str, Any]:
+        """
+        Executes and Analyzes the Interleaved RB Experiment.
+        """
+        circs_dict = self.circuits()
+        ref_circs = circs_dict['reference']
+        int_circs = circs_dict['interleaved']
 
-        epg = calculate_epg(ref_res["rb_fit"]["p"], int_res["rb_fit"]["p"], self.num_qubits)
-        fidelity = 1.0 - epg
-        gate_err_prb = calculate_prb_gate_error(
-            ref_res["prb_fit"], int_res["prb_fit"], self.num_qubits
-        )
+        logging.info("Executing Reference Batch...")
+        raw_ref = engine.execute_with_ideal(ref_circs, shots=shots)
+        # Use helper
+        self._results_ref = stitch_rb_results(ref_circs, raw_ref)
 
-        print("\n================= Interleaved RB Result =================")
-        print(f"Target gate           : {gname.lower()}")
-        print(f"Estimated fidelity     : {fidelity:.6f}")
-        print(f"Estimated gate error   : {epg:.6e}")
-        if gate_err_prb["calculation_successful"]:
-            print(f"PRB gate error         : {gate_err_prb['gate_error']:.6e}")
-        print("==========================================================\n")
+        logging.info("Executing Interleaved Batch...")
+        raw_int = engine.execute_with_ideal(int_circs, shots=shots)
+        # Use helper
+        self._results_int = stitch_rb_results(int_circs, raw_int)
+
+        logging.info("Analyzing Interleaved RB data...")
+        fit_ref = analyze_rb_standard(self._results_ref)
+        fit_int = analyze_rb_standard(self._results_int)
+
+        success = fit_ref.success and fit_int.success
+        epg = None
+
+        if success:
+            p_ref = next((p.value for p in fit_ref.fit.params if p.name == 'p'), None)
+            p_int = next((p.value for p in fit_int.fit.params if p.name == 'p'), None)
+            if p_ref is not None and p_int is not None:
+                epg = calculate_epg(p_ref, p_int, self.num_qubits)
+
+        self._analysis_result = {
+            "success": success,
+            "epg": epg,
+            "fit_reference": fit_ref,
+            "fit_interleaved": fit_int,
+            "gate_name": self.interleaved_gate.name
+        }
 
         if plot:
             try:
-                plot_rb_comparison(
-                    ref_res["rb_fit"],
-                    int_res["rb_fit"],
-                    target_gate_name=gname,
-                    x_axis_mode=self.x_axis_mode,
-                )
-                plot_prb_comparison(
-                    ref_res["prb_fit"],
-                    int_res["prb_fit"],
-                    target_gate_name=gname,
-                )
+                from egm.reporting.visualizers.rb_plotter import plot_irb_results
+                plot_irb_results(self._analysis_result)
+            except ImportError:
+                logging.warning("Plotting skipped: 'egm.reporting.visualizers.rb_plotter' not found.")
             except Exception as e:
-                logging.warning(f"[WARN] Plot comparison failed: {e}")
+                logging.warning(f"Plotting failed: {e}")
 
-        return {
-            "epg": epg,
-            "fidelity": fidelity,
-            "prb_gate_error": gate_err_prb,
-            "rb_fit_ref": ref_res["rb_fit"],
-            "rb_fit_int": int_res["rb_fit"],
-            "prb_fit_ref": ref_res["prb_fit"],
-            "prb_fit_int": int_res["prb_fit"],
-            "is_clifford_gate": self._is_clifford_gate,
-        }
-
-# =============================================================================
-# End of File
-# =============================================================================
+        return self._analysis_result

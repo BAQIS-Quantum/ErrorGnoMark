@@ -1,4 +1,4 @@
-# File: examples/new-demos/unified_benchmarking_demo.py
+# File: examples/new-demos/new_rb_demo_q1q2.py
 # -------------------------------------------------------------------
 # Unified Benchmarking Demo (RB + XEB)
 # -------------------------------------------------------------------
@@ -37,7 +37,7 @@ try:
 
     # Visualizers
     from egm.reporting.visualizers.rb_plotter import plot_rb_data
-    from egm.reporting.visualizers.xeb_plotter import plot_xeb_decay, plot_spb_decay
+    from egm.reporting.visualizers.xeb_plotter import plot_xeb_decay
 except ImportError as e:
     print(f"[ImportError] {e}")
     print("Please ensure ErrorGnoMark is installed (pip install -e .)")
@@ -68,7 +68,15 @@ def generate_reports(result_obj, metadata: dict, template_subdir="html") -> None
 
     output_dir = Path("reports")
     output_dir.mkdir(exist_ok=True)
-    template_dir = Path(f"src/egm/reporting/templates/{template_subdir}")
+    # template_dir = Path(f"src/egm/reporting/templates/{template_subdir}")
+
+    import egm
+    # 1. 获取 egm 包在电脑上的绝对安装路径
+    package_root = Path(egm.__file__).parent
+    # 2. 拼接出模板的绝对路径
+    template_dir = package_root / "reporting" / "templates" / "html"
+
+
     html_gen = HTMLReportGenerator(template_dir=template_dir)
     html_path = output_dir / f"{metadata['Experiment Type'].lower()}_{result_obj.result_id}.html"
     html_gen.generate_rb_report(result=result_obj, output_path=html_path)

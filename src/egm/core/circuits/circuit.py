@@ -7,6 +7,7 @@ import numpy as np
 from typing import List, Tuple, Any, Dict, Optional, Callable, Union, overload
 
 from egm.core.circuits.visualization import draw_circuit_text
+from egm.core.circuits.native_gates import STANDARD_NATIVE_GATES
 
 # =============================================================================
 # [[[ CANONICAL NAMES AND ALIASES — Unified SX/SY Canonicalization ]]]
@@ -156,11 +157,21 @@ class QuantumCircuit:
         return inv
 
     def decompose(
-        self,
-        basis_gates: List[str],
-        custom_rules: Optional[Dict[str, "DecompositionRule"]] = None
+            self,
+            basis_gates: Union[List[str], str],
+            custom_rules: Optional[Dict[str, "DecompositionRule"]] = None
     ) -> "QuantumCircuit":
         """Decompose circuit gates into the given basis."""
+
+        # *****
+        if isinstance(basis_gates, str):
+            key = basis_gates.lower()
+            if key in STANDARD_NATIVE_GATES:
+                basis_gates = STANDARD_NATIVE_GATES[key]
+            else:
+                raise ValueError(
+                    f"Unknown native gate set '{basis_gates}'. Available: {list(STANDARD_NATIVE_GATES.keys())}")
+        # *****
         basis = {b.lower() for b in basis_gates}
         canonical_basis = {get_canonical_name(b) for b in basis}
         active_map = BASE_DECOMPOSITIONS.copy()
@@ -168,7 +179,8 @@ class QuantumCircuit:
             active_map.update(CNOT_BASED_DECOMPOSITIONS)
         elif "cz" in canonical_basis and "cnot" not in canonical_basis:
             active_map.update(CZ_BASED_DECOMPOSITIONS)
-        if custom_rules: active_map.update(custom_rules)
+        if custom_rules:
+            active_map.update(custom_rules)
 
         result: List[Gate] = []
         pending = self.gates[:]
@@ -218,6 +230,12 @@ BASE_DECOMPOSITIONS: Dict[str, DecompositionRule] = {
     "cswap": lambda c,t1,t2:[Gate("cnot",(t2,t1)),Gate("ccnot",(c,t1,t2)),Gate("cnot",(t2,t1))],
     "fredkin": lambda c,t1,t2: BASE_DECOMPOSITIONS["cswap"](c,t1,t2),
 
+    # 缺少基础 Pauli 门（X, Y, Z）的分解规则
+    "x": lambda q: [Gate("rx", (q,), (np.pi,))],
+    "y": lambda q: [Gate("ry", (q,), (np.pi,))],
+    "z": lambda q: [Gate("rz", (q,), (np.pi,))],
+    "id": lambda q: [],
+
     "u3": lambda q,th,ph,la:[Gate("rz",(q,),(la,)),Gate("ry",(q,),(th,)),Gate("rz",(q,),(ph,))],
     "u": lambda q,th,ph,la: BASE_DECOMPOSITIONS["u3"](q,th,ph,la),
     "u2": lambda q,ph,la: BASE_DECOMPOSITIONS["u3"](q,np.pi/2,ph,la),
@@ -233,8 +251,10 @@ BASE_DECOMPOSITIONS: Dict[str, DecompositionRule] = {
     "h": lambda q:[Gate("sx",(q,)),Gate("rz",(q,),(np.pi/2,)),Gate("sx",(q,))],
 
     # --- Canonical SX/SY Primitives ---
-    "sx": lambda q:[Gate("sx",(q,))],
-    "sxdg": lambda q:[Gate("sxdg",(q,))],
+    # "sx": lambda q:[Gate("sx",(q,))],       # This caused the recursion error
+    # "sxdg": lambda q:[Gate("sxdg",(q,))],   # This caused the recursion error
+    "sx": lambda q: [Gate("rx", (q,), (np.pi / 2,))],
+    "sxdg": lambda q: [Gate("rx", (q,), (-np.pi / 2,))],
     "sy": lambda q:[Gate("sx",(q,)),Gate("s",(q,))],
     "sydg": lambda q:[Gate("sdg",(q,)),Gate("sx",(q,))],
 }

@@ -1,4 +1,4 @@
-# File Path: errorgnomark/circuits/native_gates.py
+# File Path: errorgnomark/egm/core/circuits/native_gates.py
 
 """
 A collection of native gate sets for various quantum computing platforms.

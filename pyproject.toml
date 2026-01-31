@@ -80,7 +80,8 @@ classifiers = [
 # Dependencies required for the project to run.
 dependencies = [
     # Core scientific computing and data processing
-    "numpy~=2.0",
+    # [FIX] Relaxed numpy requirement to allow 1.26.x for compatibility with pyquafu/numba
+    "numpy>=1.26",
     "scipy~=1.13",
     "pandas~=2.2",
 
