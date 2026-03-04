@@ -12,7 +12,7 @@ from itertools import chain
 from egm.experiments.base import BaseExperiment
 from egm.analysis.result import AnalysisResult
 from egm.core.circuits.circuit import QuantumCircuit, Gate
-from egm.engine.executor import QuantumEngine
+from egm.core.execution.executor import QuantumEngine
 from egm.analysis.mrb import fit_mrb_decay, MRBFitResult
 from egm.core.circuits.gate_sets import CliffordGateSet
 

@@ -29,7 +29,7 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 
 from egm.core.circuits.circuit import QuantumCircuit, Gate
-from egm.core.engine.executor import QuantumEngine
+from egm.core.execution.executor import QuantumEngine
 from egm.schemas.results.csb import CSBAnalysisResult, AnalysisStatus
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")

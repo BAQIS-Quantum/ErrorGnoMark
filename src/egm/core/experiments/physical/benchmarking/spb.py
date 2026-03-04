@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Tuple, Optional, Union
 
 from egm.core.circuits.circuit import QuantumCircuit, Gate
 from egm.core.circuits.gate_sets import BaseGateSet, TwoQubitGateSet, get_gate_set
-from egm.core.engine.executor import QuantumEngine
+from egm.core.execution.executor import QuantumEngine
 from egm.core.analysis.spb import analyze_speckle_purity, fit_spb_decay
 from egm.reporting.visualizers.spb_plotter import plot_spb_decay
 from egm.core.backends.ideal_backend import IdealBackend

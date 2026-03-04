@@ -29,7 +29,7 @@ import random
 from typing import List, Dict, Optional, Union
 
 from egm.core.circuits.circuit import QuantumCircuit, Gate
-from egm.core.engine.executor import QuantumEngine
+from egm.core.execution.executor import QuantumEngine
 
 # Pure CSB analysis (no backend / circuit dependency)
 from egm.core.analysis.csb_cphase import analyze_csb_cphase

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 # [[[ FIX: Import the correct class name 'QuantumEngine' ]]]
 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-from egm.engine.executor import QuantumEngine
+from egm.core.execution.executor import QuantumEngine
 
 
 class BaseExperiment(ABC):

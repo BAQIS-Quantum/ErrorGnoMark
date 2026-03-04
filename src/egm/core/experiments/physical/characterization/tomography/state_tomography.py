@@ -5,7 +5,7 @@ import itertools
 from typing import List, Dict, Any, Optional
 import numpy as np
 
-from egm.engine.executor import QuantumEngine
+from egm.core.execution.executor import QuantumEngine
 from egm.core.circuits.circuit import QuantumCircuit, Gate
 from egm.experiments.base import BaseExperiment
 from egm.analysis.tomography import StateTomographyAnalysis

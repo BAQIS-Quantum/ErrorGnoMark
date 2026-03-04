@@ -24,10 +24,10 @@ from typing import List, Dict, Optional, Union, Tuple, Protocol, Any, Sequence
 
 # Internal Framework Imports
 from egm.core.circuits.circuit import QuantumCircuit, Gate
-from egm.core.engine.executor import QuantumEngine
+from egm.core.execution.executor import QuantumEngine
 from egm.core.analysis.rb import stitch_rb_results, analyze_rb_standard, calculate_epg
 from egm.core.circuits.gate_sets import CliffordGateSet
-from egm.core.experiments.benchmarking.tools.rb_tools import _is_measure_gate
+from egm.core.experiments.physical.benchmarking.tools.rb_tools import _is_measure_gate
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 

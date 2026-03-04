@@ -12,7 +12,7 @@ import itertools
 from typing import List, Dict, Any, Optional
 import numpy as np
 
-from egm.engine.executor import QuantumEngine
+from egm.core.execution.executor import QuantumEngine
 from egm.core.circuits.circuit import QuantumCircuit, Gate, get_matrix, get_parameterized_matrix
 from egm.experiments.base import BaseExperiment
 from egm.analysis.result import ExperimentResult

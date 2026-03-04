@@ -21,7 +21,7 @@ import numpy as np
 # ---------------------------------------------------------------------
 # Internal Imports
 # ---------------------------------------------------------------------
-from egm.engine.executor import QuantumEngine
+from egm.core.execution.executor import QuantumEngine
 from egm.core.circuits.circuit import Gate, QuantumCircuit
 from egm.experiments.base import BaseExperiment
 from egm.core.circuits.gate_sets import CliffordGateSet, get_gate_set

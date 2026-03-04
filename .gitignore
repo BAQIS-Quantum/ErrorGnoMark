@@ -106,3 +106,7 @@ config.ini  # If it contains secrets. If not, you can remove this line.
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# AI logs
+ai_logs/raw/
+ai_logs/weekly/
