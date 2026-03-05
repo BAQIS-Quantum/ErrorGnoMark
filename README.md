@@ -185,147 +185,33 @@ The project is organized to separate the core library, tests, examples, and docu
 Here is a detailed breakdown of the project structure, illustrating the layered architecture and the role of each component.
 
 
-errorgnomark/
-├── .gitignore                     # Git ignore configuration
-├── LICENSE                        # Open-source license
-├── README.md                      # Project overview and usage guide
-├── pyproject.toml                 # Build system / dependency configuration
-├── docs/                          # Documentation (guides, tutorials, API docs)
-│   ├── index.md
-│   └── tutorials/
-│       └── ...
-├── examples/                      # Example scripts / user demos
-│   ├── quick_health_scan.py
-│   ├── compiler_noise_profile.py
-│   └── ...
-├── tests/                         # Unit & integration tests
-│   ├── core/
-│   ├── suites/
-│   └── reporting/
-└── src/
-    └── egm/
-        ├── __init__.py
-
-        # ==============================================================
-        # 0. SCHEMAS — Domain Models Layer
-        # ==============================================================
-        ├── schemas/
-        │   ├── __init__.py
-        │   ├── plan.py             # ExperimentPlan / Step definitions
-        │   ├── configs.py          # Experiment configuration objects
-        │   └── results/            # Scientific result schemas
-        │       ├── __init__.py
-        │       ├── base.py         # FitResult, BaseAnalysisResult
-        │       ├── rb.py           # RBAnalysisResult, RBSequenceDataPoint
-        │       └── ...
-        #
-        # Defines physical & logical entities shared by Core/Server/SDK.
-        #
-
-        # ==============================================================
-        # 1. CORE — Physical Engine & Atomic Experiments
-        # ==============================================================
-        ├── core/
-        │   ├── __init__.py
-        │   ├── circuits/           # Circuit IR & gate definitions
-        │   │   ├── circuit.py
-        │   │   ├── gate_sets.py
-        │   │   ├── visualization.py
-        │   │   └── ...
-        │   ├── backends/           # Hardware abstraction layer
-        │   │   ├── base_backend.py
-        │   │   ├── ideal_backend.py
-        │   │   ├── dummy_backend.py
-        │   │   └── ...
-        │   ├── engine/
-        │   │   └── executor.py     # Unified execution controller
-        │   ├── analysis/           # Mathematical fitting & statistics
-        │   │   ├── rb.py
-        │   │   ├── fitting.py
-        │   │   ├── statistics.py
-        │   │   └── visualization.py
-        │   └── experiments/        # Atomic experiment definitions
-        │       ├── benchmarking/
-        │       │   ├── rb.py       # Standard RB
-        │       │   ├── irb.py      # Interleaved RB
-        │       │   ├── xeb.py      # Cross‑Entropy Benchmarking
-        │       │   └── ...
-        │       ├── characterization/
-        │       │   ├── incoherent/ # T1 / T2 / T2*
-        │       │   ├── coherent/   # Rabi / Ramsey / DRAG
-        │       │   ├── spam/       # Readout calibration
-        │       │   └── crosstalk/  # Simultaneous RB, etc.
-        │       └── error_budget/
-        │           └── simple_model.py  # Theoretical error‑limit models
-
-        # ==============================================================
-        # 1.5 REPORTING — Analysis Report Generation Subsystem
-        # ==============================================================
-        ├── reporting/
-        │   ├── __init__.py
-        │   ├── formatters/         # Text & table formatting
-        │   │   └── table_formatter.py
-        │   ├── generators/         # Report generators (HTML / Terminal)
-        │   │   ├── html_generator.py
-        │   │   └── terminal_generator.py
-        │   ├── visualizers/        # Publication‑style plotting tools
-        │   │   └── rb_plotter.py
-        │   └── templates/          # Jinja2 templates & stylesheets
-        │       ├── html/
-        │       │   ├── rb_report.jinja2
-        │       │   └── styles.css
-        │       └── ...
-        #
-        # Converts analysis outputs into visual or textual reports.
-        #
-
-        # ==============================================================
-        # 2. SUITES — Workflow Composition & Logical Orchestration
-        # ==============================================================
-        ├── suites/
-        │   ├── __init__.py
-        │   ├── base.py              # Abstract Suite base class
-        │   ├── calibration.py       # Automated calibration routines
-        │   ├── health_check.py      # Quick health scan logic
-        │   └── report_gen.py        # Report generation workflow
-        #
-        # Encapsulates business logic and standardized experiment pipelines.
-        #
-
-        # ==============================================================
-        # 3. SERVER — Multi‑user Web Service Interface (FastAPI)
-        # ==============================================================
-        ├── server/
-        │   ├── __init__.py
-        │   ├── main.py              # Entry point (FastAPI app)
-        │   ├── database.py          # Persistence layer (SQL / ORM)
-        │   ├── tasks.py             # Asynchronous task management
-        │   ├── models/              # Database ORM models
-        │   │   ├── user.py
-        │   │   ├── job.py
-        │   │   └── result.py
-        │   ├── api_models/          # Request / Response DTOs
-        │   │   ├── request.py
-        │   │   └── response.py
-        │   └── routers/             # REST/HTTP route handlers
-        │       ├── auth.py
-        │       ├── experiments.py
-        │       └── devices.py
-        #
-        # Enables scalable deployment, job management, and data persistence.
-        #
-
-        # ==============================================================
-        # 4. SDK — Client Toolkit
-        # ==============================================================
-        └── sdk/
-            ├── __init__.py
-            ├── client.py            # HTTP client for server interaction
-            ├── account.py           # Authentication utilities
-            ├── builder.py           # PlanBuilder for building ExperimentPlan
-            └── facade.py            # Top‑level user entry (egm.connect)
-            #
-            # Provides user‑facing APIs for remote experiment execution.
+src/egm/
+│
+├── foundation/                # L1 – Core primitives (no upper-layer dependency)
+│   ├── circuits/              # QuantumCircuit, Gate, GateSets
+│   └── backends/              # BaseBackend + concrete implementations
+│
+├── engine/                    # L2 – Execution orchestration
+│   └── executor.py            # QuantumEngine
+│
+├── experiments/               # L3 – Experimental definitions
+│   ├── physical/
+│   ├── algorithmic/
+│   └── logical/
+│
+├── analysis/                  # L3 – Statistical analysis (RB, XEB, etc.)
+│
+├── domain/                    # L4 – Domain modeling (ErrorBudget, etc.)
+│
+├── schemas/                   # L4 – Structured data contracts
+│   ├── configs/
+│   └── results/
+│
+├── reporting/                 # L5 – Visualization and report generation
+│
+├── suites/                    # L6 – Campaign orchestration
+│
+└── server/                    # L7 – API / external interface
 ```                         
 
 ## 7. Contributing
