@@ -181,3 +181,25 @@ class RBAnalysisResult(BaseAnalysisResult):
 # =============================================================================
 # End of File
 # =============================================================================
+
+"""
+# TODO 需坚持是否满足以下要求
+rb.py
+
+Randomized Benchmarking 结果结构定义。
+
+继承：
+    BaseResultSchema
+
+包含：
+    - decay_curve
+    - fitted_alpha
+    - extracted_error_rate
+    - confidence_interval
+
+语义：
+    仅表达 RB 的观测与拟合结果，
+    不解释其物理意义。
+
+解释误差结构属于 domain。
+"""

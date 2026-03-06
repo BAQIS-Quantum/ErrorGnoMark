@@ -110,3 +110,6 @@ Desktop.ini
 # AI logs
 ai_logs/raw/
 ai_logs/weekly/
+
+# notes-private/
+notes-private/

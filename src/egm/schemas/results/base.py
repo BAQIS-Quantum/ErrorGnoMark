@@ -116,3 +116,28 @@ class BaseAnalysisResult(BaseModel):
             UUID: lambda v: str(v),
             datetime: lambda v: v.isoformat() + "Z",
         }
+
+"""
+# TODO
+基于v3 新结构的设计,之后需要check当前的这个代码
+results/base.py
+
+定义通用 ResultSchema。
+
+语义：
+    表示“一个实验的最终观测结果”。
+
+作用：
+    - Experiments 输出
+    - Domain 输入
+    - Reporting 展示数据源
+
+结构应包含：
+    - raw_counts / raw_data
+    - fitted_parameters
+    - metadata
+    - config_snapshot
+
+重要原则：
+    ResultSchema 是不可变的（immutable）。
+"""
