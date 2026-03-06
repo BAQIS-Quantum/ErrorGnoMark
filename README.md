@@ -110,7 +110,7 @@ If you plan to contribute to EGM or need the latest features not yet released on
 EGM supports both high-level, end-to-end workflows and granular control for custom experiments where users can define their own backends.
 
 #### Example: End-to-End Interleaved RB
-
+<!-- 
 The following example demonstrates how to measure the error of a CNOT gate using 2-qubit Interleaved Randomized Benchmarking (IRB) with a built-in dummy backend.
 
 ```python
@@ -174,7 +174,7 @@ print(f"\n[Final Result] Estimated Error of 'CNOT' gate = {gate_error:.3e}")
 # Generating comparison plot...
 #
 # [Final Result] Estimated Error of 'CNOT' gate = 1.104e-02
-# (Note: A plot showing the exponential decay curves will be displayed in a separate window if run in a graphical environment.)
+# (Note: A plot showing the exponential decay curves will be displayed in a separate window if run in a graphical environment.) -->
 
 ```
 ## 6. Directory Structure
@@ -185,33 +185,54 @@ The project is organized to separate the core library, tests, examples, and docu
 Here is a detailed breakdown of the project structure, illustrating the layered architecture and the role of each component.
 
 
-src/egm/
+ErrorGnoMark/
 │
-├── foundation/                # L1 – Core primitives (no upper-layer dependency)
-│   ├── circuits/              # QuantumCircuit, Gate, GateSets
-│   └── backends/              # BaseBackend + concrete implementations
+├── src/
+│   └── egm/
 │
-├── engine/                    # L2 – Execution orchestration
-│   └── executor.py            # QuantumEngine
+│       # ===== Experiment Definition Layer =====
+│       ├── experiments/
+│       │   ├── base.py
+│       │   ├── physical/              # RB, XEB, T1, T2, etc.
+│       │   ├── targets/               # Bell, GHZ, Graph, Cluster, W states
+│       │   ├── logical/
+│       │   ├── algorithmic/
+│       │   └── system_capacity/
+│       │
+│       # ===== Execution Layer =====
+│       ├── execution/
+│       │   ├── executor.py
+│       │   ├── scheduler.py
+│       │   ├── job_manager.py
+│       │   ├── batch_runner.py
+│       │   └── runtime/
+│       │
+│       # ===== Runtime Backend Layer =====
+│       ├── foundation/
+│       │   └── backends/              # Simulator / Hardware backends
+│       │
+│       # ===== Persistence Layer =====
+│       ├── datastore/
+│       │   ├── base_store.py
+│       │   ├── experiment_store.py
+│       │   ├── result_store.py
+│       │   └── drivers/               # sqlite / file / memory
+│       │
+│       # ===== Domain Layer =====
+│       ├── domain/
+│       │   ├── error_inference/
+│       │   ├── error_modeling/
+│       │   ├── error_propagation/
+│       │   └── error_analysis/
+│       │
+│       # ===== Shared Schemas =====
+│       ├── schemas/
+│       │
+│       # ===== Reporting =====
+│       └── reporting/
 │
-├── experiments/               # L3 – Experimental definitions
-│   ├── physical/
-│   ├── algorithmic/
-│   └── logical/
-│
-├── analysis/                  # L3 – Statistical analysis (RB, XEB, etc.)
-│
-├── domain/                    # L4 – Domain modeling (ErrorBudget, etc.)
-│
-├── schemas/                   # L4 – Structured data contracts
-│   ├── configs/
-│   └── results/
-│
-├── reporting/                 # L5 – Visualization and report generation
-│
-├── suites/                    # L6 – Campaign orchestration
-│
-└── server/                    # L7 – API / external interface
+├── tests/
+└── README.md
 ```                         
 
 ## 7. Contributing
