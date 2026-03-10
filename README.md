@@ -176,64 +176,51 @@ print(f"\n[Final Result] Estimated Error of 'CNOT' gate = {gate_error:.3e}")
 # [Final Result] Estimated Error of 'CNOT' gate = 1.104e-02
 # (Note: A plot showing the exponential decay curves will be displayed in a separate window if run in a graphical environment.) -->
 
-```
+
 ## 6. Directory Structure
 
 The project is organized to separate the core library, tests, examples, and documentation, ensuring a clean and maintainable codebase.
 
-```text
+
 Here is a detailed breakdown of the project structure, illustrating the layered architecture and the role of each component.
 
+# Project Structure
+
+```text
 
 ErrorGnoMark/
-│
 ├── src/
 │   └── egm/
-│
-│       # ===== Experiment Definition Layer =====
-│       ├── experiments/
-│       │   ├── base.py
+│       ├── domain/                    # Core theoretical and system models
+│       │   ├── error_analysis/        # Analytical evaluation and scaling studies
+│       │   ├── error_inference/       # Error parameter estimation and inference
+│       │   ├── error_modeling/        # Physical and logical error models
+│       │   ├── error_propagation/     # Error propagation mechanisms
+│       │   └── system/                # Hardware state and compilation interface
+│       ├── experiments/               # Experiment definitions and benchmarks
 │       │   ├── physical/              # RB, XEB, T1, T2, etc.
-│       │   ├── targets/               # Bell, GHZ, Graph, Cluster, W states
-│       │   ├── logical/
-│       │   ├── algorithmic/
-│       │   └── system_capacity/
-│       │
-│       # ===== Execution Layer =====
-│       ├── execution/
-│       │   ├── executor.py
-│       │   ├── scheduler.py
-│       │   ├── job_manager.py
-│       │   ├── batch_runner.py
-│       │   └── runtime/
-│       │
-│       # ===== Runtime Backend Layer =====
-│       ├── foundation/
-│       │   └── backends/              # Simulator / Hardware backends
-│       │
-│       # ===== Persistence Layer =====
-│       ├── datastore/
-│       │   ├── base_store.py
-│       │   ├── experiment_store.py
-│       │   ├── result_store.py
-│       │   └── drivers/               # sqlite / file / memory
-│       │
-│       # ===== Domain Layer =====
-│       ├── domain/
-│       │   ├── error_inference/
-│       │   ├── error_modeling/
-│       │   ├── error_propagation/
-│       │   └── error_analysis/
-│       │
-│       # ===== Shared Schemas =====
-│       ├── schemas/
-│       │
-│       # ===== Reporting =====
-│       └── reporting/
-│
-├── tests/
+│       │   ├── targets/               # Bell, GHZ, Graph states
+│       │   ├── logical/               # Logical benchmarking
+│       │   ├── algorithmic/           # Algorithm-level experiments
+│       │   └── system_capacity/       # Large-scale system evaluation
+│       ├── suites/                    # Orchestration and lifecycle management
+│       │   ├── calibration/           # Automated calibration workflows
+│       │   ├── system_profiling/      # Hardware performance characterization
+│       │   ├── compiler/              # Hardware-aware compilation strategies
+│       │   └── lifecycle.py           # Global system state coordination
+│       ├── execution/                 # Runtime execution layer
+│       ├── foundation/                # Low-level execution primitives
+│       ├── datastore/                 # Persistence and storage abstraction
+│       ├── server/                    # External interfaces (API / services)
+│       ├── intelligence/              # AI-driven decision and optimization layer
+│       ├── reporting/                 # Reporting and visualization
+│       ├── analysis/                  # Post-processing and statistics
+│       └── schemas/                   # Shared data structures and validation
+├── tests/                             # Unit and integration tests
 └── README.md
-```                         
+```
+
+---                       
 
 ## 7. Contributing
 We welcome contributions from the community! If you'd like to contribute, please follow these steps:
