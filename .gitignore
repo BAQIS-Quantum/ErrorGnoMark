@@ -1,22 +1,22 @@
 # ===================================================================
-# A comprehensive .gitignore for the ErrorGnoMark Python project
+# ErrorGnoMark - Official .gitignore
 # ===================================================================
 
-# 1. Python generated files
-# -------------------------------------------------------------------
-# Byte-compiled / optimized / DLL files
+
+# ===================================================================
+# 1. Python Generated Files
+# ===================================================================
+
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
 
 # Distribution / packaging
 .Python
 build/
-develop-eggs/
 dist/
+develop-eggs/
 downloads/
 eggs/
 .eggs/
@@ -27,13 +27,15 @@ sdist/
 var/
 wheels/
 *.egg-info/
-.installed.cfg
 *.egg
+.installed.cfg
 MANIFEST
 
+
+# ===================================================================
 # 2. Virtual Environments
-# -------------------------------------------------------------------
-# Common names for virtual environment folders
+# ===================================================================
+
 .env
 .venv
 env/
@@ -42,8 +44,11 @@ ENV/
 env.bak/
 venv.bak/
 
-# 3. IDE and Editor Configurations
-# -------------------------------------------------------------------
+
+# ===================================================================
+# 3. IDE / Editor
+# ===================================================================
+
 # VSCode
 .vscode/*
 !.vscode/settings.json
@@ -54,26 +59,29 @@ venv.bak/
 # PyCharm
 .idea/
 
-# Sublime Text
+# Sublime
 *.sublime-project
 *.sublime-workspace
 
-# 4. Testing and Coverage
-# -------------------------------------------------------------------
-# pytest cache
+
+# ===================================================================
+# 4. Testing & Coverage
+# ===================================================================
+
 .pytest_cache/
 .tox/
 
-# Coverage reports
 .coverage
 .coverage.*
-htmlcov/
 coverage.xml
+htmlcov/
 
-# 5. Project-Specific Files (CRITICAL for your project)
-# -------------------------------------------------------------------
-# Experiment results, large datasets, and logs
-# Git is NOT for storing large data. Use Git LFS or another solution if needed.
+
+# ===================================================================
+# 5. Large Data / Experiment Outputs
+# ===================================================================
+# Git is NOT for large datasets. Use Git LFS if necessary.
+
 *.csv
 *.pkl
 *.h5
@@ -82,21 +90,23 @@ coverage.xml
 *.log
 *.tmp
 
-# Analysis outputs (plots, figures)
 figures/
 plots/
 
-# 6. Secrets and Environment Variables (CRITICAL for security)
-# -------------------------------------------------------------------
-# Files containing sensitive information like API keys, passwords, etc.
-# These should NEVER be committed to version control.
-.env
+
+# ===================================================================
+# 6. Secrets / Environment Variables
+# ===================================================================
+
 *.env
 secrets.ini
-config.ini  # If it contains secrets. If not, you can remove this line.
+config.ini
 
-# 7. OS-generated files
-# -------------------------------------------------------------------
+
+# ===================================================================
+# 7. OS Files
+# ===================================================================
+
 # macOS
 .DS_Store
 .AppleDouble
@@ -107,12 +117,19 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# AI logs
-ai_logs/raw/
-ai_logs/weekly/
 
-# notes-private/
+# ===================================================================
+# 8. Personal / AI Workspace (DO NOT PUSH)
+# ===================================================================
+
+.egm-ai/
+ai_logs/
 notes-private/
+claude_logged.sh
 
-# env
-.env
+
+# ===================================================================
+# 9. Tool Caches
+# ===================================================================
+
+.ruff_cache/
