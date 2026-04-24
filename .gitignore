@@ -1,0 +1,115 @@
+# ===================================================================
+# A comprehensive .gitignore for the ErrorGnoMark Python project
+# ===================================================================
+
+# 1. Python generated files
+# -------------------------------------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 2. Virtual Environments
+# -------------------------------------------------------------------
+# Common names for virtual environment folders
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# 3. IDE and Editor Configurations
+# -------------------------------------------------------------------
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# PyCharm
+.idea/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# 4. Testing and Coverage
+# -------------------------------------------------------------------
+# pytest cache
+.pytest_cache/
+.tox/
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# 5. Project-Specific Files (CRITICAL for your project)
+# -------------------------------------------------------------------
+# Experiment results, large datasets, and logs
+# Git is NOT for storing large data. Use Git LFS or another solution if needed.
+*.csv
+*.pkl
+*.h5
+*.hdf5
+*.dat
+*.log
+*.tmp
+
+# Analysis outputs (plots, figures)
+figures/
+plots/
+
+# 6. Secrets and Environment Variables (CRITICAL for security)
+# -------------------------------------------------------------------
+# Files containing sensitive information like API keys, passwords, etc.
+# These should NEVER be committed to version control.
+.env
+*.env
+secrets.ini
+config.ini  # If it contains secrets. If not, you can remove this line.
+
+# 7. OS-generated files
+# -------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# AI logs
+ai_logs/raw/
+ai_logs/weekly/
+
+# notes-private/
+notes-private/

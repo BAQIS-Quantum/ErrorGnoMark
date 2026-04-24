@@ -1,0 +1,10 @@
+{
+    "bundles": [
+        {
+            "protocol": "Readout",
+            "depth": [1]
+        }
+    ],
+    "shots": 10000,
+    "number_of_circuits": 1
+}

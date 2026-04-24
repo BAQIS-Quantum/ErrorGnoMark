@@ -1,0 +1,98 @@
+<!-- File: src/egm/reporting/templates/html/rb_report.jinja2 -->
+{% extends "base_template.jinja2" %}
+
+{% block title %}RB Analysis Report: {{ result.result_id }}{% endblock %}
+
+{% block content %}
+<h1>Randomized Benchmarking Report</h1>
+
+<!-- 1. Summary Cards -->
+<div class="card-grid">
+    <div class="card">
+        <h3>Error Per Clifford (EPC)</h3>
+        <div class="value">
+            {{ "%.4e"|format(result.epc) if result.epc is not none else "N/A" }}
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Depolarization (p)</h3>
+        <div class="value">
+            {{ "%.6f"|format(result.alpha.value) if result.alpha and result.alpha.value is not none else "N/A" }}
+        </div>
+        {% if result.alpha and result.alpha.std_dev %}
+        <div class="std">± {{ "%.2e"|format(result.alpha.std_dev) }}</div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3>Fit R²</h3>
+        <div class="value">
+            {{ "%.3f"|format(result.fit.r_squared) if result.fit and result.fit.r_squared is not none else "N/A" }}
+        </div>
+    </div>
+</div>
+
+<!-- 2. Plot Section -->
+<h2>Analysis Plot</h2>
+<div class="plot-container">
+    {% if plot_image_base64 %}
+        <img src="data:image/png;base64,{{ plot_image_base64 }}" 
+             alt="RB Analysis Plot" style="max-width: 100%; height: auto;">
+    {% else %}
+        <p><em>No plot image generated.</em></p>
+    {% endif %}
+</div>
+
+<!-- 3. Fit Parameters Table -->
+<h2>Fit Parameters</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Parameter</th>
+            <th>Value</th>
+            <th>Standard Error</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if result.fit and result.fit.params %}
+            {% for param in result.fit.params %}
+            <tr>
+                <td>{{ param.name }}</td>
+                <td>{{ "%.6f"|format(param.value) }}</td>
+                <td>{{ "%.2e"|format(param.std_dev) if param.std_dev is not none else "N/A" }}</td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr><td colspan="3">No fit parameters available.</td></tr>
+        {% endif %}
+    </tbody>
+</table>
+
+<!-- 4. Metadata -->
+<h2>Metadata</h2>
+<div class="metadata-section">
+    <p><strong>Result ID:</strong> {{ result.result_id }}</p>
+    <p><strong>Plan ID:</strong> {{ result.plan_id }}</p>
+    <p><strong>Analysis Type:</strong> {{ result.analysis_type }}</p>
+    <p><strong>Timestamp:</strong> {{ result.timestamp_analysis }}</p>
+    <p><strong>Analyzer Version:</strong> {{ result.analyzer_version }}</p>
+    <p><strong>Qubits:</strong> {{ result.qubits }}</p>
+    <p><strong>Tags:</strong>
+        {% if result.tags %}
+            {% for tag in result.tags %}
+                <span class="tag">{{ tag }}</span>
+            {% endfor %}
+        {% else %}
+            None
+        {% endif %}
+    </p>
+</div>
+
+{% if result.notes %}
+<div class="notes-section">
+    <h3>Notes</h3>
+    <p>{{ result.notes | e }}</p>
+</div>
+{% endif %}
+{% endblock %}

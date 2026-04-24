@@ -1,0 +1,142 @@
+# ===================================================================
+# pyproject.toml
+#
+# PEP 621: Standard for modern Python project metadata.
+# For more information, see: https://peps.python.org/pep-0621/
+# ===================================================================
+
+[build-system]
+# Defines the dependencies needed to build the project.
+requires = ["setuptools>=61.0"]
+# Specifies the backend tool used to build the project.
+build-backend = "setuptools.build_meta"
+
+
+# ===================================================================
+# Project Metadata (PEP 621)
+# ===================================================================
+[project]
+# --- Core Metadata ---
+name = "errorgnomark"
+version = "2.0.0"
+description = "A comprehensive and modular software suite for the full-stack benchmarking and characterization of quantum computing systems, from physical hardware to application-level performance."
+readme = "README.md"
+requires-python = ">=3.9"
+# [CONSISTENCY FIX] While using a file is good practice, we ensure the classifier is correct for clarity.
+# Please ensure the LICENSE file in the root directory contains the full Apache 2.0 license text.
+license = { file = "LICENSE" }
+
+# --- People ---
+authors = [
+  { name = "Chai Xudan", email = "chaixd@baqis.ac.cn" },
+  { name = "Qingyuan Wu (Intern)" },
+  { name = "Xingyan Fan (Intern)" },
+]
+
+# --- Classifiers & Keywords ---
+# Helps users discover your project on PyPI.
+keywords = [
+    "quantum",
+    "quantum computing",
+    "benchmarking",
+    "characterization",
+    "qcvv",
+    "Quantum Characterization, Verification, and Validation",
+    "error budget",
+]
+
+# Helps users filter projects on PyPI.
+# Full list: https://pypi.org/classifiers/
+classifiers = [
+    # 1. Development Status
+    "Development Status :: 3 - Alpha",
+
+    # 2. Intended Audience
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+
+    # 3. License
+    # [CONSISTENCY FIX] Based on your GitHub repository, the license should be Apache 2.0.
+    "License :: OSI Approved :: Apache Software License",
+
+    # 4. Operating System
+    "Operating System :: OS Independent",
+
+    # 5. Supported Python Versions
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+
+    # 6. Topic
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Quantum Computing",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+# --- Core Dependencies ---
+# Dependencies required for the project to run.
+dependencies = [
+    # Core scientific computing and data processing
+    # [FIX] Relaxed numpy requirement to allow 1.26.x for compatibility with pyquafu/numba
+    "numpy>=1.26",
+    "scipy~=1.13",
+    "pandas~=2.2",
+
+    # Data I/O and Visualization
+    "matplotlib~=3.9",
+    "seaborn~=0.13",
+    "openpyxl~=3.1",
+
+    # Database and Data Validation
+    "SQLAlchemy~=2.0",
+    "pydantic~=2.7",
+
+    # Utilities
+    "tqdm~=4.67",
+]
+
+# --- Optional Dependencies ---
+# For development, testing, and documentation.
+[project.optional-dependencies]
+dev = [
+    # Code Quality & Formatting
+    "black~=24.4",
+    "ruff~=0.4.0",
+
+    # Testing Framework
+    "pytest~=8.0",
+    "pytest-cov~=5.0",
+
+    # Dependency Management & Analysis
+    "pip-tools~=7.4",
+    "deptry~=0.17",
+]
+
+docs = [
+    "sphinx~=7.3",
+    "sphinx-rtd-theme~=2.0",
+    "myst-parser~=3.0",
+    "sphinx-copybutton~=0.5",
+]
+
+# --- Project URLs ---
+# Displayed on the PyPI project page.
+[project.urls]
+homepage = "https://github.com/BAQIS-Quantum/ErrorGnoMark"
+repository = "https://github.com/BAQIS-Quantum/ErrorGnoMark"
+documentation = "https://errorgnomark.readthedocs.io"
+"bug-tracker" = "https://github.com/BAQIS-Quantum/ErrorGnoMark/issues"
+# [OPTIMIZATION] Added Gitee mirror link for more access options.
+"gitee-mirror" = "https://gitee.com/xdchai/errorgnomark"
+
+
+# ===================================================================
+# Setuptools-Specific Configuration
+# ===================================================================
+[tool.setuptools.packages.find]
+# [CRITICAL FIX] Tell setuptools to find packages in the 'src' directory.
+# This configuration resolves the ImportError caused by the 'src' layout.
+where = ["src"]
