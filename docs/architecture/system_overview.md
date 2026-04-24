@@ -47,13 +47,13 @@ EGM 的核心价值在于：
 
 ## 三、在整体软件栈中的结构角色
 
-可将整体系统抽象为三层结构：
+    可将整体系统抽象为三层结构：
 
-执行层（Execution Layer）  
-↓  
-EGM 语义层（Semantic Layer）  
-↓  
-应用层（Application Layer）
+    执行层（Execution Layer）  
+    ↓  
+    EGM 语义层（Semantic Layer）  
+    ↓  
+    应用层（Application Layer）
 
 ### 3.1 执行层
 

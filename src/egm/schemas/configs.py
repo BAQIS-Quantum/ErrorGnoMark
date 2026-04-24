@@ -1,6 +1,28 @@
 """
 configs.py
 
+定义实验配置结构（Experiment Configuration Schema）。
+
+语义：
+    描述“要做什么实验”，
+    不描述“实验如何执行”。
+
+作用：
+    - Experiments 的输入
+    - Suites 构造实验时使用
+    - execution 层调度参数来源
+
+内容示例：
+    - backend_name
+    - shots
+    - qubits
+    - gate_set
+    - noise_flags
+
+注意：
+    ConfigSchema 只描述参数，不包含执行结果。
+
+
 Experiment Configuration Schema (Schema Layer).
 
 Functionality:
@@ -47,11 +69,11 @@ class ProtocolBundle:
 @dataclass
 class ProtocolConfig:
     """
-    Quantum experiment protocol control block. 
+    Quantum experiment protocol control block.
     Can receive multiple schemes simultaneously (e.g., [RB, XEB]) by holding a list of ProtocolBundles.
     """
     # Grouping protocol, qubits, and depth into a lower-level cluster (ProtocolBundle)
-    bundles: List[ProtocolBundle] = field(default_factory=lambda: [ProtocolBundle()]) 
+    bundles: List[ProtocolBundle] = field(default_factory=lambda: [ProtocolBundle()])
     shots: int = 1024                       # Measurement shots per circuit
     number_of_circuits: int = 1             # Number of random circuits per depth
 
@@ -84,10 +106,10 @@ class ConfigSchema:
         Factory method to instantiate configuration object from a dictionary.
         Leverages dataclass default values if fields are missing.
         Retains original I/O interface.
-        
+
         Args:
             data (Dict[str, Any]): Raw user intent dictionary
-            
+
         Returns:
             ConfigSchema: Strongly typed configuration object
         """
@@ -102,7 +124,7 @@ class ConfigSchema:
         # Assemble individual blocks
         base_cfg = BaseRunConfig(**extract_kwargs(BaseRunConfig, data))
         hardware_cfg = HardwareConfig(**extract_kwargs(HardwareConfig, data))
-        
+
         # Handle ProtocolConfig and nested ProtocolBundle for backward compatibility
         protocol_kwargs = extract_kwargs(ProtocolConfig, data)
         # If explicitly passed bundles, use them
@@ -114,7 +136,7 @@ class ConfigSchema:
             protocol_kwargs["bundles"] = [ProtocolBundle(**bundle_kwargs)]
 
         protocol_cfg = ProtocolConfig(**protocol_kwargs)
-        
+
         vis_data = data.get("visualization", {})
         visual_cfg = VisualConfig(**extract_kwargs(VisualConfig, vis_data))
 
@@ -129,10 +151,10 @@ class ConfigSchema:
     def from_hardware_call(cls, call_name: str, plan_id: Optional[str] = None, **kwargs) -> "ConfigSchema":
         """
         Adaptive intent construction interface connecting with the Physical Performance Layer.
-        
+
         This dynamically builds the ConfigSchema in response to a hardware state method call
         (e.g., getting gate error triggers extensive randomized benchmarking).
-        
+
         Args:
             call_name (str): Name of the method called in hardware_state.py (e.g., 'get_gate_error')
             plan_id (Optional[str]): Globally tracked experimental identifier tying the workflow.
@@ -160,25 +182,25 @@ class ConfigSchema:
         base_cfg = BaseRunConfig(plan_id=assigned_plan_id)
         hardware_cfg = HardwareConfig()
         visual_cfg = VisualConfig()
-        
+
         target_qubits = kwargs.get("qubits", [[0, 1]])
         # Ensure list of lists format for qubits
         if isinstance(target_qubits, tuple):
             target_qubits = [list(target_qubits)]
         elif isinstance(target_qubits, list) and len(target_qubits) > 0 and not isinstance(target_qubits[0], list):
             target_qubits = [target_qubits]
-            
+
         import os
         import json
-        
+
         # Determine the directory where this script resides and locate templates folder
         template_dir = os.path.join(os.path.dirname(__file__), "templates")
         template_path = os.path.join(template_dir, f"{call_name}.json")
-        
+
         if os.path.exists(template_path):
             with open(template_path, 'r', encoding='utf-8') as f:
                 template_data = json.load(f)
-                
+
             # Iterate through the configuration list, parse, and dynamically inherit target parameters
             for bundle in template_data.get("bundles", []):
                 # Inherit parameters such as qubits or gate down from hardware call
@@ -186,7 +208,7 @@ class ConfigSchema:
                     bundle["qubits"] = [[q] for q in target_qubits[0]] if target_qubits else [[0]]
                 else:
                     bundle["qubits"] = target_qubits
-            
+
             protocol_cfg = ProtocolConfig(
                 bundles=[ProtocolBundle(**b) for b in template_data.get("bundles", [])],
                 shots=template_data.get("shots", 1024),

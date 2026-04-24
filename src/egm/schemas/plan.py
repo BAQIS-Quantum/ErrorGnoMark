@@ -35,13 +35,13 @@ from typing import List, Dict, Any
 @dataclass
 class CircuitTask:
     """交付给底层调度器的最内层执行单元 (Innermost execution unit for backend scheduler)."""
-    plan_id: str                
-    task_id: str                
-    protocol: str               
-    qubits: List[int]           
-    number_of_circuits: int     
-    circuits: List[Any]         
-    meta_data: Dict[str, Any]   
+    plan_id: str
+    task_id: str
+    protocol: str
+    qubits: List[int]
+    number_of_circuits: int
+    circuits: List[Any]
+    meta_data: Dict[str, Any]
 
 @dataclass
 class PlanSchema:
@@ -49,4 +49,3 @@ class PlanSchema:
     plan_id: str
     backend_name: str
     tasks: List[CircuitTask]
-    

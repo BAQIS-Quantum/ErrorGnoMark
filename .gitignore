@@ -113,3 +113,6 @@ ai_logs/weekly/
 
 # notes-private/
 notes-private/
+
+# env
+.env
