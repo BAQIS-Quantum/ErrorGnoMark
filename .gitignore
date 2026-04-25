@@ -127,6 +127,11 @@ ai_logs/
 notes-private/
 claude_logged.sh
 
+# Internal tools / generated artifacts (forward-fix for public repo)
+dev_claude/
+reports/
+tmp/
+
 
 # ===================================================================
 # 9. Tool Caches
