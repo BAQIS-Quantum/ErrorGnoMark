@@ -19,3 +19,26 @@ plan.py
     - 不包含执行逻辑
     - 不包含误差语义
 """
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Dict, List
+
+
+@dataclass(frozen=True)
+class CircuitTask:
+    plan_id: str
+    task_id: str
+    protocol: str
+    qubits: List[int]
+    number_of_circuits: int
+    circuits: List[Any] = field(default_factory=list)
+    meta_data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class PlanSchema:
+    plan_id: str
+    backend_name: str
+    tasks: List[CircuitTask] = field(default_factory=list)

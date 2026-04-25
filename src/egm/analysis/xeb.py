@@ -26,6 +26,9 @@ from typing import Dict, Any, List, Tuple, Optional
 from scipy.optimize import curve_fit, OptimizeWarning
 
 from egm.analysis.spb import analyze_speckle_purity, fit_spb_data
+from egm.schemas.plan import CircuitTask
+from egm.schemas.results.analysis import TaskAnalysisResult
+from egm.schemas.results.execution import TaskExecutionResult
 
 # -------------------------------------------------------------------------
 # Logging
@@ -284,3 +287,85 @@ def analyze_xeb_and_spb_from_results(
         "spb_analysis": {"raw_data": purities_by_x, "fit_results": spb_fit},
         "axis_mode": axis_mode,
     }
+
+
+def analyze_task_execution_result(
+    task: CircuitTask, exec_result: TaskExecutionResult
+) -> TaskAnalysisResult:
+    """
+    Task-level entrypoint for XEB(+SPB) analysis.
+
+    This entrypoint is intentionally context-aware:
+    - Task context (protocol/qubits/depth/shots/plan_id) comes from CircuitTask
+    - Execution artifacts (ideal_noisy_pairs/status/error) come from TaskExecutionResult
+
+    Returns:
+      - status="ok" with analysis_payload on success
+      - status="analysis_error" with error and empty payload otherwise
+    """
+
+    # Preconditions for analysis
+    if exec_result.status != "ok":
+        return TaskAnalysisResult(
+            plan_id=task.plan_id,
+            task_id=task.task_id,
+            status="analysis_error",
+            error=f"Task status is '{exec_result.status}', not eligible for analysis.",
+            analysis_payload={},
+        )
+    depth = task.meta_data.get("depth")
+    if depth is None:
+        return TaskAnalysisResult(
+            plan_id=task.plan_id,
+            task_id=task.task_id,
+            status="analysis_error",
+            error="Task depth is None; cannot build results_by_depth.",
+            analysis_payload={},
+        )
+    if not exec_result.ideal_noisy_pairs:
+        return TaskAnalysisResult(
+            plan_id=task.plan_id,
+            task_id=task.task_id,
+            status="analysis_error",
+            error="ideal_noisy_pairs is empty; cannot analyze.",
+            analysis_payload={},
+        )
+
+    try:
+        results_by_depth = {int(depth): exec_result.ideal_noisy_pairs}
+        num_qubits = len(task.qubits)
+        payload = analyze_xeb_and_spb_from_results(
+            results_by_depth=results_by_depth,
+            num_qubits=num_qubits,
+        )
+        if not isinstance(payload, dict) or not payload:
+            return TaskAnalysisResult(
+                plan_id=task.plan_id,
+                task_id=task.task_id,
+                status="analysis_error",
+                error="Analysis returned empty or non-dict payload.",
+                analysis_payload={},
+            )
+        if "xeb_analysis" not in payload or "spb_analysis" not in payload:
+            return TaskAnalysisResult(
+                plan_id=task.plan_id,
+                task_id=task.task_id,
+                status="analysis_error",
+                error="Analysis payload missing required keys: xeb_analysis/spb_analysis.",
+                analysis_payload={},
+            )
+        return TaskAnalysisResult(
+            plan_id=task.plan_id,
+            task_id=task.task_id,
+            status="ok",
+            error=None,
+            analysis_payload=payload,
+        )
+    except Exception as exc:
+        return TaskAnalysisResult(
+            plan_id=task.plan_id,
+            task_id=task.task_id,
+            status="analysis_error",
+            error=f"{type(exc).__name__}: {exc}",
+            analysis_payload={},
+        )
