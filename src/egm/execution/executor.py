@@ -5,9 +5,9 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from egm.foundation.backends.base_backend import BaseBackend
-from egm.foundation.backends.ideal_backend import IdealBackend
-from egm.foundation.circuits.circuit import QuantumCircuit
+from egm.backends.base_backend import BaseBackend
+from egm.backends.ideal_backend import IdealBackend
+from egm.circuits.circuit import QuantumCircuit
 
 logger = logging.getLogger(__name__)
 

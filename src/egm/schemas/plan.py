@@ -20,53 +20,25 @@ plan.py
     - 不包含误差语义
 """
 
+from __future__ import annotations
 
-from typing import Dict, Any, List, Optional
-from pydantic import BaseModel
+from dataclasses import dataclass, field
+from typing import Any, Dict, List
 
 
-class ExperimentConfig(BaseModel):
+@dataclass(frozen=True)
+class CircuitTask:
+    plan_id: str
+    task_id: str
+    protocol: str
+    qubits: List[int]
+    number_of_circuits: int
+    circuits: List[Any] = field(default_factory=list)
+    meta_data: Dict[str, Any] = field(default_factory=dict)
 
-    # ===== 1. 基本信息 =====
-    id: str
-    name: str
-    description: Optional[str] = None
-    version: str = "1.0"
 
-    # ===== 2. 实验类型 =====
-    experiment_type: str
-    # 例如:
-    # "single_qubit_rb"
-    # "two_qubit_rb"
-    # "crosstalk"
-    # "channel_spectrum"
-    # "entanglement"
-
-    # ===== 3. 目标平台 =====
-    backend: str
-    # 例如:
-    # "baqis_qpu_v1"
-    # "ibmq_backend"
-    # "local_simulator"
-
-    target_qubits: List[int]
-
-    # ===== 4. 实验参数 =====
-    parameters: Dict[str, Any]
-    # 例如:
-    # {
-    #     "num_cliffords": 100,
-    #     "num_samples": 30,
-    #     "depth_range": [1, 50],
-    # }
-
-    # ===== 5. 执行控制参数 =====
-    shots: int = 1024
-    repetitions: int = 1
-    seed: Optional[int] = None
-    parallel: bool = False
-
-    # ===== 6. 输出与报告控制 =====
-    save_raw_data: bool = True
-    generate_report: bool = True
-    report_format: str = "json"  # or "pdf"
+@dataclass(frozen=True)
+class PlanSchema:
+    plan_id: str
+    backend_name: str
+    tasks: List[CircuitTask] = field(default_factory=list)

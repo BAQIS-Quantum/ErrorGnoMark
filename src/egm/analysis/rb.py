@@ -32,7 +32,7 @@ try:
     # Schemas for standardized results
     from egm.schemas.results.base import FitResult, FitParameter
     from egm.schemas.results.rb import RBAnalysisResult, RBSequenceDataPoint
-    from egm.foundation.circuits.circuit import QuantumCircuit
+    from egm.circuits.circuit import QuantumCircuit
 except ImportError:
     pass
 
