@@ -28,13 +28,9 @@ from scipy.optimize import curve_fit, OptimizeWarning
 # ---------------------------------------------------------------------
 # Framework Imports
 # ---------------------------------------------------------------------
-try:
-    # Schemas for standardized results
-    from egm.schemas.results.base import FitResult, FitParameter
-    from egm.schemas.results.rb import RBAnalysisResult, RBSequenceDataPoint
-    from egm.circuits.circuit import QuantumCircuit
-except ImportError:
-    pass
+from egm.schemas.results.base import FitResult, FitParameter
+from egm.schemas.results.rb import RBAnalysisResult, RBSequenceDataPoint
+from egm.circuits.circuit import QuantumCircuit
 
 # ---------------------------------------------------------------------
 # Logging Configuration

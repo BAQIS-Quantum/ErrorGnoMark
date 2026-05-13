@@ -1,0 +1,58 @@
+# Phase 1: apply DDL + seed, verify counts, run sql/queries/p0 checks (requires Postgres).
+name: Phase 1 Postgres
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, develop, "feature/**", "exp/**"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  phase1-queries:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      EGM_PG_DSN: postgresql://postgres:postgres@localhost:5432/egm_phase1_ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create CI database
+        run: createdb egm_phase1_ci
+
+      - name: Apply Phase 1 schema + seed
+        run: bash scripts/postgres/apply_phase1.sh
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install psycopg
+        run: pip install 'psycopg[binary]>=3.2'
+
+      - name: Phase 1 DB acceptance (verify counts + P0 queries)
+        env:
+          PYTHONPATH: src
+        run: python -m egm.datastore.phase1_acceptance --strict

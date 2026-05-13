@@ -7,6 +7,9 @@ for observation records.
 IMPORTANT:
 - Datastore must NOT depend on egm.domain.* (domain records).
 - This module defines contracts only; no drivers/DB/DDL/query logic here.
+
+Follow-ups (circuit-level raw payload persistence): see
+``egm.datastore.circuit_execution_payload_roadmap`` (docstring-only roadmap module).
 """
 
 from __future__ import annotations

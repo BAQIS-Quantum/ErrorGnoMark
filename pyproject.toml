@@ -18,7 +18,7 @@ build-backend = "setuptools.build_meta"
 [project]
 # --- Core Metadata ---
 name = "errorgnomark"
-version = "2.0.0"
+version = "3.0.0"
 description = "A comprehensive and modular software suite for the full-stack benchmarking and characterization of quantum computing systems, from physical hardware to application-level performance."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -49,7 +49,7 @@ keywords = [
 # Full list: https://pypi.org/classifiers/
 classifiers = [
     # 1. Development Status
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
 
     # 2. Intended Audience
     "Intended Audience :: Developers",
@@ -105,6 +105,9 @@ dev = [
     # Code Quality & Formatting
     "black~=24.4",
     "ruff~=0.4.0",
+
+    # Phase 1 Postgres smoke / scripts (optional at runtime)
+    "psycopg[binary]~=3.2",
 
     # Testing Framework
     "pytest~=8.0",

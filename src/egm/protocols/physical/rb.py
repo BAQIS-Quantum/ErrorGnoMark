@@ -23,11 +23,14 @@ import logging
 from typing import List, Dict, Optional, Union, Tuple, Protocol, Any, Sequence
 
 # Internal Framework Imports
-from egm.foundation.circuits.circuit import QuantumCircuit, Gate
-from egm.execution.executor import QuantumEngine
+from egm.circuits.circuit import QuantumCircuit, Gate
+from egm.execution.executor import Executor
 from egm.analysis.rb import stitch_rb_results, analyze_rb_standard, calculate_epg
-from egm.foundation.circuits.gate_sets import CliffordGateSet
-from egm.experiments.physical.benchmarking.tools.rb_tools import _is_measure_gate
+from egm.circuits.gate_sets import CliffordGateSet
+
+
+def _is_measure_gate(g: Gate) -> bool:
+    return g.is_measurement
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
@@ -631,7 +634,7 @@ class StandardRBExperiment:
             return self.generate_standard_rb_circuits()
         return self._circuits
 
-    def run(self, engine: QuantumEngine, shots: int = 1024, plot: bool = True) -> Any:
+    def run(self, engine: Executor, shots: int = 1024, plot: bool = True) -> Any:
         """
         Executes the experiment, stitches data, and runs analysis.
 
@@ -756,7 +759,7 @@ class InterleavedRBExperiment(StandardRBExperiment):
             "interleaved": self._int_circuits
         }
 
-    def run(self, engine: QuantumEngine, shots: int = 1024, plot: bool = True) -> Dict[str, Any]:
+    def run(self, engine: Executor, shots: int = 1024, plot: bool = True) -> Dict[str, Any]:
         """
         Executes and Analyzes the Interleaved RB Experiment.
         """

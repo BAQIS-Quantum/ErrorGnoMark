@@ -131,6 +131,13 @@ claude_logged.sh
 dev_claude/
 reports/
 tmp/
+scripts/log_ai_session.py
+
+# Internal documents (team reports, presentations)
+docs/internal/
+
+# Secrets that may appear in root (CRITICAL: never commit)
+c
 
 
 # ===================================================================
