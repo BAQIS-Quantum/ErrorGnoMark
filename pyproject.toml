@@ -18,12 +18,11 @@ build-backend = "setuptools.build_meta"
 [project]
 # --- Core Metadata ---
 name = "errorgnomark"
-version = "3.0.0"
+version = "3.0.1"
 description = "A comprehensive and modular software suite for the full-stack benchmarking and characterization of quantum computing systems, from physical hardware to application-level performance."
 readme = "README.md"
 requires-python = ">=3.9"
-# [CONSISTENCY FIX] While using a file is good practice, we ensure the classifier is correct for clarity.
-# Please ensure the LICENSE file in the root directory contains the full Apache 2.0 license text.
+# SPDX: MIT — must match root LICENSE file (see LICENSE-AUDIT.md).
 license = { file = "LICENSE" }
 
 # --- People ---
@@ -55,9 +54,8 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
 
-    # 3. License
-    # [CONSISTENCY FIX] Based on your GitHub repository, the license should be Apache 2.0.
-    "License :: OSI Approved :: Apache Software License",
+    # 3. License (MIT — see LICENSE)
+    "License :: OSI Approved :: MIT License",
 
     # 4. Operating System
     "Operating System :: OS Independent",

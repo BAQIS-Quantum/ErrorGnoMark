@@ -1,4 +1,4 @@
-# ErrorGnoMark (EGM) v3
+# ErrorGnoMark (EGM) v3.0.1
 
 > A modular, full-stack platform for quantum hardware benchmarking, characterization, and lifecycle management.
 
@@ -22,6 +22,55 @@
 - **Predictive intelligence** — Probabilistic future-state overlay for risk-aware compilation and scheduling
 - **QEC-ready error budget** — Error source abstractions decoupled from physical gates, designed for fault-tolerant era
 
+> **Scope honesty:** The table below is the authoritative status for v3.0.1. Capabilities marked **Planned** or **Experimental** are not production-ready.
+
+---
+
+## Feature Status (v3.0.1)
+
+| Area | Capability | Status | Notes |
+|------|------------|--------|-------|
+| Physical QCVV | XEB | **Beta** | Simulator smoke + analysis dispatch; see `scripts/smoke/` |
+| Physical QCVV | RB / IRB | **Beta** | End-to-end demo on dummy backend; statistical validation ongoing |
+| Physical QCVV | MRB, PRB, CSB, SPB | **Experimental** | Implementation present; full validation reports pending |
+| Physical QCVV | T1, T2, QV, Rabi, SPAM, Leakage RB, CLOPS | **Planned** | Placeholder modules; not yet implemented |
+| Data platform | Phase 1 PostgreSQL + static queries | **Beta** | Requires `EGM_PG_DSN`; see `db/phase1/`, `sql/queries/` |
+| Data platform | Bi-temporal schema + lineage (DB) | **Beta** | Schema in `db/phase1/001_schema.sql` |
+| Domain | Version DAG, event-sourced hardware state (`domain/system/`) | **Planned** | Architecture documented; runtime implementation incomplete |
+| Intelligence | Predictive overlay (`intelligence/forecasting/`) | **Planned** | Design docs; not production-ready |
+| Logical QEC | Surface code / decoder benchmarks | **Planned** | Not part of current release |
+| Algorithmic | Grover, QPE, VQE, etc. | **Experimental** | Lower priority than physical QCVV |
+
+**Status definitions:** **Beta** = runnable with documented examples; **Experimental** = partial code, limited validation; **Planned** = design or placeholder only.
+
+---
+
+## Known Limitations
+
+- **Logical QEC benchmarks** are not production-ready in this release.
+- Many protocol analyzers do **not** yet publish full statistical uncertainty (confidence intervals, bootstrap); treat numeric outputs accordingly until validation reports land.
+- **Predictive intelligence** and **versioned hardware state** modules may exist as design documentation without complete runtime code paths.
+- **PostgreSQL** performance at very large scale has not been independently benchmarked; Phase 1 targets team/lab-scale workloads.
+- **Cloud/hardware backends** depend on third-party APIs, quotas, and credentials; availability is not guaranteed by this repository.
+- License metadata was corrected in **v3.0.1**; see [LICENSE-AUDIT.md](LICENSE-AUDIT.md) if you relied on pre-3.0.1 PyPI classifiers.
+
+---
+
+## Use Cases
+
+**Good fit**
+
+- Research prototypes for quantum hardware characterization (QCVV)
+- Teaching and reproducible demos with simulators (`scripts/smoke/`)
+- Persisting calibration and benchmark observations in PostgreSQL (Phase 1)
+- Building on a unified analysis entry point for new protocols
+
+**Not a good fit (today)**
+
+- Sole reliance for safety-critical or certified production control loops
+- Expecting turnkey logical QEC benchmark + decoder integration
+- Assuming every protocol listed in marketing copy is validated and stable
+
 ---
 
 ## Installation
@@ -42,7 +91,7 @@ Verify:
 
 ```python
 import egm
-print(egm.__version__)  # 3.0.0
+print(egm.__version__)  # 3.0.1
 ```
 
 **Requirements:** Python >= 3.9
@@ -218,7 +267,10 @@ errorgnomark/
 ├── docs/               # Documentation
 ├── .github/workflows/  # CI/CD
 ├── pyproject.toml      # PEP 621 metadata
-├── LICENSE             # Apache 2.0
+├── LICENSE             # MIT
+├── LICENSE-AUDIT.md    # License history & compliance
+├── SECURITY.md         # Vulnerability reporting
+├── CHANGELOG.md        # Release notes
 └── README.md
 ```
 
@@ -237,7 +289,7 @@ Contributions are welcome. Please ensure:
 
 ## License
 
-[Apache License 2.0](LICENSE)
+[MIT License](LICENSE). See [LICENSE-AUDIT.md](LICENSE-AUDIT.md) for license metadata history (v3.0.1 trust patch).
 
 ---
 
