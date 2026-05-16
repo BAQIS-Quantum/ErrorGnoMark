@@ -11,8 +11,7 @@ Why here
   :func:`egm.execution.plan_runner.run_plan`.
 - Long-term: persist **task-level summaries** (already sketched via observation records)
   plus **circuit-level cold payloads** (large dicts) with refs / object storage, aligned
-  with Phase 1 DDL ``payload_ref`` / JSONB patterns in
-  ``notes-private/.../p1-step1-...DDL...``.
+  with Phase 1 DDL ``payload_ref`` / JSONB patterns in ``db/phase1/001_schema.sql``.
 
 TODO batches (implement in dedicated PRs; keep this list updated when done)
 ------------------------------------------------------------------------------
@@ -45,7 +44,7 @@ TODO batches (implement in dedicated PRs; keep this list updated when done)
 
 Cross-links (repo-relative)
 ---------------------------
-- Phase 1 scope: ``notes-private/dairy/2026-4月/20260425-实施方案/phase1- 查询功能/``
+- Phase 1 scope: ``db/phase1/``, ``sql/queries/p0/``, ``docs/data-layer/``
 - Current in-memory MVP: ``egm.datastore.observation_store_memory``,
   ``egm.services.serialization.observation_record``,
   ``egm.domain.records.task_observation_record``.

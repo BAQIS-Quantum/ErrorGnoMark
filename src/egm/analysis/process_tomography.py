@@ -16,12 +16,14 @@
 #   • χ → Choi conversion for fidelity & visualization
 # ==============================================================
 
-import numpy as np
-from itertools import product
 from functools import reduce
-from typing import Dict, List, Tuple, Any, Optional
-from egm.analysis.result import ExperimentResult
+from itertools import product
+from typing import Dict, List, Optional
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+from egm.analysis.result import ExperimentResult
 
 # --- Module-Level Constants and Type Definitions ---
 

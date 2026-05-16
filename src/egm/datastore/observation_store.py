@@ -43,6 +43,12 @@ class ObservationKeys:
     analysis_error: str = "analysis_error"
     observation_time: str = "observation_time"  # ISO 8601 string or None
 
+    # Phase 1 v1.1 — record_kind on observation_record
+    record_kind: str = "record_kind"  # observation | inference | forecast
+    forecast_model_version: str = "forecast_model_version"
+    forecast_horizon_seconds: str = "forecast_horizon_seconds"
+    forecast_metadata_json: str = "forecast_metadata_json"
+
     # Payload top-level keys
     qubits: str = "qubits"
     execution_summary: str = "execution_summary"

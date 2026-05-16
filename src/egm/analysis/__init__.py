@@ -7,7 +7,7 @@ that routes to protocol-specific analyzers based on `task.protocol`.
 
 from __future__ import annotations
 
-from typing import Dict, Any, List
+from typing import Any, Dict
 
 from egm.schemas.plan import CircuitTask
 from egm.schemas.results.analysis import TaskAnalysisResult

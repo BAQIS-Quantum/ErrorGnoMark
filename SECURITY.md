@@ -6,7 +6,7 @@ Security fixes are applied to the **latest release on the default branch** (`mai
 
 | Version | Supported |
 |---------|-----------|
-| 3.0.1+  | Yes       |
+| 3.0.1+  | Yes (3.0.2+ recommended for current docs/templates) |
 | < 3.0.1 | No (upgrade recommended for license-metadata clarity; see [LICENSE-AUDIT.md](LICENSE-AUDIT.md)) |
 
 ## Reporting a vulnerability

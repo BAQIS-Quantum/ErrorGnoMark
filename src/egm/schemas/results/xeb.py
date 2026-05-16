@@ -12,8 +12,10 @@ Fully compatible with RB/XEB/SPB unified report generators (Pydantic v2+).
 """
 
 from __future__ import annotations
+
 import uuid
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field, model_validator
 
 

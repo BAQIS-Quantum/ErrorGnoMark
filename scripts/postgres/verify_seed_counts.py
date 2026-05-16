@@ -19,12 +19,12 @@ def main() -> int:
         return 0
 
     exact: list[tuple[str, int]] = [
-        ("chip", 2),
+        ("chip", 3),  # chip-alpha, chip-beta, Baihua (seed 050)
         ("qubit", 8),
         ("coupler", 6),
-        ("scope", 4),
-        ("source", 1),
-        ("metric_definition", 1),
+        ("scope", 5),  # seed 010 + 050 baihua-chip-scope
+        ("source", 2),  # seed 010 + 050 quafu feed
+        ("metric_definition", 6),  # seed 010 + 050 quafu metrics ×5
         ("structure_snapshot", 2),
         ("structure_event", 2),
         ("calibration_run", 2),

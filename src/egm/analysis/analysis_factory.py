@@ -13,12 +13,13 @@ Logical Architecture:
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Tuple
 from collections import defaultdict
+from typing import Any, Dict, List, Tuple
 
 # --- Pseudo Imports loading deep level execution packages ---
 from egm.analysis.rb import analyze_rb_standard
 from egm.analysis.xeb import analyze_xeb_and_spb_from_results
+
 
 class BaseAnalyzer(ABC):
     """Abstract base class establishing input/output contracts for analyzers."""

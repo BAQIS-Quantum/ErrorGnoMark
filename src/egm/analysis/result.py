@@ -1,9 +1,9 @@
 # File Path: errorgnomark/analysis/result.py
 # [FIXED v1] - Added the missing AnalysisResult class to support tomography and other analyses.
 
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
+
 import matplotlib.pyplot as plt
-import numpy as np # We will need this for displaying matrices later.
 
 # --- NEW CLASS: AnalysisResult ---
 # This is the class that process_tomography.py is trying to import.
@@ -88,13 +88,13 @@ class ExperimentResult:
             if self.name == "StandardRB":
                 epc = self.data.get('epc')
                 if epc is not None:
-                    print(f"  Fit successful: True")
+                    print("  Fit successful: True")
                     print(f"  --> Error Per Clifford (EPC): {epc:.4e}")
 
             elif self.name == "InterleavedRB":
                 gate_error = self.data.get('gate_error')
                 if gate_error is not None:
-                    print(f"  Fit successful: True")
+                    print("  Fit successful: True")
                     print(f"  --> Interleaved Gate Error: {gate_error:.4e}")
             else:
                 # Fallback for any other experiment type

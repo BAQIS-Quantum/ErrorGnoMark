@@ -18,7 +18,7 @@ build-backend = "setuptools.build_meta"
 [project]
 # --- Core Metadata ---
 name = "errorgnomark"
-version = "3.0.1"
+version = "3.0.2"
 description = "A comprehensive and modular software suite for the full-stack benchmarking and characterization of quantum computing systems, from physical hardware to application-level performance."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -137,6 +137,44 @@ documentation = "https://errorgnomark.readthedocs.io"
 # ===================================================================
 # Setuptools-Specific Configuration
 # ===================================================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+markers = [
+    "unit: unit tests (fast, isolated)",
+    "integration: cross-module tests",
+    "validation: Horizon C synthetic ground-truth tests",
+    "smoke: fast user-path checks",
+    "postgres: requires EGM_PG_DSN (not run in default CI)",
+]
+addopts = "-ra -m 'not postgres'"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501", "E701"]
+# UP (pyupgrade) typing modernizations: enable in D-v2 after bulk pass
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011", "E402"]
+
+[tool.coverage.run]
+branch = true
+source = ["egm"]
+omit = [
+    "*/tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+]
+
 [tool.setuptools.packages.find]
 # [CRITICAL FIX] Tell setuptools to find packages in the 'src' directory.
 # This configuration resolves the ImportError caused by the 'src' layout.

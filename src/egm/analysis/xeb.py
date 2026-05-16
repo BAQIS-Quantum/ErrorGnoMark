@@ -18,12 +18,14 @@ with the EGM v5 RB-schema exponential-decay fitting.
 """
 
 from __future__ import annotations
-import numpy as np
+
 import logging
 import warnings
 from collections import defaultdict
-from typing import Dict, Any, List, Tuple, Optional
-from scipy.optimize import curve_fit, OptimizeWarning
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+from scipy.optimize import OptimizeWarning, curve_fit
 
 from egm.analysis.spb import analyze_speckle_purity, fit_spb_data
 from egm.schemas.plan import CircuitTask

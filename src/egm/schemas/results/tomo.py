@@ -3,11 +3,13 @@
 Defines Pydantic schemas for Tomography (QST/QPT) analysis results.
 """
 
-from typing import List, Literal, Any
+from typing import Any, Literal
+
 import numpy as np
 from pydantic import Field
 
 from .base import BaseAnalysisResult
+
 
 class NumpyArray(np.ndarray):
     """Custom Pydantic type for numpy arrays to allow validation."""

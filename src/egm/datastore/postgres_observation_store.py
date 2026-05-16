@@ -54,6 +54,37 @@ def _execution_to_run_status(execution_status: str) -> str:
     return "failed"
 
 
+_VALID_RECORD_KINDS = frozenset({"observation", "inference", "forecast"})
+
+
+def _record_kind(rec: ObservationPersistenceDict) -> str:
+    raw = rec.get(KEYS.record_kind, "observation")
+    kind = str(raw).lower() if raw is not None else "observation"
+    if kind not in _VALID_RECORD_KINDS:
+        raise ValueError(f"Invalid record_kind: {raw!r}")
+    if kind == "forecast":
+        mv = rec.get(KEYS.forecast_model_version)
+        if mv is None or not str(mv).strip():
+            raise ValueError("forecast rows require non-empty forecast_model_version")
+    return kind
+
+
+def _forecast_fields(rec: ObservationPersistenceDict, kind: str) -> dict[str, Any]:
+    if kind != "forecast":
+        return {
+            "forecast_model_version": None,
+            "forecast_horizon_seconds": None,
+            "forecast_metadata_json": None,
+        }
+    horizon = rec.get(KEYS.forecast_horizon_seconds)
+    meta = rec.get(KEYS.forecast_metadata_json)
+    return {
+        "forecast_model_version": str(rec[KEYS.forecast_model_version]),
+        "forecast_horizon_seconds": int(horizon) if horizon is not None else None,
+        "forecast_metadata_json": Json(meta) if meta is not None else None,
+    }
+
+
 def _observation_time(rec: ObservationPersistenceDict) -> datetime:
     raw = rec.get(KEYS.observation_time)
     if raw is None:
@@ -88,6 +119,8 @@ class PostgresObservationStore:
             raise ValueError("ObservationPersistenceDict must include string chip_name for PG store")
 
         obs_time = _observation_time(record)
+        kind = _record_kind(record)
+        forecast = _forecast_fields(record, kind)
         bench_status = _execution_to_run_status(str(record.get(KEYS.execution_status, "")))
         protocol = str(record.get(KEYS.protocol, "unknown"))
 
@@ -166,7 +199,11 @@ class PostgresObservationStore:
                         effective_to,
                         published_at,
                         ingested_at,
-                        source_id
+                        source_id,
+                        record_kind,
+                        forecast_model_version,
+                        forecast_horizon_seconds,
+                        forecast_metadata_json
                     ) VALUES (
                         %(chip_id)s::uuid,
                         'chip'::subject_type_enum,
@@ -185,7 +222,11 @@ class PostgresObservationStore:
                         NULL,
                         NULL,
                         now(),
-                        %(source_id)s::uuid
+                        %(source_id)s::uuid,
+                        %(record_kind)s::record_kind_enum,
+                        %(forecast_model_version)s,
+                        %(forecast_horizon_seconds)s,
+                        %(forecast_metadata_json)s
                     )
                     RETURNING observation_record_id
                     """,
@@ -197,6 +238,8 @@ class PostgresObservationStore:
                         "value_json": Json(dict(record)),
                         "observation_time": obs_time,
                         "source_id": SEED_SOURCE_ID,
+                        "record_kind": kind,
+                        **forecast,
                     },
                 )
                 orow = cur.fetchone()

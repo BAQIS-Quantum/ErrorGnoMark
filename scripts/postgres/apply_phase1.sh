@@ -12,4 +12,9 @@ psql "$EGM_PG_DSN" -v ON_ERROR_STOP=1 -f "$ROOT/db/phase1/seed/020_structure_sna
 psql "$EGM_PG_DSN" -v ON_ERROR_STOP=1 -f "$ROOT/db/phase1/seed/030_calibration_benchmark_observation_system.sql"
 psql "$EGM_PG_DSN" -v ON_ERROR_STOP=1 -f "$ROOT/db/phase1/seed/040_lineage_for_system_state.sql"
 psql "$EGM_PG_DSN" -v ON_ERROR_STOP=1 -f "$ROOT/db/phase1/seed/050_quafu_baihua_bootstrap.sql"
-echo "Phase 1 schema + seed applied."
+for mig in "$ROOT"/db/migrations/[0-9][0-9][0-9][0-9]_*.sql; do
+  [[ -f "$mig" ]] || continue
+  echo "Applying migration: $(basename "$mig")"
+  psql "$EGM_PG_DSN" -v ON_ERROR_STOP=1 -f "$mig"
+done
+echo "Phase 1 schema + seed + migrations applied."

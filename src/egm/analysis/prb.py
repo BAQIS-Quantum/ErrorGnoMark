@@ -325,9 +325,12 @@ Features
 """
 
 from __future__ import annotations
+
+from typing import Dict, List, Tuple, TypedDict
+
 import numpy as np
 from scipy.optimize import curve_fit
-from typing import Dict, List, Tuple, TypedDict, Optional
+
 
 # ---------------------------------------------------------------------
 # Type Annotations

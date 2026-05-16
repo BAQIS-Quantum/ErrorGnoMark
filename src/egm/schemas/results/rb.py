@@ -16,12 +16,13 @@ Supports construction directly from analysis layer output
 """
 
 from __future__ import annotations
-from typing import List, Optional, Literal, Dict, Any
+
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, model_validator
 
-from egm.schemas.results.base import BaseAnalysisResult, FitResult, FitParameter
+from egm.schemas.results.base import BaseAnalysisResult, FitParameter, FitResult
 
 
 # ---------------------------------------------------------------------
@@ -124,7 +125,7 @@ class RBAnalysisResult(BaseAnalysisResult):
         cls,
         fit_dict: Dict[str, Any],
         qubits: Optional[List[int]] = None,
-    ) -> "RBAnalysisResult":
+    ) -> RBAnalysisResult:
         """Construct an RBAnalysisResult from a fit_rb_data() dictionary."""
         sequence_data = [
             RBSequenceDataPoint(

@@ -12,11 +12,12 @@ This module provides functions to:
 5. Provide high-level functions to display a summary table and generate all plots from a list of results.
 """
 
-import numpy as np
-from typing import Dict, List, Tuple, TypedDict, Optional
-from scipy.optimize import curve_fit
 import os
+from typing import Dict, List, Optional, Tuple, TypedDict
+
+import numpy as np
 import pandas as pd
+from scipy.optimize import curve_fit
 
 # This import is needed for the new high-level functions
 from egm.analysis.result import AnalysisResult

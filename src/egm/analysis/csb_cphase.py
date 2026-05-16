@@ -5,14 +5,15 @@
 from __future__ import annotations
 
 import logging
-import numpy as np
 from typing import Dict, List
 from uuid import uuid4
 
+import numpy as np
+
 from egm.schemas.results.csb import (
+    AnalysisStatus,
     CSBAnalysisResult,
     CSBSequenceDataPoint,
-    AnalysisStatus,
 )
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")

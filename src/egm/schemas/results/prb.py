@@ -13,10 +13,12 @@ Mirrors the structure of `RBAnalysisResult` for uniformity.
 """
 
 from __future__ import annotations
-from typing import List, Optional, Literal, Dict, Any
+
+from typing import Any, Dict, List, Literal, Optional
+
 from pydantic import BaseModel, Field, model_validator
 
-from egm.schemas.results.base import BaseAnalysisResult, FitResult, FitParameter
+from egm.schemas.results.base import BaseAnalysisResult, FitParameter, FitResult
 
 
 # ---------------------------------------------------------------------
@@ -68,7 +70,7 @@ class PRBAnalysisResult(BaseAnalysisResult):
         This field may be filled later by workflow composition.
         """
         if getattr(self, "_gate_error", None) is not None:
-            return getattr(self, "_gate_error")
+            return self._gate_error
         return None
 
     # Optional setter so the suites layer can attach results
@@ -98,7 +100,7 @@ class PRBAnalysisResult(BaseAnalysisResult):
         cls,
         fit_dict: Dict[str, Any],
         qubits: Optional[List[int]] = None,
-    ) -> "PRBAnalysisResult":
+    ) -> PRBAnalysisResult:
         """
         Construct a PRBAnalysisResult from a fit_prb_data() dictionary.
 

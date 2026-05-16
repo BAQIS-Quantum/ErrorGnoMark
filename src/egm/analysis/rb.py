@@ -18,19 +18,22 @@ Architectural Change v5.4:
 
 from __future__ import annotations
 
-import numpy as np
 import logging
 import warnings
+from collections.abc import Sequence
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
-from typing import Dict, Any, List, Optional, Tuple, Sequence
-from scipy.optimize import curve_fit, OptimizeWarning
+
+import numpy as np
+from scipy.optimize import OptimizeWarning, curve_fit
+
+from egm.circuits.circuit import QuantumCircuit
 
 # ---------------------------------------------------------------------
 # Framework Imports
 # ---------------------------------------------------------------------
-from egm.schemas.results.base import FitResult, FitParameter
+from egm.schemas.results.base import FitParameter, FitResult
 from egm.schemas.results.rb import RBAnalysisResult, RBSequenceDataPoint
-from egm.circuits.circuit import QuantumCircuit
 
 # ---------------------------------------------------------------------
 # Logging Configuration

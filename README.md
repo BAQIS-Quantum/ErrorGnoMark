@@ -1,4 +1,4 @@
-# ErrorGnoMark (EGM) v3.0.1
+# ErrorGnoMark (EGM) v3.0.2
 
 > A modular, full-stack platform for quantum hardware benchmarking, characterization, and lifecycle management.
 
@@ -20,25 +20,25 @@
 - **Bi-temporal data layer** — Every observation carries both *effective time* (when it was true) and *ingestion time* (when the system learned it), enabling temporal replay and audit
 - **Versioned hardware state** — Event-sourced state evolution with a DAG structure, supporting branching calibration strategies and rollback
 - **Predictive intelligence** — Probabilistic future-state overlay for risk-aware compilation and scheduling
-- **QEC-ready error budget** — Error source abstractions decoupled from physical gates, designed for fault-tolerant era
+- **FTQC-oriented error abstractions** — Physical-layer error models structured so a future logical/QEC layer can plug in; **logical QEC benchmarks are not shipped** in this release (see Feature Status)
 
-> **Scope honesty:** The table below is the authoritative status for v3.0.1. Capabilities marked **Planned** or **Experimental** are not production-ready.
+> **Scope honesty:** The table below is the authoritative status for the current release. Capabilities marked **Planned** or **Experimental** are not production-ready.
 
 ---
 
-## Feature Status (v3.0.1)
+## Feature Status (v3.0.2)
 
 | Area | Capability | Status | Notes |
 |------|------------|--------|-------|
-| Physical QCVV | XEB | **Beta** | Simulator smoke + analysis dispatch; see `scripts/smoke/` |
-| Physical QCVV | RB / IRB | **Beta** | End-to-end demo on dummy backend; statistical validation ongoing |
+| Physical QCVV | XEB | **Beta** | Simulator smoke + analysis dispatch; synthetic validation [report](docs/validation/xeb-validation.md) |
+| Physical QCVV | RB / IRB | **Beta** | RB: [validation report](docs/validation/rb-validation.md); IRB: validation pending |
 | Physical QCVV | MRB, PRB, CSB, SPB | **Experimental** | Implementation present; full validation reports pending |
 | Physical QCVV | T1, T2, QV, Rabi, SPAM, Leakage RB, CLOPS | **Planned** | Placeholder modules; not yet implemented |
 | Data platform | Phase 1 PostgreSQL + static queries | **Beta** | Requires `EGM_PG_DSN`; see `db/phase1/`, `sql/queries/` |
 | Data platform | Bi-temporal schema + lineage (DB) | **Beta** | Schema in `db/phase1/001_schema.sql` |
 | Domain | Version DAG, event-sourced hardware state (`domain/system/`) | **Planned** | Architecture documented; runtime implementation incomplete |
 | Intelligence | Predictive overlay (`intelligence/forecasting/`) | **Planned** | Design docs; not production-ready |
-| Logical QEC | Surface code / decoder benchmarks | **Planned** | Not part of current release |
+| Logical QEC | Surface code / decoder benchmarks | **Planned** | Design direction only; no Stim/PyMatching workflow or logical MVP in this release |
 | Algorithmic | Grover, QPE, VQE, etc. | **Experimental** | Lower priority than physical QCVV |
 
 **Status definitions:** **Beta** = runnable with documented examples; **Experimental** = partial code, limited validation; **Planned** = design or placeholder only.
@@ -47,10 +47,12 @@
 
 ## Known Limitations
 
-- **Logical QEC benchmarks** are not production-ready in this release.
-- Many protocol analyzers do **not** yet publish full statistical uncertainty (confidence intervals, bootstrap); treat numeric outputs accordingly until validation reports land.
+- **Logical QEC benchmarks** are not production-ready in this release (no surface-code memory experiments, decoder integration, or logical error-rate pipeline).
+- **「QEC-ready」/ FTQC-oriented** wording means extensible error and data design toward fault-tolerant computing — **not** a delivered logical-QEC product.
+- XEB/RB have **synthetic** validation reports ([summary](docs/validation/validation-summary.md)); other protocols and full hardware certification are still limited.
+- Task-level analysis payloads may not yet expose all fields in [analyzer-output-spec.md](docs/validation/analyzer-output-spec.md).
 - **Predictive intelligence** and **versioned hardware state** modules may exist as design documentation without complete runtime code paths.
-- **PostgreSQL** performance at very large scale has not been independently benchmarked; Phase 1 targets team/lab-scale workloads.
+- **PostgreSQL** at web-scale is out of scope; lab-scale numbers are in [postgres-benchmark-v0.1.md](docs/performance/postgres-benchmark-v0.1.md).
 - **Cloud/hardware backends** depend on third-party APIs, quotas, and credentials; availability is not guaranteed by this repository.
 - License metadata was corrected in **v3.0.1**; see [LICENSE-AUDIT.md](LICENSE-AUDIT.md) if you relied on pre-3.0.1 PyPI classifiers.
 
@@ -91,7 +93,7 @@ Verify:
 
 ```python
 import egm
-print(egm.__version__)  # 3.0.1
+print(egm.__version__)  # 3.0.2
 ```
 
 **Requirements:** Python >= 3.9
@@ -240,15 +242,21 @@ Each protocol supports three modes for flexible characterization:
 EGM includes a PostgreSQL-based data layer with:
 
 - **Bi-temporal schema** — Every fact has `effective_time` + `ingested_at`
+- **Record kinds (v1.1)** — `observation` / `inference` / `forecast` on `observation_record` ([semantics](docs/data-layer/observation-inference-forecast.md))
 - **Lineage tracking** — DAG tracing from derived artifacts to raw sources
 - **31 SQL query templates** covering entity lookup, calibration facts, benchmark results, system state, and lineage traversal
+- **Schema migrations** — `db/migrations/` ([policy](db/MIGRATION.md))
 - **Idempotent ETL** for external calibration data (Quafu)
 
 ```
 db/phase1/              # DDL + seed scripts
+db/migrations/          # Forward schema migrations
+docs/data-layer/        # Semantics and field dictionary
+docs/performance/       # Benchmark reports
 sql/queries/p0/         # 31 SQL templates (q01–q26)
 scripts/ingest/         # ETL pipeline for Quafu calibration data
 scripts/postgres/       # Database admin & demo notebooks
+scripts/benchmark/      # Insert/query throughput harness
 ```
 
 ---
@@ -264,9 +272,11 @@ errorgnomark/
 │   ├── ingest/         # ETL scripts
 │   ├── postgres/       # Database utilities & demos
 │   └── smoke/          # End-to-end smoke tests & demos
-├── docs/               # Documentation
-├── .github/workflows/  # CI/CD
+├── docs/               # Documentation hub (see docs/index.md)
+├── .github/            # Workflows, issue/PR templates
 ├── pyproject.toml      # PEP 621 metadata
+├── ROADMAP.md          # Public 3/6/12 month roadmap
+├── CONTRIBUTING.md     # Contribution guide
 ├── LICENSE             # MIT
 ├── LICENSE-AUDIT.md    # License history & compliance
 ├── SECURITY.md         # Vulnerability reporting
@@ -276,14 +286,29 @@ errorgnomark/
 
 ---
 
+## Documentation & Roadmap
+
+- [Documentation hub](docs/index.md)
+- [Getting started](docs/getting-started.md)
+- [Protocol status](docs/protocol-status.md) (authoritative table: [Feature Status](#feature-status-v302) above)
+- [Roadmap](ROADMAP.md)
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [Public API](docs/engineering/public-api.md)
+- [CI / testing](docs/engineering/ci.md)
+
+---
+
 ## Contributing
 
-Contributions are welcome. Please ensure:
+Contributions are welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup, branching, and PR expectations.
+
+Quick rules:
 
 1. Code follows existing patterns (type hints, docstrings, Pydantic schemas)
 2. New protocols implement the three-layer architecture (kernel → wrapper → orchestration)
 3. Analysis modules register with `_TASK_ANALYZERS` in `analysis/__init__.py`
-4. Run `ruff check src/` and `black src/` before submitting
+4. Run `ruff check src/egm/analysis src/egm/schemas tests` and `pytest tests/unit tests/integration tests/validation tests/smoke -q` before submitting (see [CI](docs/engineering/ci.md))
 
 ---
 

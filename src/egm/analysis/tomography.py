@@ -1,14 +1,16 @@
 # File Path: errorgnomark/analysis/tomography.py
 # [CORRECTED VERSION - Adapts to the existing ExperimentResult class]
 
-import numpy as np
 import itertools
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 
 # =========================================================================
 # [THE FIX IS HERE]
 # Import the correct class name 'ExperimentResult' from your 'result.py' file.
 from .result import ExperimentResult
+
 # =========================================================================
 
 class StateTomographyAnalysis:
@@ -96,7 +98,7 @@ class StateTomographyAnalysis:
             'trace': np.real(np.trace(rho_k)),
             'iterations': i + 1
         }
-        return ExperimentResult(name=f"Nesterov Optimization", data=analysis_data)
+        return ExperimentResult(name="Nesterov Optimization", data=analysis_data)
 
     # --- Helper methods below are unchanged ---
     def _reconstruct_rho_linear_inversion(self, experiment_data: Dict[str, Any]) -> np.ndarray:

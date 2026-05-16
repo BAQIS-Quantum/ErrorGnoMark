@@ -1,0 +1,35 @@
+# Horizon D: Python quality gate (ruff + pytest + wheel build).
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, develop, "feature/**", "exp/**"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package (dev extras)
+        run: |
+          pip install -e ".[dev]"
+          pip install "numpy>=1.26,<2.3" "scipy>=1.13,<1.15"
+
+      - name: Ruff (analysis, schemas, tests)
+        run: ruff check src/egm/analysis src/egm/schemas tests
+
+      - name: Pytest (unit, integration, validation, smoke)
+        run: >
+          pytest tests/unit tests/integration tests/validation tests/smoke
+          -q --cov=egm --cov-report=term-missing:skip-covered
+
+      - name: Build wheel
+        run: pip install build && python -m build

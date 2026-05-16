@@ -34,6 +34,8 @@ export EGM_PG_DSN='postgresql://USER:PASS@HOST:5432/DBNAME'
 
 Re-apply on a **non-empty** database may fail on duplicate keys; for development, drop/recreate the database or schema first.
 
+**Migrations (Horizon E):** `apply_phase1.sh` also runs `db/migrations/*.sql` (target `db/schema_version.txt`). Upgrade-only: `python scripts/postgres/apply_migrations.py`. See [../MIGRATION.md](../MIGRATION.md).
+
 ## Verify
 
 ```bash
@@ -54,5 +56,5 @@ PYTHONPATH=src python -m egm.datastore.phase1_acceptance --strict
 
 ## Alignment
 
-- DDL source: `notes-private/.../p1-step1-《EGM Phase 1 最小表集 PostgreSQL DDL 草案 v1.md` (first 663 lines, executable SQL only).
-- Batch plan: `notes-private/.../p1-step4-n/p1-step4-落地实施方案-分批验收.md` (A → B → D; C uses `PostgresObservationStore`).
+- DDL source: `001_schema.sql` in this directory (executable Phase 1 minimum table set).
+- Workflow store: `PostgresObservationStore` (`src/egm/datastore/postgres_observation_store.py`).

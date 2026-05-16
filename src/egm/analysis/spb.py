@@ -16,11 +16,13 @@ enhanced error-bar computation and purity metric definition.
 """
 
 from __future__ import annotations
-import numpy as np
+
 import logging
 import warnings
-from typing import Dict, Any, List, Optional
-from scipy.optimize import curve_fit, OptimizeWarning
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+from scipy.optimize import OptimizeWarning, curve_fit
 
 # -------------------------------------------------------------------------
 # Logging
