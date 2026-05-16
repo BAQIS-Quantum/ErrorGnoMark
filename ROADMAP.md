@@ -12,6 +12,7 @@ ErrorGnoMark (EGM) is a **physical-layer QCVV and data-platform** toolkit today:
 
 - **v3.0.1 (2026-05-16)** — Trust & compliance (Horizon A): MIT license alignment across `LICENSE`, README, and PyPI metadata; Feature Status; Known Limitations; `LICENSE-AUDIT.md`; `SECURITY.md`. No intentional functional API changes.
 - **v3.0.2 (2026-05-16)** — Project hygiene (Horizon B): this roadmap, [CONTRIBUTING.md](CONTRIBUTING.md), documentation hub under `docs/`, GitHub issue/PR templates. Documentation and community files only.
+- **v3.0.3 (2026-05-16)** — Trust patch: **Apache-2.0** license alignment; canonical GitHub vs Gitee mirror documented; QEC-ready vs logical-protocol wording clarified.
 
 ---
 

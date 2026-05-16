@@ -20,7 +20,7 @@ Normalized cross-entropy benchmarking (XEB) fidelity in EGM matches closed-form 
 | Item | Value |
 |------|--------|
 | Python | ≥3.9 |
-| Package | `errorgnomark` editable / 3.0.2 |
+| Package | `errorgnomark` editable / 3.0.3 |
 | RNG seed | 42 (`tests/validation/conftest.py`) |
 
 ## Synthetic experiments

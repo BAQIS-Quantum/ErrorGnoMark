@@ -11,13 +11,12 @@ Thank you for your interest in EGM. This guide helps you set up a development en
 ### Clone
 
 ```bash
-# Gitee (primary mirror)
-git clone https://gitee.com/xdchai/errorgnomark.git
-cd errorgnomark
-
-# Or GitHub
+# Canonical repository (GitHub)
 git clone https://github.com/BAQIS-Quantum/ErrorGnoMark.git
 cd ErrorGnoMark
+
+# China mirror (optional)
+# git clone https://gitee.com/xdchai/errorgnomark.git
 ```
 
 ### Install (editable)
@@ -150,7 +149,7 @@ Use the **Protocol validation request** template when asking for synthetic/groun
 
 ## License
 
-By contributing, you agree that your contributions are licensed under the project’s [MIT License](LICENSE), consistent with [LICENSE-AUDIT.md](LICENSE-AUDIT.md).
+By contributing, you agree that your contributions are licensed under the project’s [Apache License 2.0](LICENSE), consistent with [LICENSE-AUDIT.md](LICENSE-AUDIT.md).
 
 ---
 

@@ -18,11 +18,11 @@ build-backend = "setuptools.build_meta"
 [project]
 # --- Core Metadata ---
 name = "errorgnomark"
-version = "3.0.2"
+version = "3.0.3"
 description = "A comprehensive and modular software suite for the full-stack benchmarking and characterization of quantum computing systems, from physical hardware to application-level performance."
 readme = "README.md"
 requires-python = ">=3.9"
-# SPDX: MIT — must match root LICENSE file (see LICENSE-AUDIT.md).
+# SPDX: Apache-2.0 — must match root LICENSE file (see LICENSE-AUDIT.md).
 license = { file = "LICENSE" }
 
 # --- People ---
@@ -54,8 +54,8 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
 
-    # 3. License (MIT — see LICENSE)
-    "License :: OSI Approved :: MIT License",
+    # 3. License (Apache-2.0 — see LICENSE)
+    "License :: OSI Approved :: Apache Software License",
 
     # 4. Operating System
     "Operating System :: OS Independent",

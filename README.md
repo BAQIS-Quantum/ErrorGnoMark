@@ -1,10 +1,10 @@
-# ErrorGnoMark (EGM) v3.0.2
+# ErrorGnoMark (EGM) v3.0.3
 
 > A modular, full-stack platform for quantum hardware benchmarking, characterization, and lifecycle management.
 
 [![PyPI Version](https://img.shields.io/pypi/v/errorgnomark.svg?style=flat-square)](https://pypi.org/project/errorgnomark/)
 [![Python Version](https://img.shields.io/pypi/pyversions/errorgnomark.svg?style=flat-square)](https://pypi.org/project/errorgnomark/)
-[![License](https://img.shields.io/github/license/BAQIS-Quantum/ErrorGnoMark.svg?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 
 ---
 
@@ -20,13 +20,13 @@
 - **Bi-temporal data layer** — Every observation carries both *effective time* (when it was true) and *ingestion time* (when the system learned it), enabling temporal replay and audit
 - **Versioned hardware state** — Event-sourced state evolution with a DAG structure, supporting branching calibration strategies and rollback
 - **Predictive intelligence** — Probabilistic future-state overlay for risk-aware compilation and scheduling
-- **FTQC-oriented error abstractions** — Physical-layer error models structured so a future logical/QEC layer can plug in; **logical QEC benchmarks are not shipped** in this release (see Feature Status)
+- **QEC-ready data abstractions (FTQC-oriented)** — Error-budget and data-layer types for fault-tolerant workflows are implemented at the physical / datastore level; **full logical benchmark protocols** (surface code, decoder pipelines) are **under active development**, not shipped in this release (see Feature Status)
 
 > **Scope honesty:** The table below is the authoritative status for the current release. Capabilities marked **Planned** or **Experimental** are not production-ready.
 
 ---
 
-## Feature Status (v3.0.2)
+## Feature Status (v3.0.3)
 
 | Area | Capability | Status | Notes |
 |------|------------|--------|-------|
@@ -48,13 +48,13 @@
 ## Known Limitations
 
 - **Logical QEC benchmarks** are not production-ready in this release (no surface-code memory experiments, decoder integration, or logical error-rate pipeline).
-- **「QEC-ready」/ FTQC-oriented** wording means extensible error and data design toward fault-tolerant computing — **not** a delivered logical-QEC product.
+- **QEC-ready** here means **data abstractions and error-model hooks** are in place; it does **not** mean turnkey logical-QEC benchmarks or decoders are production-ready.
 - XEB/RB have **synthetic** validation reports ([summary](docs/validation/validation-summary.md)); other protocols and full hardware certification are still limited.
 - Task-level analysis payloads may not yet expose all fields in [analyzer-output-spec.md](docs/validation/analyzer-output-spec.md).
 - **Predictive intelligence** and **versioned hardware state** modules may exist as design documentation without complete runtime code paths.
 - **PostgreSQL** at web-scale is out of scope; lab-scale numbers are in [postgres-benchmark-v0.1.md](docs/performance/postgres-benchmark-v0.1.md).
 - **Cloud/hardware backends** depend on third-party APIs, quotas, and credentials; availability is not guaranteed by this repository.
-- License metadata was corrected in **v3.0.1**; see [LICENSE-AUDIT.md](LICENSE-AUDIT.md) if you relied on pre-3.0.1 PyPI classifiers.
+- Project license is **Apache-2.0** (see [License](#license)); see [LICENSE-AUDIT.md](LICENSE-AUDIT.md) for metadata history (v3.0.1 MIT alignment, v3.0.3 Apache-2.0).
 
 ---
 
@@ -81,20 +81,37 @@
 pip install errorgnomark
 ```
 
-Or install from source for development:
+Or install from source for development (canonical repository):
+
+```bash
+git clone https://github.com/BAQIS-Quantum/ErrorGnoMark.git
+cd ErrorGnoMark
+pip install -e ".[dev]"
+```
+
+**China mirror** (read-only sync; tags should match GitHub):
 
 ```bash
 git clone https://gitee.com/xdchai/errorgnomark.git
-cd errorgnomark
-pip install -e ".[dev]"
 ```
 
 Verify:
 
 ```python
 import egm
-print(egm.__version__)  # 3.0.2
+print(egm.__version__)  # 3.0.3
 ```
+
+---
+
+## Repositories
+
+| Role | URL | Notes |
+|------|-----|--------|
+| **Canonical (official)** | https://github.com/BAQIS-Quantum/ErrorGnoMark | Primary development, issues, pull requests, and CI |
+| **China mirror** | https://gitee.com/xdchai/errorgnomark | Mirror for faster clone in China; **BAQIS-Quantum** on GitHub is the official maintainer org |
+
+Release tags and changelog on **GitHub** are authoritative. If versions differ between hosts, prefer GitHub.
 
 **Requirements:** Python >= 3.9
 
@@ -110,7 +127,7 @@ src/egm/
 ├── protocols/         # Protocol implementations (physical / algorithmic / logical)
 │   ├── physical/      #   XEB, RB, IRB, MRB, CSB, QV, T1/T2, SPAM, tomography, ...
 │   ├── algorithmic/   #   Grover, QPE, VQE, QAOA, simulation benchmarks
-│   └── logical/       #   QEC benchmarks (planned)
+│   └── logical/       #   Logical QEC protocols (planned; data layer is QEC-ready)
 ├── backends/          # Hardware abstraction layer
 │   ├── simulators/    #   Statevector, density matrix, dummy backends
 │   ├── cloud/         #   Quafu Cloud, Quark Cloud
@@ -277,7 +294,7 @@ errorgnomark/
 ├── pyproject.toml      # PEP 621 metadata
 ├── ROADMAP.md          # Public 3/6/12 month roadmap
 ├── CONTRIBUTING.md     # Contribution guide
-├── LICENSE             # MIT
+├── LICENSE             # Apache-2.0
 ├── LICENSE-AUDIT.md    # License history & compliance
 ├── SECURITY.md         # Vulnerability reporting
 ├── CHANGELOG.md        # Release notes
@@ -314,14 +331,14 @@ Quick rules:
 
 ## License
 
-[MIT License](LICENSE). See [LICENSE-AUDIT.md](LICENSE-AUDIT.md) for license metadata history (v3.0.1 trust patch).
+[Apache License 2.0](LICENSE). See [LICENSE-AUDIT.md](LICENSE-AUDIT.md) for license metadata history.
 
 ---
 
 ## Links
 
-- **Gitee**: https://gitee.com/xdchai/errorgnomark
-- **GitHub**: https://github.com/BAQIS-Quantum/ErrorGnoMark
+- **GitHub (canonical)**: https://github.com/BAQIS-Quantum/ErrorGnoMark
+- **Gitee (mirror)**: https://gitee.com/xdchai/errorgnomark
 - **PyPI**: https://pypi.org/project/errorgnomark/
 
 ---
@@ -335,6 +352,6 @@ If you use EGM in your research, please cite:
   title  = {ErrorGnoMark: A Modular Platform for Quantum Hardware Benchmarking and Characterization},
   author = {Chai, Xudan},
   year   = {2026},
-  url    = {https://gitee.com/xdchai/errorgnomark},
+  url    = {https://github.com/BAQIS-Quantum/ErrorGnoMark},
 }
 ```

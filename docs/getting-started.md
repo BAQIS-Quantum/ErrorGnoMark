@@ -25,11 +25,13 @@ python -c "import egm; print(egm.__version__)"
 ### From source (development)
 
 ```bash
-git clone https://gitee.com/xdchai/errorgnomark.git
-cd errorgnomark
+git clone https://github.com/BAQIS-Quantum/ErrorGnoMark.git
+cd ErrorGnoMark
 pip install -e ".[dev]"
 python -c "import egm; print(egm.__version__)"
 ```
+
+China mirror: `git clone https://gitee.com/xdchai/errorgnomark.git` (see README § Repositories).
 
 ---
 

@@ -1,6 +1,6 @@
 # Validation summary
 
-Last updated: **2026-05-16** · EGM version tested: **3.0.2** (see `egm.__version__`)
+Last updated: **2026-05-16** · EGM version tested: **3.0.3** (see `egm.__version__`)
 
 | Protocol | README status | Synthetic tests | Report | Synthetic status |
 |----------|---------------|-----------------|--------|------------------|
