@@ -2,9 +2,13 @@
 
 > A modular, full-stack platform for quantum hardware benchmarking, characterization, and lifecycle management.
 
-[![PyPI Version](https://img.shields.io/pypi/v/errorgnomark.svg?style=flat-square)](https://pypi.org/project/errorgnomark/)
-[![Python Version](https://img.shields.io/pypi/pyversions/errorgnomark.svg?style=flat-square)](https://pypi.org/project/errorgnomark/)
+[![PyPI version](https://img.shields.io/pypi/v/errorgnomark.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/errorgnomark/)
+[![Python versions](https://img.shields.io/pypi/pyversions/errorgnomark.svg?style=flat-square&logo=python&logoColor=white)](https://pypi.org/project/errorgnomark/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
+[![CI](https://github.com/BAQIS-Quantum/ErrorGnoMark/actions/workflows/ci.yml/badge.svg)](https://github.com/BAQIS-Quantum/ErrorGnoMark/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/BAQIS-Quantum/ErrorGnoMark/ci.yml?label=tests&style=flat-square)](https://github.com/BAQIS-Quantum/ErrorGnoMark/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-CI%20term%20report-lightgrey?style=flat-square)](docs/engineering/ci.md)
+[![Docs](https://img.shields.io/badge/docs-hub-1f6feb?style=flat-square)](docs/index.md)
 
 ---
 

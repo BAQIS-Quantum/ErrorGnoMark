@@ -61,6 +61,7 @@ Design and module boundaries (v3):
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | How to contribute |
 | [engineering/public-api.md](engineering/public-api.md) | Python public API |
 | [engineering/ci.md](engineering/ci.md) | CI workflows and local checks |
+| [engineering/github-repository.md](engineering/github-repository.md) | GitHub topics and README badges |
 | [../CHANGELOG.md](../CHANGELOG.md) | Release history |
 | [../SECURITY.md](../SECURITY.md) | Security reporting |
 | [../LICENSE-AUDIT.md](../LICENSE-AUDIT.md) | License history |
