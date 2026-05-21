@@ -65,6 +65,7 @@ Design and module boundaries (v3):
 | [../CHANGELOG.md](../CHANGELOG.md) | Release history |
 | [../SECURITY.md](../SECURITY.md) | Security reporting |
 | [../LICENSE-AUDIT.md](../LICENSE-AUDIT.md) | License history |
+| [legal/open-source-licenses.md](legal/open-source-licenses.md) | Open-source licenses explained (why Apache-2.0) |
 
 ---
 

@@ -1,6 +1,6 @@
 # ErrorGnoMark (EGM) v3.0.3
 
-> A modular, full-stack platform for quantum hardware benchmarking, characterization, and lifecycle management.
+> A modular platform for quantum hardware **characterization (QCVV), benchmark execution, and auditable observation storage** — not a quantum cloud operator or a production logical-QEC benchmark suite.
 
 [![PyPI version](https://img.shields.io/pypi/v/errorgnomark.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/errorgnomark/)
 [![Python versions](https://img.shields.io/pypi/pyversions/errorgnomark.svg?style=flat-square&logo=python&logoColor=white)](https://pypi.org/project/errorgnomark/)
@@ -12,21 +12,49 @@
 
 ---
 
+## Start here
+
+| If you want to… | Go to |
+|-----------------|--------|
+| **See what actually works in this release** | [Feature Status (v3.0.3)](#feature-status-v303) below — **authoritative** |
+| **Run something in 10 minutes** | [Getting started](docs/getting-started.md) or [Quick Start](#quick-start) (Python API) |
+| **Understand limits before you rely on EGM** | [Known Limitations](#known-limitations) |
+| **Validate XEB / RB (synthetic)** | [validation summary](docs/validation/validation-summary.md) · [XEB](docs/validation/xeb-validation.md) · [RB](docs/validation/rb-validation.md) |
+
+---
+
 ## What is EGM?
 
-**ErrorGnoMark** combines *error* + *gno* (to know/diagnose) + *mark* (to benchmark). It is a comprehensive toolkit that covers the entire quantum characterization workflow — from circuit generation and execution, through protocol-specific analysis, to structured data persistence and temporal querying.
+**ErrorGnoMark** combines *error* + *gno* (to know/diagnose) + *mark* (to benchmark). It connects protocol execution, unified analysis, and a **bi-temporal PostgreSQL observation layer** so benchmark results can be stored, queried, and audited over time.
 
-### Key Capabilities
+**EGM exists because** most toolchains separate “run a benchmark script” from “keep calibration and benchmark facts in a comparable, time-aware store with lineage” — EGM targets that **reproducible, auditable lifecycle** for lab and platform integration work.
 
-- **20+ benchmark protocols** — XEB, RB, IRB, MRB, PRB, CSB, QV, SPB, T1/T2, Rabi, SPAM, process/state tomography, and more
-- **Unified analysis dispatch** — One entry point routes to protocol-specific analyzers; adding a new protocol requires zero changes to upstream/downstream code
-- **Backend-agnostic execution** — Run on simulators, cloud QPUs (Quafu, Quark), or direct hardware
-- **Bi-temporal data layer** — Every observation carries both *effective time* (when it was true) and *ingestion time* (when the system learned it), enabling temporal replay and audit
-- **Versioned hardware state** — Event-sourced state evolution with a DAG structure, supporting branching calibration strategies and rollback
-- **Predictive intelligence** — Probabilistic future-state overlay for risk-aware compilation and scheduling
-- **QEC-ready data abstractions (FTQC-oriented)** — Error-budget and data-layer types for fault-tolerant workflows are implemented at the physical / datastore level; **full logical benchmark protocols** (surface code, decoder pipelines) are **under active development**, not shipped in this release (see Feature Status)
+> **Scope honesty:** Only capabilities marked **Beta** or **Experimental** in [Feature Status](#feature-status-v303) are in scope for this release. **Planned** items are design or placeholders only.
 
-> **Scope honesty:** The table below is the authoritative status for the current release. Capabilities marked **Planned** or **Experimental** are not production-ready.
+---
+
+## What ships in v3.0.3 (summary)
+
+| Area | Shipped focus |
+|------|----------------|
+| **Protocols** | **XEB**, **RB** runnable on simulators with synthetic validation reports |
+| **Data** | **PostgreSQL Phase 1** — bi-temporal observations, lineage, **31** static SQL templates (`phase1_acceptance --strict` in CI) |
+| **Analysis** | Unified `analyze_task_execution_result()` dispatch |
+| **Not in this release** | Logical QEC benchmarks, predictive runtime, Version DAG runtime, most extra protocols (T1/T2, QV, …) |
+
+---
+
+## Key Capabilities (framework vs this release)
+
+The codebase is organized for many protocol **directions**; **this release** emphasizes the rows in [Feature Status](#feature-status-v303).
+
+- **XEB & RB (Beta)** — End-to-end on simulators; see validation links in the status table  
+- **Unified analysis dispatch** — One entry point routes to protocol-specific analyzers  
+- **Backend-agnostic execution** — Simulators and cloud QPUs (Quafu, Quark); **hardware certification not claimed**  
+- **Bi-temporal data layer (Beta)** — `effective_time` + `ingested_at`, lineage, Phase 1 SQL catalog  
+- **Protocol framework** — Additional protocols (IRB, MRB, CSB, SPB, …) exist as **Experimental** or **Planned**; not implied as production-ready  
+
+**Roadmap only (not shipped):** versioned hardware-state runtime, predictive overlay, logical QEC benchmark pipelines — see [Known Limitations](#known-limitations) and [ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -34,31 +62,36 @@
 
 | Area | Capability | Status | Notes |
 |------|------------|--------|-------|
-| Physical QCVV | XEB | **Beta** | Simulator smoke + analysis dispatch; synthetic validation [report](docs/validation/xeb-validation.md) |
-| Physical QCVV | RB / IRB | **Beta** | RB: [validation report](docs/validation/rb-validation.md); IRB: validation pending |
+| Physical QCVV | XEB | **Beta** | Simulator smoke + analysis dispatch; [synthetic validation](docs/validation/xeb-validation.md) |
+| Physical QCVV | RB | **Beta** | [synthetic validation](docs/validation/rb-validation.md); hardware validation pending |
+| Physical QCVV | IRB | **Experimental** | Implementation present; **not** Beta — validation & limitations pending |
 | Physical QCVV | MRB, PRB, CSB, SPB | **Experimental** | Implementation present; full validation reports pending |
 | Physical QCVV | T1, T2, QV, Rabi, SPAM, Leakage RB, CLOPS | **Planned** | Placeholder modules; not yet implemented |
 | Data platform | Phase 1 PostgreSQL + static queries | **Beta** | Requires `EGM_PG_DSN`; see `db/phase1/`, `sql/queries/` |
 | Data platform | Bi-temporal schema + lineage (DB) | **Beta** | Schema in `db/phase1/001_schema.sql` |
 | Domain | Version DAG, event-sourced hardware state (`domain/system/`) | **Planned** | Architecture documented; runtime implementation incomplete |
 | Intelligence | Predictive overlay (`intelligence/forecasting/`) | **Planned** | Design docs; not production-ready |
-| Logical QEC | Surface code / decoder benchmarks | **Planned** | Design direction only; no Stim/PyMatching workflow or logical MVP in this release |
+| Logical QEC | Surface code / decoder benchmarks | **Planned** | FTQC-oriented **data hooks** only — no Stim/PyMatching workflow in this release |
 | Algorithmic | Grover, QPE, VQE, etc. | **Experimental** | Lower priority than physical QCVV |
 
-**Status definitions:** **Beta** = runnable with documented examples; **Experimental** = partial code, limited validation; **Planned** = design or placeholder only.
+**Status definitions:** **Beta** = runnable with documented examples; **Experimental** = partial code, limited validation; **Planned** = design or placeholder only.  
+**How status changes:** [docs/protocol-status.md](docs/protocol-status.md)
 
 ---
 
 ## Known Limitations
 
-- **Logical QEC benchmarks** are not production-ready in this release (no surface-code memory experiments, decoder integration, or logical error-rate pipeline).
-- **QEC-ready** here means **data abstractions and error-model hooks** are in place; it does **not** mean turnkey logical-QEC benchmarks or decoders are production-ready.
-- XEB/RB have **synthetic** validation reports ([summary](docs/validation/validation-summary.md)); other protocols and full hardware certification are still limited.
-- Task-level analysis payloads may not yet expose all fields in [analyzer-output-spec.md](docs/validation/analyzer-output-spec.md).
-- **Predictive intelligence** and **versioned hardware state** modules may exist as design documentation without complete runtime code paths.
-- **PostgreSQL** at web-scale is out of scope; lab-scale numbers are in [postgres-benchmark-v0.1.md](docs/performance/postgres-benchmark-v0.1.md).
-- **Cloud/hardware backends** depend on third-party APIs, quotas, and credentials; availability is not guaranteed by this repository.
-- Project license is **Apache-2.0** (see [License](#license)); see [LICENSE-AUDIT.md](LICENSE-AUDIT.md) for metadata history (v3.0.1 MIT alignment, v3.0.3 Apache-2.0).
+Read this before treating EGM as a production QCVV or QEC platform.
+
+- **Logical QEC benchmarks** are not production-ready (no surface-code memory experiments, decoder integration, or logical error-rate pipeline).
+- **FTQC-oriented** means **data abstractions and error-model hooks** in the datastore/schema — **not** turnkey logical-QEC benchmarks or decoders.
+- **XEB/RB** validation is primarily **synthetic** ([summary](docs/validation/validation-summary.md)); **public hardware case studies are pending**.
+- **Uncertainty / confidence intervals** on analysis outputs are **not yet guaranteed** on all code paths ([analyzer-output-spec](docs/validation/analyzer-output-spec.md)).
+- **Reproducibility:** full one-command replay from a single `observation_id` is **roadmap** (v3.2 target); raw-count and circuit provenance are being extended.
+- **Predictive intelligence** and **versioned hardware state** exist as design documentation without complete runtime paths.
+- **PostgreSQL** is validated at **lab scale** ([postgres-benchmark-v0.1.md](docs/performance/postgres-benchmark-v0.1.md)), not web-scale.
+- **Cloud/hardware backends** depend on third-party APIs, quotas, and credentials.
+- License is **Apache-2.0** ([LICENSE](LICENSE)); history in [LICENSE-AUDIT.md](LICENSE-AUDIT.md).
 
 ---
 
@@ -67,7 +100,7 @@
 **Good fit**
 
 - Research prototypes for quantum hardware characterization (QCVV)
-- Teaching and reproducible demos with simulators (`scripts/smoke/`)
+- Teaching and reproducible demos with simulators ([`scripts/smoke/`](scripts/smoke/))
 - Persisting calibration and benchmark observations in PostgreSQL (Phase 1)
 - Building on a unified analysis entry point for new protocols
 
@@ -75,7 +108,7 @@
 
 - Sole reliance for safety-critical or certified production control loops
 - Expecting turnkey logical QEC benchmark + decoder integration
-- Assuming every protocol listed in marketing copy is validated and stable
+- Assuming every protocol name in the [Supported Protocols](#supported-protocols) list is validated and stable
 
 ---
 
@@ -131,7 +164,7 @@ src/egm/
 ├── protocols/         # Protocol implementations (physical / algorithmic / logical)
 │   ├── physical/      #   XEB, RB, IRB, MRB, CSB, QV, T1/T2, SPAM, tomography, ...
 │   ├── algorithmic/   #   Grover, QPE, VQE, QAOA, simulation benchmarks
-│   └── logical/       #   Logical QEC protocols (planned; data layer is QEC-ready)
+│   └── logical/       #   Logical QEC protocols (Planned; not shipped)
 ├── backends/          # Hardware abstraction layer
 │   ├── simulators/    #   Statevector, density matrix, dummy backends
 │   ├── cloud/         #   Quafu Cloud, Quark Cloud
@@ -146,8 +179,8 @@ src/egm/
 │   ├── error_inference/   # RB/T1-based error inference
 │   ├── error_propagation/ # Physical & logical error propagation
 │   ├── state/             # Hardware state & snapshot
-│   └── system/            # Version DAG, events, lifecycle
-├── intelligence/      # Predictive forecasting, risk models, transition models
+│   └── system/            # Version DAG, events, lifecycle (Planned runtime)
+├── intelligence/      # Predictive forecasting (Planned)
 ├── services/          # Planning, query, serialization (application glue)
 ├── suites/            # High-level workflow orchestration
 │   ├── calibration/   #   Auto-calibration, drift-triggered recalibration
@@ -179,6 +212,8 @@ ConfigSchema ─── PlanBuilder ──→ PlanSchema (CircuitTasks)
 ---
 
 ## Quick Start
+
+For a shorter path, see **[docs/getting-started.md](docs/getting-started.md)**. End-to-end smoke scripts: [`scripts/smoke/`](scripts/smoke/).
 
 ### Run XEB on a simulator
 
@@ -214,6 +249,8 @@ for task, exec_result in zip(plan.tasks, exec_results.task_results):
 
 ### Persist to PostgreSQL
 
+Requires PostgreSQL and `EGM_PG_DSN`; see [scripts/postgres/README.md](scripts/postgres/README.md).
+
 ```python
 from egm.datastore.postgres_observation_store import PostgresObservationStore
 
@@ -224,6 +261,8 @@ obs_id = store.save_observation(payload)
 ---
 
 ## Supported Protocols
+
+Naming reference for the **protocol framework**. **Status** is only defined in [Feature Status](#feature-status-v303).
 
 ### Physical Layer
 
@@ -260,7 +299,11 @@ Each protocol supports three modes for flexible characterization:
 
 ## Database & Querying (Phase 1)
 
-EGM includes a PostgreSQL-based data layer with:
+### Why PostgreSQL?
+
+EGM uses PostgreSQL as the **reference store** for multi-entity calibration/benchmark facts, **bi-temporal** queries (`as_of` / `known-at`), and **lineage** between runs — not as a generic file dump. Lab-scale performance is documented in [postgres-benchmark-v0.1.md](docs/performance/postgres-benchmark-v0.1.md). SQLite/memory remain available for local tests.
+
+EGM includes:
 
 - **Bi-temporal schema** — Every fact has `effective_time` + `ingested_at`
 - **Record kinds (v1.1)** — `observation` / `inference` / `forecast` on `observation_record` ([semantics](docs/data-layer/observation-inference-forecast.md))
@@ -311,12 +354,15 @@ errorgnomark/
 
 - [Documentation hub](docs/index.md)
 - [Getting started](docs/getting-started.md)
-- [Protocol status](docs/protocol-status.md) (authoritative table: [Feature Status](#feature-status-v302) above)
+- [Protocol status](docs/protocol-status.md) (how to read [Feature Status](#feature-status-v303))
+- [Validation summary](docs/validation/validation-summary.md)
+- [Data layer](docs/data-layer/README.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 - [Public API](docs/engineering/public-api.md)
 - [CI / testing](docs/engineering/ci.md)
+- [Open-source licenses explained](docs/legal/open-source-licenses.md)
 
 ---
 

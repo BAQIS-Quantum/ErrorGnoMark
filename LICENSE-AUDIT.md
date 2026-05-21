@@ -42,6 +42,10 @@ All project metadata (README, `pyproject.toml` classifiers, license badge) are a
 
 Runtime dependencies are listed in [`pyproject.toml`](pyproject.toml). This audit does not replace a full SBOM or legal review of transitive licenses.
 
+## Plain-language guide
+
+For a non-legal overview of MIT vs Apache-2.0 vs GPL and why EGM uses Apache-2.0, see [docs/legal/open-source-licenses.md](docs/legal/open-source-licenses.md) (Chinese).
+
 ## Contact
 
 License questions: project maintainers via GitHub issues or the email listed in `pyproject.toml` authors.
