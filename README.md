@@ -234,7 +234,7 @@ obs_id = store.save_observation(payload)
 | **IRB** | Interleaved RB (per-gate error extraction) |
 | **MRB** | Mirror RB |
 | **PRB** | Pauli RB |
-| **CSB** | Correlated Spectral Benchmarking |
+| **CSB** | Channel Spectrum Benchmarking |
 | **QV** | Quantum Volume |
 | **SPB** | Speckle Purity Benchmarking |
 | **T1/T2** | Coherence time measurement (Ramsey, Echo) |
